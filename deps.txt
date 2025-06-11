@@ -1,0 +1,25 @@
+# Backend Dependencies
+npm install bcryptjs jsonwebtoken cors dotenv mongoose express-validator multer csv-parser
+
+# Frontend Dependencies
+npm install react-router-dom axios react-quill jspdf jspdf-autotable tailwindcss @tailwindcss/vite @headlessui/react @heroicons/react moment formik yup
+npx tailwindcss init -p
+
+# Setup TailwindCSS
+# Add to tailwind.config.js:
+/*
+module.exports = {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+*/
+
+# Add to index.css:
+/*
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+*/
