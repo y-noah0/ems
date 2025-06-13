@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import examService from '../services/examService';
+import examService from '../services/examService.fixed';
 
 // Notification component for user feedback
 const Notification = ({ message, type = 'success', onClose }) => {
@@ -36,10 +36,11 @@ const SubmissionView = () => {
   const { submissionId } = useParams();
   const navigate = useNavigate();
   const [submission, setSubmission] = useState(null);
-  const [exam, setExam] = useState(null);  const [loading, setLoading] = useState(true);
+  const [exam, setExam] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ message: null, type: 'success' });
   const [editedAnswers, setEditedAnswers] = useState([]);
-  const [saving, setSaving] = useState(false);  
+  const [saving, setSaving] = useState(false);
   
   // Function to fetch submission data
   const fetchSubmissionData = async () => {
@@ -51,8 +52,9 @@ const SubmissionView = () => {
       
       // Fetch exam details if we have it
       if (submissionData.exam) {
-        const examId = typeof submissionData.exam === 'object' ? submissionData.exam._id : submissionData.exam;
-        const examData = await examService.getExamById(examId);
+        const examData = await examService.getExamById(
+          typeof submissionData.exam === 'object' ? submissionData.exam._id : submissionData.exam
+        );
         setExam(examData);
         
         // Initialize editedAnswers with current answers data
@@ -74,12 +76,13 @@ const SubmissionView = () => {
         type: 'error' 
       });
       setLoading(false);
-    }  };
-  
+    }
+  };
+
   useEffect(() => {
     fetchSubmissionData();
-  }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
-  
+  }, [submissionId]);
+
   // Handler for updating points for an answer
   const handlePointsChange = (index, points) => {
     const newAnswers = [...editedAnswers];
@@ -99,10 +102,12 @@ const SubmissionView = () => {
     newAnswers[index] = {
       ...newAnswers[index],
       feedback,
-      isEdited: true    };
+      isEdited: true
+    };
     setEditedAnswers(newAnswers);
-  };  
-    // Save all grading changes
+  };
+
+  // Save all grading changes
   const saveGrades = async () => {
     try {
       setSaving(true);
@@ -111,23 +116,18 @@ const SubmissionView = () => {
       // Calculate total score
       const totalScore = editedAnswers.reduce((sum, answer) => sum + (parseInt(answer.points) || 0), 0);
       
-      // Format grades for backend
-      const grades = editedAnswers.map(answer => ({
-        questionId: answer.questionId,
-        score: parseInt(answer.points) || 0,
-        feedback: answer.feedback || ''
-      }));
-      
-      // Update the submission with grades
-      await examService.updateSubmissionGrades(submissionId, { grades });
-      
-      // Update local state with the updated submission
+      // Prepare updated submission data
       const updatedSubmission = {
         ...submission,
-        answers: editedAnswers.map(a => ({...a, isEdited: false})),
+        answers: editedAnswers,
         score: totalScore,
         status: 'graded'
       };
+      
+      // Update the submission with grades
+      await examService.updateSubmissionGrades(submissionId, { submission: updatedSubmission });
+      
+      // Update local state
       setSubmission(updatedSubmission);
       
       // Reset edited flag
@@ -147,9 +147,10 @@ const SubmissionView = () => {
       setSaving(false);
     }
   };
+
   // Check if any answers have been edited
   const hasUnsavedChanges = editedAnswers.some(answer => answer.isEdited);
-  
+
   // Auto-grade multiple-choice questions
   const autoGradeMultipleChoice = () => {
     if (!exam || !editedAnswers.length) return;
@@ -177,10 +178,10 @@ const SubmissionView = () => {
         
         const studentAnswer = newAnswers[idx].answer || newAnswers[idx].text;
         const isCorrect = studentAnswer === correctAnswer;
-          newAnswers[idx] = {
+        
+        newAnswers[idx] = {
           ...newAnswers[idx],
           points: isCorrect ? (question.points || question.maxScore || 0) : 0,
-          score: isCorrect ? (question.points || question.maxScore || 0) : 0, // Add score field for backend compatibility
           isCorrect,
           feedback: isCorrect 
             ? 'Correct answer.' 
@@ -192,18 +193,20 @@ const SubmissionView = () => {
       }
     });
     
-    setEditedAnswers(newAnswers);    return autoGradedCount;
+    setEditedAnswers(newAnswers);
+    return autoGradedCount;
   };
-  
+
   if (loading) {
     return (
       <Layout>
         <div className="flex justify-center items-center py-16">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>      </Layout>
+        </div>
+      </Layout>
     );
   }
-  
+
   if (notification.message && notification.type === 'error' && !submission) {
     return (
       <Layout>
@@ -228,11 +231,12 @@ const SubmissionView = () => {
             <Button onClick={() => navigate('/teacher/submissions')}>
               Return to Submissions List
             </Button>
-          </div>        </Card>
+          </div>
+        </Card>
       </Layout>
     );
   }
-  
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -266,7 +270,9 @@ const SubmissionView = () => {
             type={notification.type} 
             onClose={() => setNotification({ message: null, type: notification.type })} 
           />
-        )}        <Card className="mb-6">
+        )}
+
+        <Card className="mb-6">
           <div className="p-4">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-xl font-semibold">Student Information</h2>
@@ -302,7 +308,9 @@ const SubmissionView = () => {
               </div>
             </div>
           </div>
-        </Card>        <Card>
+        </Card>
+
+        <Card>
           <div className="p-4">
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
               <h2 className="text-xl font-semibold">Student Answers & Grading</h2>
@@ -331,7 +339,8 @@ const SubmissionView = () => {
                 Auto-grade Multiple Choice
               </Button>
             </div>
-              {!editedAnswers?.length ? (
+            
+            {!editedAnswers?.length ? (
               <div className="text-center py-8 text-gray-500">
                 No answers found in this submission.
               </div>
@@ -359,7 +368,7 @@ const SubmissionView = () => {
                       <div className="mt-1 text-gray-800">{answer.answer || answer.text || 'No answer provided'}</div>
                     </div>
                     
-                    {(exam?.questions[index]?.type === 'MCQ' || exam?.questions[index]?.type === 'multiple-choice') && (
+                    {exam?.questions[index]?.type === 'MCQ' && (
                       <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                         <p className="font-medium text-sm text-gray-600">Expected Answer:</p>
                         <div className="mt-1 text-gray-800">
@@ -368,7 +377,9 @@ const SubmissionView = () => {
                              option.isCorrect)?.text) || 'Not specified'}
                         </div>
                       </div>
-                    )}                    <div className="my-4">
+                    )}
+
+                    <div className="my-4">
                       <div className="flex flex-wrap items-center gap-3 mb-3">
                         <label htmlFor={`points-${index}`} className="font-medium">Points:</label>
                         <input 
@@ -400,7 +411,9 @@ const SubmissionView = () => {
                   </div>
                 ))}
               </div>
-            )}              {/* Grade summary */}
+            )}
+            
+            {/* Grade summary */}
             <div className="mt-6 p-4 bg-gray-50 rounded-lg mb-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

@@ -6,14 +6,22 @@ const { validationResult } = require('express-validator');
 const authController = {};
 
 // Register new user
-authController.register = async (req, res) => {
-  try {
+authController.register = async (req, res) => {  try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, password, fullName, role, registrationNumber, classId } = req.body;
+    
+    // Log registration request data for debugging
+    console.log('Registration request:', {
+      email,
+      fullName,
+      role,
+      registrationNumber,
+      classId
+    });
 
     // Check if user exists
     let user = await User.findOne({ email });
@@ -34,10 +42,33 @@ authController.register = async (req, res) => {
     if (registrationNumber) {
       user.registrationNumber = registrationNumber;
     }
-    
-    // Only add class field if the role is student
+      // Only add class field if the role is student
     if (!role || role === 'student') {
-      user.class = classId;
+      // Validate classId - ensure it's not empty and is a valid ObjectId
+      if (!classId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Class ID is required for student accounts'
+        });
+      }
+      
+      try {
+        // Check if the class exists
+        const Class = require('../models/Class');
+        const classExists = await Class.findById(classId);
+        if (!classExists) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid class ID: class not found'
+          });
+        }
+        user.class = classId;
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid class ID format'
+        });
+      }
     }
 
     await user.save();

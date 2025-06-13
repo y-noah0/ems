@@ -109,13 +109,18 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-
   // Students
   getStudentsByClass: async (classId) => {
     try {
+      if (!classId) {
+        console.error('Invalid class ID provided to getStudentsByClass');
+        return [];
+      }
+      
       const response = await api.get(`/admin/classes/${classId}/students`);
       return response.data.students;
     } catch (error) {
+      console.error('Error fetching students by class:', error);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },

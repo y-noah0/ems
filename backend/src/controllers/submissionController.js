@@ -418,8 +418,7 @@ submissionController.logViolation = async (req, res) => {
 
 // Get student's submissions (completed exams)
 submissionController.getStudentSubmissions = async (req, res) => {
-  try {
-    const submissions = await Submission.find({
+  try {    const submissions = await Submission.find({
       student: req.user.id,
       status: { $in: ['submitted', 'auto-submitted', 'graded'] }
     })
@@ -429,7 +428,7 @@ submissionController.getStudentSubmissions = async (req, res) => {
           { path: 'subject', select: 'name' },
           { path: 'class', select: 'level trade term year' }
         ],
-        select: 'title type subject class'
+        select: 'title type subject class totalPoints'
       })
       .sort({ submittedAt: -1 });
 
@@ -458,20 +457,20 @@ submissionController.getExamSubmissions = async (req, res) => {
         success: false,
         message: 'Exam not found'
       });
-    }
-
-    if (exam.teacher.toString() !== req.user.id && req.user.role !== 'dean') {
+    }    // Check if teacher is authorized to access submissions
+    const examTeacher = exam.teacher;
+    const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
+    
+    if (teacherId !== req.user.id && req.user.role !== 'dean') {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to access submissions for this exam'
       });
-    }
-
-    const submissions = await Submission.find({
+    }    const submissions = await Submission.find({
       exam: examId,
-      status: { $in: ['submitted', 'auto-submitted', 'graded'] }
+      status: { $in: ['submitted', 'auto-submitted', 'graded', 'pending'] }
     })
-      .populate('student', 'fullName registrationNumber')
+      .populate('student', 'firstName lastName registrationNumber')
       .sort({ submittedAt: -1 });
 
     res.json({
@@ -493,10 +492,20 @@ submissionController.gradeOpenQuestions = async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
+    }    const { submissionId } = req.params;
+    const { grades, submission: submissionData } = req.body;
+    
+    // Handle both direct grade updates and full submission updates
+    let gradesArray = grades;
+    
+    // If we get a full submission object (from frontend), extract grades from it
+    if (!grades && submissionData && submissionData.answers) {
+      gradesArray = submissionData.answers.map(answer => ({
+        questionId: answer.questionId,
+        score: parseInt(answer.points || answer.score) || 0,
+        feedback: answer.feedback || ''
+      }));
     }
-
-    const { submissionId } = req.params;
-    const { grades } = req.body;
 
     // Check if submission exists
     const submission = await Submission.findById(submissionId);
@@ -514,30 +523,33 @@ submissionController.gradeOpenQuestions = async (req, res) => {
         success: false,
         message: 'Exam not found'
       });
-    }
-
-    if (exam.teacher.toString() !== req.user.id && req.user.role !== 'dean') {
+    }    // Check if teacher is authorized to grade this submission
+    const examTeacher = exam.teacher;
+    const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
+    
+    if (teacherId !== req.user.id && req.user.role !== 'dean') {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to grade this submission'
       });
-    }
-
-    // Update scores for open questions
-    if (grades && Array.isArray(grades)) {
-      grades.forEach(grade => {
-        const answerIndex = submission.answers.findIndex(
-          a => a.questionId.toString() === grade.questionId
-        );
+    }    // Update scores for open questions
+    if (gradesArray && Array.isArray(gradesArray)) {
+      gradesArray.forEach((grade, index) => {
+        // Try to find answer by questionId or by array index as fallback
+        const answerIndex = grade.questionId ? 
+          submission.answers.findIndex(a => 
+            a.questionId && a.questionId.toString() === grade.questionId.toString()) :
+          index;
         
         if (answerIndex !== -1) {
           const question = exam.questions.find(
             q => q._id.toString() === grade.questionId
           );
-          
-          if (question && question.type === 'open') {
+            // Allow grading of any question type, not just 'open'
+          if (question) {
             // Ensure score doesn't exceed max score
-            const score = Math.min(grade.score, question.maxScore);
+            const maxScore = question.maxScore || question.points || 100;
+            const score = Math.min(grade.score, maxScore);
             
             submission.answers[answerIndex].score = score;
             submission.answers[answerIndex].feedback = grade.feedback;
@@ -545,18 +557,25 @@ submissionController.gradeOpenQuestions = async (req, res) => {
           }
         }
       });
-    }
-
-    // Check if all answers are graded
-    const allGraded = submission.answers.every(answer => answer.graded);
-    if (allGraded) {
-      submission.status = 'graded';
-      submission.gradedBy = req.user.id;
-      submission.gradedAt = new Date();
-    }
-
+    }    // Always mark submission as graded when using this endpoint
+    submission.status = 'graded';
+    submission.gradedBy = req.user.id;
+    submission.gradedAt = new Date();
+    
     // Recalculate total score
-    submission.totalScore = submission.answers.reduce((sum, answer) => sum + answer.score, 0);
+    const calculatedScore = submission.answers.reduce((sum, answer) => sum + (answer.score || 0), 0);
+    
+    // Set both score and totalScore to ensure consistency across the application
+    submission.score = calculatedScore;
+    submission.totalScore = calculatedScore;
+    
+    // Set totalPoints from exam if available
+    if (exam && exam.totalPoints) {
+      submission.totalPoints = exam.totalPoints;
+    } else if (!submission.totalPoints) {
+      // Calculate total possible points from questions
+      submission.totalPoints = exam.questions.reduce((sum, q) => sum + (q.maxScore || q.points || 0), 0);
+    }
 
     await submission.save();
 
@@ -595,17 +614,16 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
       .select('title type subject totalScore');
     
     const examIds = exams.map(e => e._id);
-    
-    // Find student's submissions for these exams
+      // Find student's submissions for these exams
     const submissions = await Submission.find({
       student: req.user.id,
       exam: { $in: examIds },
-      status: { $in: ['submitted', 'auto-submitted', 'graded'] }
+      status: { $in: ['graded'] } // Only include graded submissions for results
     })
       .populate({
         path: 'exam',
         populate: { path: 'subject', select: 'name' },
-        select: 'title type subject totalScore'
+        select: 'title type subject totalPoints totalScore'
       });
     
     // Group results by subject
@@ -621,14 +639,18 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
           exams: []
         };
       }
+        // Use score or fallback to totalScore, and ensure we have appropriate maxScore values
+      const score = submission.score || submission.totalScore || 0;
+      const maxScore = submission.totalPoints || submission.exam.totalPoints || 100;
+      const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
       
       results[subjectId].exams.push({
         examId: submission.exam._id,
         title: submission.exam.title,
         type: submission.exam.type,
-        score: submission.totalScore,
-        maxScore: submission.exam.totalScore,
-        percentage: Math.round((submission.totalScore / submission.exam.totalScore) * 100) || 0
+        score: score,
+        maxScore: maxScore,
+        percentage: percentage
       });
     });
     
@@ -655,9 +677,7 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
 // Get detailed submission (for review)
 submissionController.getSubmissionDetails = async (req, res) => {
   try {
-    const submissionId = req.params.id;
-
-    // Find the submission
+    const submissionId = req.params.id;    // Find the submission
     const submission = await Submission.findById(submissionId)
       .populate({
         path: 'exam',
@@ -665,7 +685,8 @@ submissionController.getSubmissionDetails = async (req, res) => {
           { path: 'subject', select: 'name' },
           { path: 'class', select: 'level trade term year' }
         ]
-      });
+      })
+      .populate('student', 'firstName lastName registrationNumber');
 
     if (!submission) {
       return res.status(404).json({
@@ -683,13 +704,17 @@ submissionController.getSubmissionDetails = async (req, res) => {
         success: false,
         message: 'You are not authorized to view this submission'
       });
-    }
-
-    if (isTeacher && submission.exam.teacher.toString() !== req.user.id && req.user.role !== 'dean') {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to view this submission'
-      });
+    }    // Check if teacher is authorized to view this submission
+    if (isTeacher) {
+      const examTeacher = submission.exam.teacher;
+      const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
+      
+      if (teacherId !== req.user.id && req.user.role !== 'dean') {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not authorized to view this submission'
+        });
+      }
     }
 
     // For students, don't show feedback for ungraded submissions
@@ -716,6 +741,39 @@ submissionController.getSubmissionDetails = async (req, res) => {
     });
   } catch (error) {
     console.error(error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
+};
+
+// Get all submissions for teacher's exams
+submissionController.getTeacherSubmissions = async (req, res) => {
+  try {
+    // Find all exams created by this teacher
+    const exams = await Exam.find({ teacher: req.user.id });
+    const examIds = exams.map(exam => exam._id);
+    
+    // Find all submissions for those exams
+    const submissions = await Submission.find({ exam: { $in: examIds } })
+      .populate({
+        path: 'exam',
+        select: 'title subject class',
+        populate: [
+          { path: 'subject', select: 'name code' },
+          { path: 'class', select: 'level trade' }
+        ]
+      })
+      .populate('student', 'firstName lastName registrationNumber')
+      .sort({ submittedAt: -1 });
+    
+    res.json({
+      success: true,
+      submissions
+    });
+  } catch (error) {
+    console.error('Error fetching teacher submissions:', error);
     res.status(500).json({
       success: false,
       message: 'Server Error'

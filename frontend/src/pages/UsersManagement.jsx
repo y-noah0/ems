@@ -6,6 +6,11 @@ import Input from "../components/ui/Input";
 import adminService from "../services/adminService";
 import authService from "../services/authService";
 
+// Utility function to validate if a string is a valid MongoDB ObjectId
+const isValidObjectId = (id) => {
+    return id && id.match(/^[0-9a-fA-F]{24}$/);
+};
+
 const UsersManagement = () => {
     const [activeTab, setActiveTab] = useState("teachers");
     const [teachers, setTeachers] = useState([]);
@@ -23,24 +28,27 @@ const UsersManagement = () => {
         email: "",
         registrationNumber: "",
         password: "",
-    });
-
-    const [studentFormData, setStudentFormData] = useState({
+    });    const [studentFormData, setStudentFormData] = useState({
         fullName: "",
         email: "",
         registrationNumber: "",
         password: "",
-        classId: "",
-    });
-
-    useEffect(() => {
+        classId: "", // Will be set when classes are loaded
+    });    useEffect(() => {
         const fetchInitialData = async () => {
             try {
                 const classesData = await adminService.getAllClasses();
                 setClasses(classesData);
 
                 if (classesData.length > 0) {
-                    setSelectedClass(classesData[0]._id);
+                    const defaultClassId = classesData[0]._id;
+                    setSelectedClass(defaultClassId);
+                    
+                    // Also initialize the student form with this class ID
+                    setStudentFormData(prev => ({
+                        ...prev,
+                        classId: defaultClassId
+                    }));
                 }
 
                 // Load teachers
@@ -145,11 +153,16 @@ const UsersManagement = () => {
         }
         setFormError("");
         setFormSuccess("");
-    };
-
-    const handleClassChange = (e) => {
-        setSelectedClass(e.target.value);
-    };    const generateRegistrationNumber = (type = "teacher") => {
+    };    const handleClassChange = (e) => {
+        const newClassId = e.target.value;
+        setSelectedClass(newClassId);
+        
+        // Also update the student form data with the new class ID
+        setStudentFormData(prev => ({
+            ...prev,
+            classId: newClassId
+        }));
+    };const generateRegistrationNumber = (type = "teacher") => {
         const prefix = type === "teacher" ? "TEACH" : "STUD";
         const randomDigits = Math.floor(Math.random() * 9000) + 1000;
         const year = new Date().getFullYear().toString().substr(2, 2);
@@ -171,23 +184,52 @@ const UsersManagement = () => {
 
     const handleStudentFormChange = (e) => {
         const { name, value } = e.target;
-        setStudentFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        setStudentFormData((prev) => {
+            // If registration number is being changed, update password to match
+            if (name === "registrationNumber") {
+                return {
+                    ...prev,
+                    [name]: value,
+                    password: value, // Keep password in sync with registration number
+                };
+            }
+            // Otherwise, just update the changed field
+            return {
+                ...prev,
+                [name]: value,
+            };
+        });
+    };    // Utility function to validate if a string is a valid MongoDB ObjectId
+    const isValidObjectId = (id) => {
+        return id && id.match(/^[0-9a-fA-F]{24}$/);
     };
-
+    
     const handleStudentFormSubmit = async (e) => {
         e.preventDefault();
         setFormError("");
         setFormSuccess("");
 
         try {
-            // Create student user
-            await authService.register({
+            // Validate that the classId exists and is valid
+            if (!studentFormData.classId) {
+                // If no class is selected, use the currently selected class
+                studentFormData.classId = selectedClass;
+            }
+            
+            // Ensure classId is not an empty string and is a valid ObjectId
+            if (!studentFormData.classId || !isValidObjectId(studentFormData.classId)) {
+                setFormError("Please select a valid class for the student");
+                return;
+            }
+            
+            // Create student user with validated data
+            const dataToSubmit = {
                 ...studentFormData,
                 role: "student",
-            });
+            };
+            
+            console.log("Submitting student data:", dataToSubmit);
+            await authService.register(dataToSubmit);
 
             setFormSuccess("Student created successfully!");
 
@@ -202,10 +244,19 @@ const UsersManagement = () => {
             setShowStudentForm(false);
 
             // Refresh students list
-            fetchStudentsByClass();
-        } catch (error) {
+            fetchStudentsByClass();        } catch (error) {
             console.error("Error creating student:", error);
-            setFormError(error.message || "Failed to create student");
+            
+            // Check for specific error related to class ID
+            if (error.message && (
+                error.message.includes("Class ID") || 
+                error.message.includes("class") ||
+                error.message.includes("Cast to ObjectId failed")
+            )) {
+                setFormError("Please select a valid class for the student. The class field is required.");
+            } else {
+                setFormError(error.message || "Failed to create student");
+            }
         }
     };
 
@@ -551,17 +602,18 @@ const UsersManagement = () => {
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Class
-                                        </label>
-                                        <select
+                                        </label>                                        <select
                                             name="classId"
                                             value={
                                                 studentFormData.classId ||
-                                                selectedClass
+                                                selectedClass ||
+                                                ""
                                             }
                                             onChange={handleStudentFormChange}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                             required
                                         >
+                                            <option value="">Select a class</option>
                                             {classes.map((cls) => (
                                                 <option
                                                     key={cls._id}
@@ -573,6 +625,9 @@ const UsersManagement = () => {
                                                 </option>
                                             ))}
                                         </select>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            A class is required for all student accounts
+                                        </div>
                                     </div>
                                 </div>
 

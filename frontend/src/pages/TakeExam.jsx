@@ -124,18 +124,29 @@ const TakeExam = () => {
     
     return () => clearInterval(saveInterval);
   }, [submission, answers]);
-  
-  // Fetch exam and start submission
+    // Fetch exam and start submission
   useEffect(() => {
     const fetchExamAndStartSubmission = async () => {
       setLoading(true);
       try {
         // Fetch exam data
         const examData = await examService.getExamById(examId);
+        console.log('Exam data:', examData);
+        console.log('Questions:', examData.questions);
+        
+        if (!examData.questions || examData.questions.length === 0) {
+          console.warn('No questions found in exam data');
+        } else {
+          // Log question types and structure for debugging
+          console.log('First question type:', examData.questions[0].type);
+          console.log('First question details:', examData.questions[0]);
+        }
+        
         setExam(examData);
         
         // Start the exam submission
         const submissionData = await submissionService.startExam(examId);
+        console.log('Submission data:', submissionData);
         setSubmission(submissionData.submission);
         
         // Initialize answers array from submission or empty
@@ -143,6 +154,7 @@ const TakeExam = () => {
           questionId: a.questionId,
           answer: a.answer || ''
         }));
+        console.log('Initial answers:', initialAnswers);
         setAnswers(initialAnswers);
         
         // Set time remaining
@@ -278,12 +290,29 @@ const TakeExam = () => {
       });
     }
   };
-  
-  // Render current question
+    // Render current question
   const renderCurrentQuestion = () => {
-    if (!exam || !exam.questions.length) return null;
+    if (!exam || !exam.questions || exam.questions.length === 0) {
+      return (
+        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
+          <p className="text-yellow-700">This exam does not have any questions.</p>
+        </div>
+      );
+    }
     
     const currentQuestion = exam.questions[currentQuestionIndex];
+    
+    if (!currentQuestion) {
+      console.error('Current question is undefined', { currentQuestionIndex, questions: exam.questions });
+      return (
+        <div className="bg-red-50 border border-red-200 p-4 rounded-md">
+          <p className="text-red-700">Error loading question. Please contact support.</p>
+        </div>
+      );
+    }
+    
+    console.log('Rendering question:', currentQuestion);
+    
     const currentAnswer = answers.find(a => a.questionId === currentQuestion._id) || { answer: '' };
     const isMarkedForReview = markedForReview.includes(currentQuestion._id);
     
@@ -312,53 +341,43 @@ const TakeExam = () => {
         <div className="mb-4">
           <p className="text-gray-800">{currentQuestion.text}</p>
         </div>
-        
-        {/* Based on question type, render different input */}
-        {currentQuestion.type === 'multiple-choice' && (
+          {/* Based on question type, render different input */}
+        {currentQuestion.type === 'MCQ' && (
           <div className="space-y-2">
-            {currentQuestion.options.map((option, idx) => (
+            {Array.isArray(currentQuestion.options) && currentQuestion.options.map((option, idx) => (
               <div key={idx} className="flex items-center">
                 <input
                   type="radio"
                   id={`option-${idx}`}
                   name={`question-${currentQuestion._id}`}
-                  checked={currentAnswer.answer === option.text}
-                  onChange={() => handleAnswerChange(currentQuestion._id, option.text)}
+                  checked={currentAnswer.answer === option}
+                  onChange={() => handleAnswerChange(currentQuestion._id, option)}
                   className="mr-2"
                 />
                 <label htmlFor={`option-${idx}`} className="text-gray-700">
-                  {option.text}
+                  {option}
                 </label>
               </div>
             ))}
           </div>
         )}
-        
-        {currentQuestion.type === 'short-answer' && (
-          <textarea
-            value={currentAnswer.answer}
-            onChange={e => handleAnswerChange(currentQuestion._id, e.target.value)}
-            rows={4}
-            className="w-full border rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Type your answer here..."
-          />
-        )}
-        
-        {currentQuestion.type === 'essay' && (
-          <ReactQuill 
-            value={currentAnswer.answer}
-            onChange={value => handleAnswerChange(currentQuestion._id, value)}
-            placeholder="Write your essay answer here..."
-            modules={{
-              toolbar: [
-                ['bold', 'italic', 'underline'],
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                ['clean']
-              ]
-            }}
-            className="bg-white"
-            style={{height: '200px', marginBottom: '40px'}}
-          />
+          {currentQuestion.type === 'open' && (
+          <div className="mt-4">
+            <label htmlFor="open-answer" className="block text-sm font-medium text-gray-700 mb-2">
+              Your Answer:
+            </label>
+            <textarea
+              id="open-answer"
+              value={currentAnswer.answer}
+              onChange={e => handleAnswerChange(currentQuestion._id, e.target.value)}
+              rows={8}
+              className="w-full border border-gray-300 rounded-md p-3 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+              placeholder="Type your answer here..."
+            />
+            <p className="mt-2 text-sm text-gray-500">
+              You can write as much as needed for your answer. The text area will expand as you type.
+            </p>
+          </div>
         )}
         
         <div className="flex justify-between mt-8">

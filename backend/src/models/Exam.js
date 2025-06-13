@@ -43,11 +43,11 @@ const ExamSchema = new Schema({
     required: true,
     trim: true
   },
-  class: {
+  class: [{
     type: Schema.Types.ObjectId,
     ref: 'Class',
     required: true
-  },
+  }],
   subject: {
     type: Schema.Types.ObjectId,
     ref: 'Subject',
@@ -57,7 +57,8 @@ const ExamSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },  type: {
+  },
+    type: {
     type: String,
     enum: ['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'],
     required: true

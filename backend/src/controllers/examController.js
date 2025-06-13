@@ -58,14 +58,15 @@ examController.createExam = async (req, res) => {
         message: 'Invalid ID format',
         details: idError.message
       });
-    }
-
-    // Check if teacher is assigned to this subject
-    if (subject && subject.teacher && subject.teacher.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to create exams for this subject'
-      });
+    }    // Check if teacher is assigned to this subject
+    if (subject && subject.teacher) {
+      const subjectTeacherId = typeof subject.teacher === 'object' ? subject.teacher.toString() : subject.teacher;
+      if (subjectTeacherId !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not authorized to create exams for this subject'
+        });
+      }
     }
 
     // Create new exam
@@ -179,10 +180,12 @@ examController.getExamById = async (req, res) => {
 };
 
 // Update exam
-examController.updateExam = async (req, res) => {
-  try {
+examController.updateExam = async (req, res) => {  try {
+    console.log('Update Exam Request Body:', JSON.stringify(req.body));
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
 
@@ -193,8 +196,16 @@ examController.updateExam = async (req, res) => {
       schedule,
       questions,
       instructions,
-      status
+      status,
+      class: classId, // Extract class field if provided
+      subject: subjectId // Extract subject field if provided
     } = req.body;
+    
+    console.log('Extracted fields from request:');
+    console.log('title:', title);
+    console.log('type:', type);
+    console.log('class:', classId);
+    console.log('subject:', subjectId);
 
     // Check if exam exists
     const exam = await Exam.findById(examId);
@@ -203,10 +214,11 @@ examController.updateExam = async (req, res) => {
         success: false,
         message: 'Exam not found'
       });
-    }
-
-    // Check if user is the teacher who created the exam
-    if (exam.teacher.toString() !== req.user.id) {
+    }    // Check if user is the teacher who created the exam
+    const examTeacher = exam.teacher;
+    const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
+    
+    if (teacherId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to update this exam'
@@ -230,14 +242,79 @@ examController.updateExam = async (req, res) => {
           message: 'Exam start time must be in the future'
         });
       }
-    }
-
-    // Update exam
+    }    // Update exam with validation for type
     exam.title = title || exam.title;
-    exam.type = type || exam.type;
+    
+    // Ensure we have a valid type
+    if (!type) {
+      console.log('No type provided in update request. Using existing type:', exam.type);
+    } else {
+      console.log('Updating exam type to:', type);
+      exam.type = type;
+    }
+    
+    // Handle class update if provided
+    if (classId) {
+      console.log('Updating class to:', classId);
+      exam.class = classId;
+    }
+    
+    // Handle subject update if provided
+    if (subjectId) {
+      console.log('Updating subject to:', subjectId);
+      exam.subject = subjectId;
+    }
+    
     exam.schedule = schedule || exam.schedule;
-    exam.questions = questions || exam.questions;
     exam.instructions = instructions || exam.instructions;
+    
+    // Handle questions with validation
+    if (questions && questions.length > 0) {
+      // Validate and sanitize each question
+      const validatedQuestions = questions.map(q => {
+        // Create a clean question object
+        const validQuestion = {
+          type: q.type || 'MCQ',
+          text: q.text || 'Untitled question',
+          maxScore: parseInt(q.maxScore || q.points || 10)
+        };
+        
+        // Handle MCQ specific fields
+        if (validQuestion.type === 'MCQ') {
+          // Ensure options is an array of strings
+          if (q.options) {
+            // If it's already an array of strings, use it
+            if (Array.isArray(q.options) && typeof q.options[0] === 'string') {
+              validQuestion.options = q.options;
+            } 
+            // If it's an array of objects with text property, extract the text
+            else if (Array.isArray(q.options) && q.options[0] && typeof q.options[0] === 'object') {
+              validQuestion.options = q.options.map(o => o.text || '');
+            }
+            // Default empty array if none of the above
+            else {
+              validQuestion.options = ['Option 1', 'Option 2'];
+            }
+          } else {
+            validQuestion.options = ['Option 1', 'Option 2'];
+          }
+          
+          // Set correct answer
+          validQuestion.correctAnswer = q.correctAnswer || validQuestion.options[0];
+        }
+        // Handle open-ended questions
+        else if (validQuestion.type === 'open') {
+          validQuestion.correctAnswer = q.correctAnswer || '';
+        }
+        
+        return validQuestion;
+      });
+      
+      console.log('Validated questions:', validatedQuestions);
+      exam.questions = validatedQuestions;
+    } else {
+      exam.questions = questions || exam.questions;
+    }
     
     // Update status if provided and valid
     if (status) {
@@ -277,10 +354,11 @@ examController.deleteExam = async (req, res) => {
         success: false,
         message: 'Exam not found'
       });
-    }
-
-    // Check if user is the teacher who created the exam
-    if (exam.teacher.toString() !== req.user.id) {
+    }    // Check if user is the teacher who created the exam
+    const examTeacher = exam.teacher;
+    const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
+    
+    if (teacherId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to delete this exam'
@@ -394,10 +472,11 @@ examController.activateExam = async (req, res) => {
         success: false,
         message: 'Exam not found'
       });
-    }
-
-    // Check if user is the teacher who created the exam
-    if (exam.teacher.toString() !== req.user.id) {
+    }    // Check if user is the teacher who created the exam
+    const examTeacher = exam.teacher;
+    const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
+    
+    if (teacherId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to activate this exam'
@@ -442,10 +521,11 @@ examController.completeExam = async (req, res) => {
         success: false,
         message: 'Exam not found'
       });
-    }
-
-    // Check if user is the teacher who created the exam
-    if (exam.teacher.toString() !== req.user.id) {
+    }    // Check if user is the teacher who created the exam
+    const examTeacher = exam.teacher;
+    const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
+    
+    if (teacherId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to complete this exam'

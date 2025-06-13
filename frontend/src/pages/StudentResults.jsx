@@ -95,10 +95,14 @@ const StudentResults = () => {
         </div>
       </Layout>
     );
-  }
-
-  // Calculate average score
-  const totalScore = results.reduce((sum, result) => sum + result.score, 0);
+  }      // Calculate average score
+  const totalScore = results.reduce((sum, result) => {
+    // Calculate percentage score for each result
+    const scoreValue = typeof result.score === 'number' ? result.score : 0;
+    const maxScoreValue = result.maxScore || 100;
+    const percentage = (scoreValue / maxScoreValue) * 100;
+    return sum + percentage;
+  }, 0);
   const averageScore = results.length > 0 ? (totalScore / results.length).toFixed(2) : 0;
   return (
     <Layout>
@@ -174,17 +178,16 @@ const StudentResults = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {result.title} <span className="text-xs bg-gray-100 px-2 py-1 rounded">{result.type}</span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    </td>                    <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center">
-                        <span className={`font-medium ${result.score >= 70 ? 'text-green-600' : result.score >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {result.score}
+                        <span className={`font-medium ${((result.score / result.maxScore) * 100) >= 70 ? 'text-green-600' : ((result.score / result.maxScore) * 100) >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
+                          {result.score || 0}
                         </span>
-                        <span className="text-gray-500 ml-1">/ {result.maxScore}</span>
+                        <span className="text-gray-500 ml-1">/ {result.maxScore || 100}</span>
                         <div className="ml-4 w-16 bg-gray-200 rounded-full h-2.5">
                           <div 
-                            className={`h-2.5 rounded-full ${result.score >= 70 ? 'bg-green-500' : result.score >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                            style={{ width: `${(result.score / result.maxScore) * 100}%` }}
+                            className={`h-2.5 rounded-full ${((result.score / result.maxScore) * 100) >= 70 ? 'bg-green-500' : ((result.score / result.maxScore) * 100) >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                            style={{ width: `${((result.score || 0) / (result.maxScore || 100)) * 100}%` }}
                           ></div>
                         </div>
                       </div>

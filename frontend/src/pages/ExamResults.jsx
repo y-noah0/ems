@@ -302,12 +302,11 @@ const ExamResults = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {submission.student?.registrationNumber}
+                        </td>                        <td className="px-6 py-4 whitespace-nowrap">
+                          {submission.status === 'pending' ? 'Pending' : `${submission.score || 0} / ${exam.totalPoints || 100}`}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.score} / {exam.totalPoints}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {Math.round((submission.score / exam.totalPoints) * 100)}%
+                          {submission.status === 'pending' ? 'Pending' : `${Math.round(((submission.score || 0) / (exam.totalPoints || 100)) * 100)}%`}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {new Date(submission.submittedAt).toLocaleString()}

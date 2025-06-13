@@ -74,6 +74,11 @@ router.post(
 // @access  Students
 router.get('/student', authMiddleware.isStudent, submissionController.getStudentSubmissions);
 
+// @route   GET api/submissions/teacher
+// @desc    Get all submissions for teacher's exams
+// @access  Teachers
+router.get('/teacher', authMiddleware.isTeacher, submissionController.getTeacherSubmissions);
+
 // @route   GET api/submissions/exam/:examId
 // @desc    Get submissions for an exam (teacher view)
 // @access  Teachers

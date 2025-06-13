@@ -43,6 +43,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
+
   // Get exam by ID
   getExamById: async (id) => {
     try {
@@ -52,7 +53,9 @@ const examService = {
       console.error('Error fetching exam details:', error);
       throw error.response ? error.response.data : { message: 'Failed to load exam details. Please try again.' };
     }
-  },// Update exam
+  },
+
+  // Update exam
   updateExam: async (id, examData) => {
     try {
       // Log data being sent
@@ -117,6 +120,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
+
   // Get upcoming exams for student
   getUpcomingExamsForStudent: async () => {
     try {
@@ -157,6 +161,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
+
   // Get exam submissions
   getExamSubmissions: async (examId) => {
     try {
@@ -166,7 +171,8 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-    // Get submission by ID
+  
+  // Get submission by ID
   getSubmissionById: async (submissionId) => {
     try {
       const response = await api.get(`/submissions/${submissionId}`);
@@ -186,7 +192,8 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-    // Get teacher subjects
+  
+  // Get teacher subjects
   getTeacherSubjects: async () => {
     try {
       const response = await api.get('/subjects/teacher');
@@ -196,17 +203,19 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Failed to load subjects. Please try again.' };
     }
   },
+  
   // Update submission with grades
   updateSubmissionGrades: async (submissionId, gradesData) => {
     try {
-      const response = await api.post(`/submissions/${submissionId}/grade`, gradesData);
+      const response = await api.put(`/submissions/${submissionId}/grade`, gradesData);
       return response.data.submission;
     } catch (error) {
       console.error('Error grading submission:', error);
       throw error.response ? error.response.data : { message: 'Failed to save grades. Please try again.' };
     }
   },
-    // Get all teacher submissions
+  
+  // Get all teacher submissions
   getTeacherSubmissions: async () => {
     try {
       const response = await api.get('/submissions/teacher');

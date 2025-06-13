@@ -7,11 +7,11 @@ const SubjectSchema = new Schema({
     required: true,
     trim: true
   },
-  class: {
+  class: [{
     type: Schema.Types.ObjectId,
     ref: 'Class',
     required: true
-  },
+  }],
   teacher: {
     type: Schema.Types.ObjectId,
     ref: 'User'

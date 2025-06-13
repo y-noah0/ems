@@ -597,27 +597,25 @@ adminController.getStudentResults = async (req, res) => {
     }
     
     // Find all submissions for this student that are graded
-    const Submission = require('../models/Submission');
-    const submissions = await Submission.find({ 
+    const Submission = require('../models/Submission');    const submissions = await Submission.find({ 
       student: req.params.id,
       status: 'graded' 
     }).populate({
       path: 'exam',
-      select: 'title subject totalScore schedule type',
+      select: 'title subject totalScore totalPoints schedule type',
       populate: {
         path: 'subject',
         select: 'name'
       }
     });
-    
-    // Format the results
+      // Format the results
     const results = submissions.map(submission => ({
       _id: submission._id,
       subject: submission.exam.subject.name,
       title: submission.exam.title,
       type: submission.exam.type,
-      score: submission.totalScore,
-      maxScore: submission.exam.totalScore,
+      score: submission.score || submission.totalScore || 0,
+      maxScore: submission.totalPoints || submission.exam.totalPoints || 100,
       date: submission.submittedAt,
       examId: submission.exam._id
     }));
