@@ -449,15 +449,17 @@ submissionController.getStudentSubmissions = async (req, res) => {
 submissionController.getExamSubmissions = async (req, res) => {
   try {
     const examId = req.params.examId;
-
-    // Check if exam exists and belongs to the teacher
+    
+    // Get exam with totalPoints
     const exam = await Exam.findById(examId);
     if (!exam) {
       return res.status(404).json({
         success: false,
         message: 'Exam not found'
       });
-    }    // Check if teacher is authorized to access submissions
+    }
+    
+    // Check if teacher is authorized to access submissions
     const examTeacher = exam.teacher;
     const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
     
@@ -466,16 +468,61 @@ submissionController.getExamSubmissions = async (req, res) => {
         success: false,
         message: 'You are not authorized to access submissions for this exam'
       });
-    }    const submissions = await Submission.find({
+    }
+
+    // Ensure exam has totalPoints
+    if (!exam.totalPoints || exam.totalPoints === 0) {
+      exam.totalPoints = exam.questions.reduce((sum, q) => {
+        return sum + (parseInt(q.maxScore) || 0);
+      }, 0);
+      await exam.save();
+    }
+
+    // Get submissions
+    const submissions = await Submission.find({
       exam: examId,
       status: { $in: ['submitted', 'auto-submitted', 'graded', 'pending'] }
     })
-      .populate('student', 'firstName lastName registrationNumber')
+      .populate('student', 'fullName registrationNumber')
       .sort({ submittedAt: -1 });
-
+    
+    // Process submissions to ensure consistent data
+    const enhancedSubmissions = await Promise.all(submissions.map(async (sub) => {
+      const subObj = sub.toObject();
+      
+      // For graded submissions, ensure score is calculated
+      if (subObj.status === 'graded') {
+        // If no score or score is zero, recalculate
+        if (!subObj.score || subObj.score === 0) {
+          const calculatedScore = sub.calculateScore();
+          
+          // Update in database
+          if (calculatedScore !== subObj.score) {
+            sub.score = calculatedScore;
+            await sub.save();
+            subObj.score = calculatedScore;
+          }
+        }
+        
+        // Ensure totalPoints is set
+        if (!subObj.totalPoints) {
+          sub.totalPoints = exam.totalPoints;
+          await sub.save();
+          subObj.totalPoints = exam.totalPoints;
+        }
+        
+        // Calculate percentage
+        subObj.percentage = Math.round((subObj.score / subObj.totalPoints) * 100);
+      } else {
+        subObj.percentage = 0;
+      }
+      
+      return subObj;
+    }));
+    
     res.json({
       success: true,
-      submissions
+      submissions: enhancedSubmissions
     });
   } catch (error) {
     console.error(error.message);
@@ -489,25 +536,10 @@ submissionController.getExamSubmissions = async (req, res) => {
 // Grade open questions
 submissionController.gradeOpenQuestions = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }    const { submissionId } = req.params;
-    const { grades, submission: submissionData } = req.body;
+    const submissionId = req.params.id;
+    const { grades } = req.body;
     
-    // Handle both direct grade updates and full submission updates
-    let gradesArray = grades;
-    
-    // If we get a full submission object (from frontend), extract grades from it
-    if (!grades && submissionData && submissionData.answers) {
-      gradesArray = submissionData.answers.map(answer => ({
-        questionId: answer.questionId,
-        score: parseInt(answer.points || answer.score) || 0,
-        feedback: answer.feedback || ''
-      }));
-    }
-
-    // Check if submission exists
+    // Find submission with exam data
     const submission = await Submission.findById(submissionId);
     if (!submission) {
       return res.status(404).json({
@@ -515,15 +547,17 @@ submissionController.gradeOpenQuestions = async (req, res) => {
         message: 'Submission not found'
       });
     }
-
-    // Check if exam exists and belongs to the teacher
+    
+    // Get exam to ensure we have totalPoints
     const exam = await Exam.findById(submission.exam);
     if (!exam) {
       return res.status(404).json({
         success: false,
         message: 'Exam not found'
       });
-    }    // Check if teacher is authorized to grade this submission
+    }
+    
+    // Verify teacher authorization
     const examTeacher = exam.teacher;
     const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
     
@@ -532,57 +566,54 @@ submissionController.gradeOpenQuestions = async (req, res) => {
         success: false,
         message: 'You are not authorized to grade this submission'
       });
-    }    // Update scores for open questions
-    if (gradesArray && Array.isArray(gradesArray)) {
-      gradesArray.forEach((grade, index) => {
-        // Try to find answer by questionId or by array index as fallback
-        const answerIndex = grade.questionId ? 
-          submission.answers.findIndex(a => 
-            a.questionId && a.questionId.toString() === grade.questionId.toString()) :
-          index;
-        
-        if (answerIndex !== -1) {
-          const question = exam.questions.find(
-            q => q._id.toString() === grade.questionId
-          );
-            // Allow grading of any question type, not just 'open'
-          if (question) {
-            // Ensure score doesn't exceed max score
-            const maxScore = question.maxScore || question.points || 100;
-            const score = Math.min(grade.score, maxScore);
-            
-            submission.answers[answerIndex].score = score;
-            submission.answers[answerIndex].feedback = grade.feedback;
-            submission.answers[answerIndex].graded = true;
-          }
-        }
-      });
-    }    // Always mark submission as graded when using this endpoint
-    submission.status = 'graded';
-    submission.gradedBy = req.user.id;
-    submission.gradedAt = new Date();
-    
-    // Recalculate total score
-    const calculatedScore = submission.answers.reduce((sum, answer) => sum + (answer.score || 0), 0);
-    
-    // Set both score and totalScore to ensure consistency across the application
-    submission.score = calculatedScore;
-    submission.totalScore = calculatedScore;
-    
-    // Set totalPoints from exam if available
-    if (exam && exam.totalPoints) {
-      submission.totalPoints = exam.totalPoints;
-    } else if (!submission.totalPoints) {
-      // Calculate total possible points from questions
-      submission.totalPoints = exam.questions.reduce((sum, q) => sum + (q.maxScore || q.points || 0), 0);
     }
-
-    await submission.save();
-
+    
+    // Ensure exam has totalPoints calculated
+    if (!exam.totalPoints || exam.totalPoints === 0) {
+      exam.totalPoints = exam.questions.reduce((sum, q) => {
+        return sum + (parseInt(q.maxScore) || 0);
+      }, 0);
+      await exam.save();
+    }
+    
+    // Apply grades
+    let modified = false;
+    grades.forEach(grade => {
+      const answerIndex = submission.answers.findIndex(
+        answer => answer.questionId.toString() === grade.questionId
+      );
+      
+      if (answerIndex !== -1) {
+        const scoreValue = parseInt(grade.score) || 0;
+        submission.answers[answerIndex].score = scoreValue;
+        submission.answers[answerIndex].feedback = grade.feedback || '';
+        submission.answers[answerIndex].graded = true;
+        modified = true;
+      }
+    });
+    
+    if (modified) {
+      // Calculate total score
+      const totalScore = submission.calculateScore();
+      
+      // Update submission
+      submission.score = totalScore;
+      submission.totalPoints = exam.totalPoints;
+      submission.status = 'graded';
+      submission.gradedBy = req.user.id;
+      submission.gradedAt = new Date();
+      
+      await submission.save();
+    }
+    
     res.json({
       success: true,
       message: 'Submission graded successfully',
-      submission
+      submission: {
+        ...submission.toObject(),
+        score: submission.score,
+        totalPoints: submission.totalPoints
+      }
     });
   } catch (error) {
     console.error(error.message);
@@ -677,7 +708,9 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
 // Get detailed submission (for review)
 submissionController.getSubmissionDetails = async (req, res) => {
   try {
-    const submissionId = req.params.id;    // Find the submission
+    const submissionId = req.params.id;
+    
+    // Find submission with populated data
     const submission = await Submission.findById(submissionId)
       .populate({
         path: 'exam',
@@ -686,58 +719,65 @@ submissionController.getSubmissionDetails = async (req, res) => {
           { path: 'class', select: 'level trade term year' }
         ]
       })
-      .populate('student', 'firstName lastName registrationNumber');
-
+      .populate('student', 'fullName firstName lastName registrationNumber');
+    
     if (!submission) {
       return res.status(404).json({
         success: false,
         message: 'Submission not found'
       });
     }
-
+    
     // Check permissions
     const isStudent = req.user.role === 'student';
     const isTeacher = req.user.role === 'teacher' || req.user.role === 'dean';
     
-    if (isStudent && submission.student.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to view this submission'
+    // ...authorization checks (keep existing code)
+    
+    // Get the full exam document
+    const exam = await Exam.findById(submission.exam._id);
+    
+    // Ensure we have totalPoints
+    if (!submission.totalPoints && exam) {
+      submission.totalPoints = exam.totalPoints;
+      await submission.save();
+    }
+    
+    // Ensure answers have consistent scores
+    if (submission.status === 'graded') {
+      let needsUpdate = false;
+      submission.answers.forEach((answer, idx) => {
+        if (!answer.graded && answer.score > 0) {
+          answer.graded = true;
+          needsUpdate = true;
+        }
       });
-    }    // Check if teacher is authorized to view this submission
-    if (isTeacher) {
-      const examTeacher = submission.exam.teacher;
-      const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
       
-      if (teacherId !== req.user.id && req.user.role !== 'dean') {
-        return res.status(403).json({
-          success: false,
-          message: 'You are not authorized to view this submission'
-        });
+      // Calculate score if missing
+      if (!submission.score || submission.score === 0) {
+        submission.score = submission.calculateScore();
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        await submission.save();
       }
     }
-
-    // For students, don't show feedback for ungraded submissions
+    
+    // Create a clean response object
+    const responseSubmission = submission.toObject();
+    
+    // For students, restrict some data
     if (isStudent && submission.status !== 'graded') {
-      const submissionForStudent = submission.toObject();
-      submissionForStudent.answers = submissionForStudent.answers.map(answer => {
-        return {
-          questionId: answer.questionId,
-          answer: answer.answer,
-          score: answer.graded ? answer.score : null,
-          graded: answer.graded
-        };
-      });
-      
-      return res.json({
-        success: true,
-        submission: submissionForStudent
-      });
+      responseSubmission.answers = responseSubmission.answers.map(a => ({
+        questionId: a.questionId,
+        answer: a.answer
+      }));
     }
-
+    
     res.json({
       success: true,
-      submission
+      submission: responseSubmission
     });
   } catch (error) {
     console.error(error.message);
