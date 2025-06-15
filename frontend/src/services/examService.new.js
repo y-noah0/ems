@@ -100,7 +100,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Failed to activate exam. Please try again.' };
     }
   },
-  
+
   // Complete exam
   completeExam: async (id) => {
     try {
@@ -122,7 +122,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Failed to load submissions. Please try again.' };
     }
   },
-  
+
   // Get submission by ID
   getSubmissionById: async (submissionId) => {
     try {
@@ -133,7 +133,7 @@ const examService = {
       throw err.response ? err.response.data : { message: 'Failed to load submission details. Please try again.' };
     }
   },
-  
+
   // Schedule an exam
   scheduleExam: async (id, scheduleData) => {
     try {
@@ -144,7 +144,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Failed to schedule exam. Please try again.' };
     }
   },
-  
+
   // Get teacher subjects
   getTeacherSubjects: async () => {
     try {
@@ -155,7 +155,7 @@ const examService = {
       throw err.response ? err.response.data : { message: 'Failed to load subjects. Please try again.' };
     }
   },
-  
+
   // Update submission with grades
   updateSubmissionGrades: async (submissionId, gradesData) => {
     try {
@@ -166,7 +166,7 @@ const examService = {
       throw err.response ? err.response.data : { message: 'Failed to update grades. Please try again.' };
     }
   },
-  
+
   // Get all teacher submissions
   getTeacherSubmissions: async () => {
     try {
