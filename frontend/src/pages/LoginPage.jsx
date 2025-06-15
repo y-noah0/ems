@@ -1,13 +1,14 @@
+// src/pages/LoginPage.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext'; // make sure this provides a working login()
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
-    email: '',
+    identifier: '',
     password: ''
   });
   const [error, setError] = useState('');
@@ -29,8 +30,14 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const user = await login(formData.email, formData.password);
-        // Redirect based on user role
+      console.log('Calling login with:', formData.identifier, formData.password);
+      const user = await login(formData.identifier, formData.password);
+      console.log('User returned from login:', user);
+
+      if (!user) {
+        throw new Error('Login failed: no user data returned');
+      }
+
       if (user.role === 'student') {
         navigate('/student/dashboard');
       } else if (user.role === 'teacher') {
@@ -44,6 +51,7 @@ const LoginPage = () => {
       }
     } catch (error) {
       setError(error.message || 'Invalid login credentials');
+      console.error('Login error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -56,27 +64,30 @@ const LoginPage = () => {
           <h1 className="text-3xl font-extrabold text-gray-900">School Exam System</h1>
           <h2 className="mt-6 text-2xl font-bold text-gray-900">Sign in to your account</h2>
         </div>
-        
+
         <Card className="mt-8">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4" role="alert">
+            <div
+              className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4"
+              role="alert"
+            >
               {error}
             </div>
           )}
-          
+
           <form onSubmit={handleSubmit}>
             <Input
-              label="Email Address"
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
+              label="Email or Full Name"
+              id="identifier"
+              name="identifier"
+              type="text"
+              autoComplete="username"
               required
-              value={formData.email}
+              value={formData.identifier}
               onChange={handleChange}
-              placeholder="Enter your email"
+              placeholder="Enter your email or full name"
             />
-            
+
             <Input
               label="Password"
               id="password"
@@ -88,13 +99,9 @@ const LoginPage = () => {
               onChange={handleChange}
               placeholder="Enter your password"
             />
-            
+
             <div className="mt-6">
-              <Button
-                type="submit"
-                fullWidth
-                disabled={isSubmitting}
-              >
+              <Button type="submit" fullWidth disabled={isSubmitting}>
                 {isSubmitting ? 'Signing in...' : 'Sign in'}
               </Button>
             </div>

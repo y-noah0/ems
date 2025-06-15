@@ -57,48 +57,48 @@ const examService = {
     try {
       // Log data being sent
       console.log('examService updateExam - sending data:', examData);
-      
+
       // Ensure type is set
       if (!examData.type) {
         console.error('Type is missing in examData. Setting default value.');
         examData.type = 'midterm'; // Set a default
       }
-      
+
       // Validate questions before sending to backend
       if (examData.questions && examData.questions.length > 0) {
         examData.questions = examData.questions.map(q => {
           // Make a copy to avoid modifying the original
           const question = { ...q };
-          
+
           // Ensure maxScore is set (use points if available)
           if (!question.maxScore && question.points) {
             question.maxScore = parseInt(question.points);
           }
-          
+
           // Ensure text is not empty
           if (!question.text) {
             question.text = 'Untitled question';
           }
-          
+
           // For MCQ questions, ensure options is an array of strings
           if (question.type === 'MCQ' && question.options) {
             // If options is an array of objects with text property, convert to array of strings
-            if (Array.isArray(question.options) && 
-                question.options[0] && 
-                typeof question.options[0] === 'object') {
+            if (Array.isArray(question.options) &&
+              question.options[0] &&
+              typeof question.options[0] === 'object') {
               // Find the correct answer
               const correctOption = question.options.find(o => o.isCorrect);
               question.correctAnswer = correctOption ? correctOption.text : '';
-              
+
               // Convert options to array of strings
               question.options = question.options.map(o => o.text || '');
             }
           }
-          
+
           return question;
         });
       }
-      
+
       const response = await api.put(`/exams/${id}`, examData);
       console.log('examService updateExam - received response:', response.data);
       return response.data.exam;
@@ -126,7 +126,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
+
   // Get all exams for student's class
   getStudentClassExams: async () => {
     try {
@@ -147,7 +147,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
+
   // Complete exam
   completeExam: async (id) => {
     try {
@@ -166,7 +166,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-    // Get submission by ID
+  // Get submission by ID
   getSubmissionById: async (submissionId) => {
     try {
       const response = await api.get(`/submissions/${submissionId}`);
@@ -176,7 +176,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Failed to load submission. Please try again.' };
     }
   },
-  
+
   // Schedule an exam
   scheduleExam: async (id, scheduleData) => {
     try {
@@ -186,7 +186,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-    // Get teacher subjects
+  // Get teacher subjects
   getTeacherSubjects: async () => {
     try {
       const response = await api.get('/subjects/teacher');
@@ -206,7 +206,7 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Failed to save grades. Please try again.' };
     }
   },
-    // Get all teacher submissions
+  // Get all teacher submissions
   getTeacherSubmissions: async () => {
     try {
       const response = await api.get('/submissions/teacher');
