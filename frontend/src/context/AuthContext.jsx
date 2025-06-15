@@ -31,11 +31,11 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Login function
-  const login = async (email, password) => {
+  const login = async (identifier, password) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await authService.login(email, password);
+      const data = await authService.login(identifier, password);
       setCurrentUser(data.user);
       return data.user;
     } catch (error) {
