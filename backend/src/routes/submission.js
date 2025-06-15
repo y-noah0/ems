@@ -106,4 +106,100 @@ router.get('/student/results', authMiddleware.isStudent, submissionController.ge
 // @access  Students & Teachers (with restrictions)
 router.get('/:id', submissionController.getSubmissionDetails);
 
+// Add these routes to support the new functionality
+
+// @route   GET api/submissions/results/homework
+// @desc    Get homework results
+// @access  All authenticated users
+router.get(
+  '/results/homework',
+  submissionController.getHomeworkResults
+);
+
+// @route   GET api/submissions/results/quiz
+// @desc    Get quiz results
+// @access  All authenticated users
+router.get(
+  '/results/quiz',
+  submissionController.getQuizResults
+);
+
+// @route   GET api/submissions/results/by-type
+// @desc    Get results by assessment type with role-based filtering
+// @access  All authenticated users
+router.get(
+  '/results/by-type',
+  submissionController.getResultsByAssessmentType
+);
+
+// @route   GET api/submissions/results/detailed
+// @desc    Get detailed performance report across all assessment types
+// @access  All authenticated users
+router.get(
+  '/results/detailed',
+  submissionController.getCombinedDetailedResults
+);
+
+// Update existing assessment routes to be accessible by all authenticated users
+// (Remove the authMiddleware.isStudent restriction)
+
+// @route   GET api/submissions/results/assessment1
+// @desc    Get Assessment 1 results
+// @access  All authenticated users (previously only students)
+router.get(
+  '/results/assessment1',
+  submissionController.getAssessment1Results
+);
+
+// @route   GET api/submissions/results/assessment2
+// @desc    Get Assessment 2 results
+// @access  All authenticated users (previously only students)
+router.get(
+  '/results/assessment2',
+  submissionController.getAssessment2Results
+);
+
+// @route   GET api/submissions/results/exam
+// @desc    Get Exam results
+// @access  All authenticated users (previously only students)
+router.get(
+  '/results/exam',
+  submissionController.getExamResults
+);
+
+// @route   GET api/submissions/results/combined
+// @desc    Get combined results report
+// @access  All authenticated users (previously only students)
+router.get(
+  '/results/combined',
+  submissionController.getCombinedResults
+);
+
+// @route   GET api/submissions/student/assessment-results
+// @desc    Get a specific student's results by assessment type (for teachers)
+// @access  Teachers
+router.get(
+  '/student/assessment-results',
+  authMiddleware.isTeacher,
+  submissionController.getStudentResultsByAssessmentType
+);
+
+// @route   GET api/submissions/student/marks
+// @desc    Get marks for a specific student by ID
+// @access  Teachers, Deans, Admins
+router.get(
+  '/student/marks',
+  authMiddleware.isTeacherOrDeanOrAdmin,
+  submissionController.getStudentMarksByID
+);
+
+// @route   GET api/submissions/my-marks
+// @desc    Get marks for the currently logged in student
+// @access  Students
+router.get(
+  '/my-marks',
+  authMiddleware.isStudent,
+  submissionController.getMyMarks
+);
+
 module.exports = router;

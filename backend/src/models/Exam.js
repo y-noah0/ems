@@ -60,8 +60,9 @@ const ExamSchema = new Schema({
   },
     type: {
     type: String,
-    enum: ['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'],
-    required: true
+    enum: ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'],
+    required: true,
+    default: 'quiz'
   },
   schedule: {
     start: {
