@@ -3,13 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import examService from '../services/examService';
+import examService from '../services/examService'; // Make sure this is the correct file!
 import submissionService from '../services/submissionService';
 
 const StudentExamDetails = () => {
-  const { examId } = useParams();
+  const { examId } = useParams(); // Use 'examId' to match backend route param
   const navigate = useNavigate();
-  
+
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,11 +22,11 @@ const StudentExamDetails = () => {
         // Fetch exam data
         const examData = await examService.getExamById(examId);
         setExam(examData);
-        
+
         // Fetch student's submissions for this exam if any
         const studentSubmissions = await submissionService.getStudentSubmissions();
         const examSubmissions = studentSubmissions.filter(
-          submission => submission.exam._id === examId || submission.exam === examId
+          submission => submission.exam._examId === examId || submission.exam === examId
         );
         setSubmissions(examSubmissions);
       } catch (error) {
@@ -50,11 +50,11 @@ const StudentExamDetails = () => {
   // Get the exam status label and color
   const getStatusInfo = (exam) => {
     if (!exam) return { label: 'Unknown', color: 'gray' };
-    
+
     const now = new Date();
     const start = exam.schedule?.start ? new Date(exam.schedule.start) : null;
     const end = exam.schedule?.end ? new Date(exam.schedule.end) : null;
-    
+
     if (exam.status === 'draft') {
       return { label: 'Draft', color: 'gray' };
     } else if (exam.status === 'scheduled') {
@@ -70,47 +70,47 @@ const StudentExamDetails = () => {
     } else if (exam.status === 'completed') {
       return { label: 'Completed', color: 'purple' };
     }
-    
+
     return { label: 'Unknown', color: 'gray' };
   };
 
   // Check if the exam is available to take
   const isExamAvailable = () => {
     if (!exam) return false;
-    
+
     const now = new Date();
     const start = exam.schedule?.start ? new Date(exam.schedule.start) : null;
     const end = exam.schedule?.end ? new Date(exam.schedule.end) : null;
-    
+
     return (
-      exam.status === 'active' || 
-      (exam.status === 'scheduled' && 
-       start && start <= now &&
-       end && end >= now)
+      exam.status === 'active' ||
+      (exam.status === 'scheduled' &&
+        start && start <= now &&
+        end && end >= now)
     );
   };
 
   // Check if student has already completed this exam
   const hasCompletedExam = () => {
-    return submissions.some(submission => 
-      submission.status === 'completed' || 
+    return submissions.some(submission =>
+      submission.status === 'completed' ||
       submission.status === 'graded'
     );
   };
 
   // Handle take exam button click
   const handleTakeExam = () => {
-    navigate(`/student/take-exam/${examId}`);
+    navigate(`/student/take-exam/${id}`);
   };
 
   // Handle view results button click
   const handleViewResults = () => {
     // Find the completed submission
-    const completedSubmission = submissions.find(submission => 
-      submission.status === 'completed' || 
+    const completedSubmission = submissions.find(submission =>
+      submission.status === 'completed' ||
       submission.status === 'graded'
     );
-    
+
     if (completedSubmission) {
       navigate(`/student/results?submissionId=${completedSubmission._id}`);
     }
@@ -120,7 +120,7 @@ const StudentExamDetails = () => {
     <Layout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Exam Details</h1>
-        <Button 
+        <Button
           variant="secondary"
           className="mt-2"
           onClick={() => navigate('/student/exams')}
@@ -190,7 +190,7 @@ const StudentExamDetails = () => {
                   </div>
                 )}
               </div>
-              
+
               <div className="flex flex-col gap-3">
                 {isExamAvailable() && !hasCompletedExam() && (
                   <Button
@@ -200,7 +200,7 @@ const StudentExamDetails = () => {
                     Take Exam
                   </Button>
                 )}
-                
+
                 {hasCompletedExam() && (
                   <Button
                     variant="secondary"
@@ -212,13 +212,13 @@ const StudentExamDetails = () => {
               </div>
             </div>
           </Card>
-          
+
           {exam.instructions && (
             <Card title="Exam Instructions">
               <div dangerouslySetInnerHTML={{ __html: exam.instructions }} />
             </Card>
           )}
-          
+
           {submissions.length > 0 && (
             <Card title="Your Submissions">
               <div className="overflow-x-auto">
@@ -244,15 +244,14 @@ const StudentExamDetails = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-block px-2 py-1 text-xs rounded-full ${
-                              submission.status === 'graded'
-                                ? 'bg-green-100 text-green-800'
-                                : submission.status === 'completed'
+                            className={`inline-block px-2 py-1 text-xs rounded-full ${submission.status === 'graded'
+                              ? 'bg-green-100 text-green-800'
+                              : submission.status === 'completed'
                                 ? 'bg-blue-100 text-blue-800'
                                 : submission.status === 'in-progress'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}
                           >
                             {submission.status}
                           </span>

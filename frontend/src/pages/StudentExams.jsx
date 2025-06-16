@@ -30,30 +30,30 @@ const StudentExams = () => {
 
 
     fetchExams();
-  }, []);                                                                                                                               
+  }, []);
   // Filter exams based on their status and schedule
   const filteredExams = () => {
     if (!Array.isArray(exams)) return [];
-    
+
     const now = new Date();
-    
+
     try {
-      switch(filter) {
+      switch (filter) {
         case 'upcoming':
-          return exams.filter(exam => 
-            exam && exam.status === 'scheduled' && 
+          return exams.filter(exam =>
+            exam && exam.status === 'scheduled' &&
             exam.schedule?.start && new Date(exam.schedule.start) > now
           );
         case 'past':
-          return exams.filter(exam => 
-            exam && ((exam.status === 'completed') || 
-            (exam.schedule?.end && new Date(exam.schedule.end) < now))
+          return exams.filter(exam =>
+            exam && ((exam.status === 'completed') ||
+              (exam.schedule?.end && new Date(exam.schedule.end) < now))
           );
         case 'current':
-          return exams.filter(exam => 
-            exam && (exam.status === 'active' || 
-            (exam.schedule?.start && new Date(exam.schedule.start) <= now && 
-             exam.schedule?.end && new Date(exam.schedule.end) >= now))
+          return exams.filter(exam =>
+            exam && (exam.status === 'active' ||
+              (exam.schedule?.start && new Date(exam.schedule.start) <= now &&
+                exam.schedule?.end && new Date(exam.schedule.end) >= now))
           );
         default:
           return exams;
@@ -75,11 +75,11 @@ const StudentExams = () => {
     if (!exam || !exam.status) {
       return { label: 'Unknown', color: 'gray' };
     }
-    
+
     const now = new Date();
     const start = exam.schedule?.start ? new Date(exam.schedule.start) : null;
     const end = exam.schedule?.end ? new Date(exam.schedule.end) : null;
-    
+
     if (exam.status === 'draft') {
       return { label: 'Draft', color: 'gray' };
     } else if (exam.status === 'scheduled') {
@@ -95,7 +95,7 @@ const StudentExams = () => {
     } else if (exam.status === 'completed') {
       return { label: 'Completed', color: 'purple' };
     }
-    
+
     return { label: exam.status || 'Unknown', color: 'gray' };
   };
 
@@ -175,13 +175,13 @@ const StudentExams = () => {
                       </div>
                     </div>
                     <div className="mt-4 md:mt-0">                      <Button
-                        as={Link}
-                        to={`/student/exams/${exam._id}`}
-                        variant="primary"
-                        size="sm"
-                      >
-                        View Details
-                      </Button>
+                      as={Link}
+                      to={`/student/exams/${exam._id}`}
+                      variant="primary"
+                      size="sm"
+                    >
+                      View Details
+                    </Button>
                     </div>
                   </div>
                 </Card>
