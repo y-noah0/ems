@@ -1,0 +1,162 @@
+{
+  "exams": [
+    {
+      "id": "123456",
+      "title": "Statistics and logarithms",
+      "subject": "Mathematics",
+      "classCode": "L4SOD",
+      "status": "active",
+      "description": "An exam on logarithms and statistics",
+      "startTime": "20:20",
+      "endTime": "20:55",
+      "duration": 35,
+      "totalPoints": 50,
+      "questions": [
+        {
+          "id": "q1",
+          "text": "What is the logarithm of 100 to base 10?",
+          "type": "multiple_choice",
+          "points": 2.5,
+          "options": [
+            {"id": "a", "text": "1"},
+            {"id": "b", "text": "2"},
+            {"id": "c", "text": "10"},
+            {"id": "d", "text": "100"}
+          ],
+          "correctAnswer": "b"
+        },
+        {
+          "id": "q2",
+          "text": "Calculate the mean of the data set: 5, 8, 12, 15, 20",
+          "type": "numerical",
+          "points": 2.5,
+          "correctAnswer": "12"
+        }
+      ]
+    },
+    {
+      "id": "789012",
+      "title": "Advanced Calculus",
+      "subject": "Mathematics",
+      "classCode": "M3CAL",
+      "status": "draft",
+      "description": "Exam covering derivatives and integrals",
+      "startTime": null,
+      "endTime": null,
+      "duration": 60,
+      "totalPoints": 75,
+      "questions": [
+        {
+          "id": "q1",
+          "text": "Find the derivative of f(x) = x³ + 2x² - 5x + 3",
+          "type": "open_ended",
+          "points": 5,
+          "correctAnswer": "3x² + 4x - 5"
+        },
+        {
+          "id": "q2",
+          "text": "Evaluate ∫(2x + 3)dx from x=0 to x=4",
+          "type": "numerical",
+          "points": 5,
+          "correctAnswer": "28"
+        }
+      ]
+    },
+    {
+      "id": "345678",
+      "title": "Programming Fundamentals",
+      "subject": "Computer Science",
+      "classCode": "CS101",
+      "status": "scheduled",
+      "description": "Basic programming concepts and algorithms",
+      "startTime": "14:00",
+      "endTime": "16:00",
+      "duration": 120,
+      "totalPoints": 100,
+      "questions": [
+        {
+          "id": "q1",
+          "text": "What is the time complexity of a binary search algorithm?",
+          "type": "multiple_choice",
+          "points": 5,
+          "options": [
+            {"id": "a", "text": "O(1)"},
+            {"id": "b", "text": "O(log n)"},
+            {"id": "c", "text": "O(n)"},
+            {"id": "d", "text": "O(n²)"}
+          ],
+          "correctAnswer": "b"
+        },
+        {
+          "id": "q2",
+          "text": "Write a function to reverse a string without using built-in reverse functions.",
+          "type": "coding",
+          "points": 10,
+          "correctAnswer": "function reverseString(str) {\n  return str.split('').reverse().join('');\n}"
+        }
+      ]
+    },
+    {
+      "id": "901234",
+      "title": "World History",
+      "subject": "History",
+      "classCode": "H2WST",
+      "status": "completed",
+      "description": "Examination on major world events from 1900-2000",
+      "startTime": "10:00",
+      "endTime": "11:30",
+      "duration": 90,
+      "totalPoints": 80,
+      "questions": [
+        {
+          "id": "q1",
+          "text": "In what year did World War II end?",
+          "type": "multiple_choice",
+          "points": 4,
+          "options": [
+            {"id": "a", "text": "1943"},
+            {"id": "b", "text": "1945"},
+            {"id": "c", "text": "1947"},
+            {"id": "d", "text": "1950"}
+          ],
+          "correctAnswer": "b"
+        },
+        {
+          "id": "q2",
+          "text": "Describe the impact of the Cold War on international relations.",
+          "type": "essay",
+          "points": 15,
+          "correctAnswer": null
+        }
+      ]
+    },
+    {
+      "id": "567890",
+      "title": "Organic Chemistry",
+      "subject": "Chemistry",
+      "classCode": "CH302",
+      "status": "scheduled",
+      "description": "Final examination on organic compounds and reactions",
+      "startTime": "09:00",
+      "endTime": "11:00",
+      "duration": 120,
+      "totalPoints": 90,
+      "questions": [
+        {
+          "id": "q1",
+          "text": "Draw the structure of benzene and explain its resonance.",
+          "type": "open_ended",
+          "points": 8,
+          "correctAnswer": null
+        },
+        {
+          "id": "q2",
+          "text": "What is the IUPAC name for CH₃-CH₂-CH(CH₃)-CH₂-CH₃?",
+          "type": "short_answer",
+          "points": 5,
+          "correctAnswer": "3-methylpentane"
+        }
+      ]
+    }
+  ]
+}
