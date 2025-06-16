@@ -27,6 +27,12 @@ const Sidebar = () => {
       active: location.pathname.includes('/dean/classes')
     },
     {
+      title: 'Class performance',
+      icon: Building2,
+      path: '/dean/performance',
+      active: location.pathname.includes('/dean/performance')
+    },
+    {
       title: 'Exams Management',
       icon: FileText,
       path: '/dean/exams',

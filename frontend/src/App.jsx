@@ -8,12 +8,10 @@ import LoginPage from './pages/LoginPage';
 import StudentDashboard from './pages/StudentDashboard';
 import TakeExam from './pages/TakeExam';
 import DeanDashboard from './components/dashboard/DeanDashboard';
-import ClassesManagement from './pages/ClassesManagement';
 import ClassView from './pages/ClassView';
 import SubjectsManagement from './pages/SubjectsManagement';
 import UsersManagement from './pages/UsersManagement';
 import ImportStudents from './pages/ImportStudents';
-import StudentManagement from './pages/StudentManagement';
 import StudentProfile from './pages/StudentProfile';
 import StudentResults from './pages/StudentResults';
 
@@ -38,6 +36,7 @@ import StudentExamDetails from './pages/StudentExamDetails';
 import ClassesPage from './components/class/ClassPage';
 import PerformancePage from './components/class/PerfomancePage';
 import TeacherPage from './components/class/TeacherPage';
+import StudentPage from './components/class/StudentPage';
 
 // Role-Based Redirect Component
 const RoleBasedRedirect = () => {
@@ -379,7 +378,7 @@ function App() {
               path="/dean/students"
               element={
                 <ProtectedRoute allowedRoles={['dean']}>
-                  <StudentManagement />
+                  <StudentPage />
                 </ProtectedRoute>
               }
             />
