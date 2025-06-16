@@ -3,18 +3,16 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { validationResult } = require('express-validator');
 
-const authController = {};
-
 // Register new user
-authController.register = async (req, res) => {  try {
+const register = async (req, res) => {
+  try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, password, fullName, role, registrationNumber, classId } = req.body;
-    
-    // Log registration request data for debugging
+
     console.log('Registration request:', {
       email,
       fullName,
@@ -23,37 +21,34 @@ authController.register = async (req, res) => {  try {
       classId
     });
 
-    // Check if user exists
     let user = await User.findOne({ email });
     if (user) {
       return res.status(400).json({
         success: false,
         message: 'User already exists'
       });
-    }    // Create new user
+    }
+
     user = new User({
       email,
-      passwordHash: password, // will be hashed in pre-save hook
+      passwordHash: password, // Will be hashed in pre-save hook
       fullName,
       role: role || 'student'
     });
-    
-    // Set registration number for students and teachers
+
     if (registrationNumber) {
       user.registrationNumber = registrationNumber;
     }
-      // Only add class field if the role is student
+
     if (!role || role === 'student') {
-      // Validate classId - ensure it's not empty and is a valid ObjectId
       if (!classId) {
         return res.status(400).json({
           success: false,
           message: 'Class ID is required for student accounts'
         });
       }
-      
+
       try {
-        // Check if the class exists
         const Class = require('../models/Class');
         const classExists = await Class.findById(classId);
         if (!classExists) {
@@ -73,7 +68,6 @@ authController.register = async (req, res) => {  try {
 
     await user.save();
 
-    // Generate token
     const payload = {
       id: user.id,
       role: user.role
@@ -107,18 +101,20 @@ authController.register = async (req, res) => {  try {
   }
 };
 
-// Login user
-authController.login = async (req, res) => {
+// Login user (by email or fullName)
+const login = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password } = req.body;
+    const { identifier, password } = req.body; // identifier = email or fullName
 
-    // Check if user exists
-    const user = await User.findOne({ email });
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { fullName: identifier }]
+    });
+
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -126,7 +122,6 @@ authController.login = async (req, res) => {
       });
     }
 
-    // Validate password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({
@@ -135,7 +130,6 @@ authController.login = async (req, res) => {
       });
     }
 
-    // Generate token
     const payload = {
       id: user.id,
       role: user.role
@@ -170,9 +164,8 @@ authController.login = async (req, res) => {
 };
 
 // Get current user
-authController.getCurrentUser = async (req, res) => {
+const getCurrentUser = async (req, res) => {
   try {
-    // User is already in req from auth middleware
     const user = await User.findById(req.user.id)
       .select('-passwordHash')
       .populate('class', 'level trade year term');
@@ -198,7 +191,7 @@ authController.getCurrentUser = async (req, res) => {
 };
 
 // Change password
-authController.changePassword = async (req, res) => {
+const changePassword = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -207,11 +200,9 @@ authController.changePassword = async (req, res) => {
 
     const { currentPassword, newPassword } = req.body;
 
-    // Get user with password
     const user = await User.findById(req.user.id);
-
-    // Check current password
     const isMatch = await user.comparePassword(currentPassword);
+
     if (!isMatch) {
       return res.status(400).json({
         success: false,
@@ -219,7 +210,6 @@ authController.changePassword = async (req, res) => {
       });
     }
 
-    // Update password
     user.passwordHash = newPassword;
     await user.save();
 
@@ -236,4 +226,10 @@ authController.changePassword = async (req, res) => {
   }
 };
 
-module.exports = authController;
+// Export all functions individually
+module.exports = {
+  register,
+  login,
+  getCurrentUser,
+  changePassword
+};

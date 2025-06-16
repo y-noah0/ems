@@ -12,12 +12,12 @@ router.use(authMiddleware.authenticate);
 // @access  Teachers
 router.post(
   '/',
-  authMiddleware.isTeacher,  [
-    check('title', 'Exam title is required').notEmpty(),
-    check('classId', 'Class ID is required').notEmpty(),
-    check('subjectId', 'Subject ID is required').notEmpty(),
-    check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
-  ],
+  authMiddleware.isTeacher, [
+  check('title', 'Exam title is required').notEmpty(),
+  check('classId', 'Class ID is required').notEmpty(),
+  check('subjectId', 'Subject ID is required').notEmpty(),
+  check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
+],
   examController.createExam
 );
 
@@ -39,17 +39,17 @@ router.get('/classes', authMiddleware.isTeacher, examController.getClassesForTea
 // @route   GET api/exams/:id
 // @desc    Get exam by ID
 // @access  Teachers & Students (with restrictions)
-router.get('/:id', examController.getExamById);
+router.get('/:examId', examController.getExamById);
 
 // @route   PUT api/exams/:id
 // @desc    Update exam
 // @access  Teachers
 router.put(
   '/:id',
-  authMiddleware.isTeacher,  [
-    check('title', 'Exam title is required').notEmpty(),
-    check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
-  ],
+  authMiddleware.isTeacher, [
+  check('title', 'Exam title is required').notEmpty(),
+  check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
+],
   examController.updateExam
 );
 

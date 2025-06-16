@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const bcrypt = require('bcryptjs');
 
-const UserSchema = new Schema({  role: {
+const UserSchema = new Schema({
+  role: {
     type: String,
     required: true,
     enum: ['student', 'teacher', 'dean', 'admin'],
@@ -20,28 +21,34 @@ const UserSchema = new Schema({  role: {
     lowercase: true,
     match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
+
+  // Now sparse index to prevent duplicate null values
   registrationNumber: {
     type: String,
     unique: true,
-    required: function() {
+    sparse: true,
+    required: function () {
       return this.role === 'student';
     }
   },
+
   passwordHash: {
     type: String,
     required: true
   },
+
   class: {
     type: Schema.Types.ObjectId,
     ref: 'Class',
-    required: function() {
+    required: function () {
       return this.role === 'student';
     }
   },
+
   subjects: [{
     type: Schema.Types.ObjectId,
     ref: 'Subject',
-    required: function() {
+    required: function () {
       return this.role === 'teacher';
     }
   }]
@@ -50,14 +57,14 @@ const UserSchema = new Schema({  role: {
 });
 
 // Method to compare password
-UserSchema.methods.comparePassword = async function(password) {
+UserSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.passwordHash);
 };
 
-// Pre-save hook to hash password
-UserSchema.pre('save', async function(next) {
+// Pre-save hook to hash password automatically
+UserSchema.pre('save', async function (next) {
   if (!this.isModified('passwordHash')) return next();
-  
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
