@@ -44,7 +44,7 @@ const StatsCards = ({ stats }) => {
           key={index} 
           className={`
             bg-white rounded-lg p-6 
-            border-4 ${card.borderColor}
+            border-1 ${card.borderColor}
             shadow-md hover:shadow-lg
             transition-all duration-200
             relative

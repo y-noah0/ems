@@ -67,15 +67,17 @@ const DeanDashboard = () => {
           <WelcomeSection currentUser={currentUser} />
           <StatsCards stats={stats} />
 
-          <div className="flex flex-col lg:flex-row gap-6 px-2 sm:px-4">
+          <div className="flex flex-col gap-6 px-2 sm:px-4 lg:flex-row">
             <div className="flex-1 min-w-0">
               <div className="grid grid-cols-1 gap-6 mb-6">
                 <RiskZones />
               </div>
               <ClassPerformance />
             </div>
-            <div className="w-full lg:w-[800px] flex-shrink-0">
-              <ExamsSection />
+            <div className="w-full flex-shrink-0 lg:w-[300px] xl:w-[350px] 2xl:w-[400px] mt-6 lg:mt-0">
+                
+                <ExamsSection />
+              
             </div>
           </div>
         </>
