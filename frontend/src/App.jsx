@@ -35,6 +35,9 @@ import SystemSettings from './pages/admin/SystemSettings';
 import SystemLogs from './pages/admin/SystemLogs';
 import StudentExams from './pages/StudentExams';
 import StudentExamDetails from './pages/StudentExamDetails';
+import ClassesPage from './components/class/ClassPage';
+import PerformancePage from './components/class/PerfomancePage';
+import TeacherPage from './components/class/TeacherPage';
 
 // Role-Based Redirect Component
 const RoleBasedRedirect = () => {
@@ -304,7 +307,23 @@ function App() {
               path="/dean/classes"
               element={
                 <ProtectedRoute allowedRoles={['dean']}>
-                  <ClassesManagement />
+                  <ClassesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dean/performance"
+              element={
+                <ProtectedRoute allowedRoles={['dean']}>
+                  <PerformancePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dean/teachers"
+              element={
+                <ProtectedRoute allowedRoles={['dean']}>
+                  <TeacherPage />
                 </ProtectedRoute>
               }
             />
