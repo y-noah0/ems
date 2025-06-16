@@ -49,20 +49,20 @@ const ExamsSection = () => {
                 alert(`Viewing exam: ${exam.title}`);
               }
             }}
-          >
-            <div className="flex justify-between items-start mb-3">
+            >
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors">{exam.title}</h4>
-                <p className="text-sm text-gray-600">{exam.subject} • {exam.code}</p>
+              <h4 className="font-semibold text-gray-900 mb-1 group-hover:text-blue-700 transition-colors">{exam.title}</h4>
+              <p className="text-sm text-gray-600">{exam.subject} • {exam.code}</p>
               </div>
               <span className={`text-sm font-medium ${exam.statusColor}`}>
-                • {exam.status}
+              • {exam.status}
               </span>
             </div>
             
             <p className="text-sm text-gray-600 mb-3">{exam.description}</p>
             
-            <div className="text-sm text-gray-600 mb-3">
+            <div className="flex flex-col sm:flex-row sm:justify-between text-sm text-gray-600 mb-3 gap-1">
               <div>{exam.time}</div>
               <div>{exam.questions} {exam.score}</div>
             </div>
@@ -71,11 +71,11 @@ const ExamsSection = () => {
               <div className="bg-blue-600 h-2 rounded-full transition-all" style={{ width: '75%' }}></div>
             </div>
             
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
               <span className="text-sm text-gray-600">20:20</span>
               <button
-                className="bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium hover:bg-blue-700 transition-colors"
-                onClick={e => {
+              className="bg-blue-600 text-white px-4 py-1 rounded text-sm font-medium hover:bg-blue-700 transition-colors w-full sm:w-auto"
+              onClick={e => {
                   e.stopPropagation();
                   alert(`Viewing exam: ${exam.title}`);
                 }}
