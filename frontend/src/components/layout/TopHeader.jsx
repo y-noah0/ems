@@ -1,7 +1,11 @@
 import React from 'react';
 import { Search, Bell, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
-const TopHeader = ({ currentUser }) => {
+const TopHeader = () => {
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [showMenu, setShowMenu] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState('');
 
@@ -21,6 +25,15 @@ const TopHeader = ({ currentUser }) => {
     e.preventDefault();
     // Implement search logic here
     alert(`Searching for: ${searchValue}`);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Failed to log out', error);
+    }
   };
 
   return (
@@ -84,7 +97,7 @@ const TopHeader = ({ currentUser }) => {
             {showMenu && (
               <div className="absolute right-0 mt-2 w-32 sm:w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10">
                 <button className="block w-full text-left px-4 py-2 text-xs sm:text-sm hover:bg-gray-100">Profile</button>
-                <button className="block w-full text-left px-4 py-2 text-xs sm:text-sm hover:bg-gray-100">Logout</button>
+                <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-xs sm:text-sm hover:bg-gray-100">Logout</button>
               </div>
             )}
           </div>
