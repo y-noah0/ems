@@ -270,11 +270,7 @@ const SubmissionView = () => {
           <div className="p-4">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-xl font-semibold">Student Information</h2>
-              <button 
-                onClick={fetchSubmissionData} 
-                className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
-                aria-label="Refresh submission data"
-              >
+              <button onClick={fetchSubmissionData} className="text-blue-600 hover:text-blue-800 text-sm flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
@@ -288,8 +284,7 @@ const SubmissionView = () => {
                 <p><span className="font-medium">Exam:</span> {exam?.title || 'N/A'}</p>
               </div>
               <div>
-                <p><span className="font-medium">Submitted:</span> {new Date(submission.submittedAt).toLocaleString()}</p>
-                <p><span className="font-medium">Status:</span> 
+                <p><span className="font-medium">Submitted:</span> {new Date(submission.submittedAt).toLocaleString()}</p>                <p><span className="font-medium">Status:</span> 
                   <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
                     submission.status === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                   }`}>
@@ -297,7 +292,15 @@ const SubmissionView = () => {
                   </span>
                 </p>
                 {submission.status === 'graded' && (
-                  <p><span className="font-medium">Score:</span> <span className="font-semibold">{submission.score}</span> / {exam?.totalPoints || 'N/A'}</p>
+                  <p>
+                    <span className="font-medium">Score:</span> 
+                    <span className="font-semibold">
+                      {submission.score || 0}
+                    </span> / 
+                    {submission.totalPoints || (exam?.totalPoints || 0)}
+                    {submission.totalPoints ? 
+                      ` (${Math.round((submission.score / submission.totalPoints) * 100)}%)` : ''}
+                  </p>
                 )}
               </div>
             </div>
@@ -408,14 +411,16 @@ const SubmissionView = () => {
                   <p className="text-gray-600">
                     Total points earned: <span className="font-semibold">
                       {editedAnswers.reduce((sum, answer) => sum + (parseInt(answer.points) || 0), 0)}
-                    </span> / {exam?.totalPoints || 'N/A'}
+                    </span> / {submission.totalPoints || (exam?.totalPoints || 0)}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-gray-600">
                     Final percentage: <span className="font-semibold">
-                      {exam?.totalPoints ? 
-                        `${Math.round((editedAnswers.reduce((sum, answer) => sum + (parseInt(answer.points) || 0), 0) / exam.totalPoints) * 100)}%` 
+                      {submission.totalPoints || exam?.totalPoints ? 
+                        `${Math.round((editedAnswers.reduce((sum, answer) => 
+                          sum + (parseInt(answer.points) || 0), 0) / 
+                          (submission.totalPoints || exam.totalPoints)) * 100)}%` 
                         : 'N/A'}
                     </span>
                   </p>

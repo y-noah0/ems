@@ -163,6 +163,15 @@ examController.getExamById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Exam not found' });
     }
 
+    // If totalPoints isn't calculated yet, calculate it
+    if (!exam.totalPoints) {
+      exam.totalPoints = exam.questions.reduce(
+        (total, question) => total + (question.maxScore || 0), 
+        0
+      );
+      await exam.save();
+    }
+
     // --- FIX: Add checks before accessing nested properties ---
     if (req.user.role === 'teacher') {
       if (!exam.teacher || !exam.teacher._id) {

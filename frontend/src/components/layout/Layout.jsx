@@ -1,17 +1,20 @@
 import React from 'react';
-import Header from './Header';
-import Footer from './Footer';
+import Sidebar from './Sidebar';
+import TopHeader from './TopHeader';
+import { useAuth } from '../../context/AuthContext';
 
 const Layout = ({ children }) => {
+  const { currentUser } = useAuth();
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <Header />
-      <main className="flex-grow py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <TopHeader currentUser={currentUser} />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6">
           {children}
-        </div>
-      </main>
-      <Footer />
+        </main>
+      </div>
     </div>
   );
 };
