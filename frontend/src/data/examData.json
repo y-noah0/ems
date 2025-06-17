@@ -1,0 +1,52 @@
+{
+    "exam": {
+      "id": 1,
+      "title": "Statistics and logarithms",
+      "subject": "Mathematics",
+      "courseCode": "L450D",
+      "status": "active",
+      "description": "An exam on logarithms and statistics",
+      "startTime": "20:20 pm",
+      "endTime": "20:55pm",
+      "totalQuestions": 20,
+      "totalMarks": 50,
+      "progress": 75
+    },
+    "questions": [
+      {
+        "id": 1,
+        "text": "Question one of the test questions on this page with two lines of text and a ssklflh asfj",
+        "marks": 10,
+        "type": "multiple-choice",
+        "options": [
+          { "id": "a", "text": "Option one" },
+          { "id": "b", "text": "Option one" },
+          { "id": "c", "text": "Option one" },
+          { "id": "d", "text": "Option one" },
+          { "id": "e", "text": "Option one" },
+          { "id": "f", "text": "Option one" }
+        ]
+      },
+      {
+        "id": 2,
+        "text": "Question one of the test questions on this page with two lines of text and a ssklflh asfj",
+        "marks": 10,
+        "type": "open-ended",
+        "options": []
+      },
+      {
+        "id": 3,
+        "text": "Question one of the test questions on this page with two lines of text and a ssklflh asfj",
+        "marks": 10,
+        "type": "multiple-choice",
+        "options": [
+          { "id": "a", "text": "Option one" },
+          { "id": "b", "text": "Option one" },
+          { "id": "c", "text": "Option one" },
+          { "id": "d", "text": "Option one" },
+          { "id": "e", "text": "Option one" },
+          { "id": "f", "text": "Option one" }
+        ]
+      }
+    ]
+  }
