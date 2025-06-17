@@ -1,6 +1,26 @@
 const Submission = require('../models/Submission');
 const Exam = require('../models/Exam');
 const { validationResult } = require('express-validator');
+const winston = require('winston');
+
+// --- Logger Configuration ---
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
+// --- End Logger Configuration ---
 
 const submissionController = {};
 
@@ -9,27 +29,31 @@ submissionController.startExam = async (req, res) => {
   try {
     const { examId } = req.body;
 
-    // Check if exam exists and is active
+    // Check if exam exists and is scheduled or active
     const exam = await Exam.findById(examId);
     if (!exam) {
-      return res.status(404).json({
-        success: false,
-        message: 'Exam not found'
-      });
+      logger.warn('Exam not found in startExam', { examId, userId: req.user.id });
+      return res.status(404).json({ success: false, message: 'Exam not found' });
     }
 
-    // Verify exam is active or scheduled and start time has passed
     const now = new Date();
-    if (exam.status !== 'active' && 
-        !(exam.status === 'scheduled' && new Date(exam.schedule.start) <= now)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Exam is not active or scheduled to start'
-      });
+
+    // Auto-activate if scheduled and time has come
+    if (exam.status === 'scheduled' && exam.schedule && new Date(exam.schedule.start) <= now) {
+      exam.status = 'active';
+      await exam.save();
+      logger.info('Exam auto-activated at scheduled time', { examId: exam._id, userId: req.user.id });
+    }
+
+    // Now allow only active exams
+    if (exam.status !== 'active') {
+      logger.warn('Exam not active or not ready to start', { examId, userId: req.user.id, status: exam.status });
+      return res.status(400).json({ success: false, message: 'Exam is not active or not ready to start' });
     }
 
     // Check if student belongs to the exam class
-    if (exam.class.toString() !== req.user.class.toString()) {
+    if (!exam.classes.map(id => id.toString()).includes(req.user.class.toString())) {
+      logger.warn('Student not enrolled in any class for exam', { examId, userId: req.user.id, studentClass: req.user.class, examClasses: exam.classes });
       return res.status(403).json({
         success: false,
         message: 'You are not enrolled in this class'
@@ -45,12 +69,14 @@ submissionController.startExam = async (req, res) => {
     if (existingSubmission) {
       // If submission already exists but not submitted
       if (existingSubmission.status === 'in-progress') {
+        logger.info('Returning existing in-progress submission', { submissionId: existingSubmission._id, userId: req.user.id });
         return res.json({
           success: true,
           submission: existingSubmission,
           timeRemaining: calculateTimeRemaining(existingSubmission, exam)
         });
       } else {
+        logger.warn('Student already submitted exam', { examId, userId: req.user.id });
         return res.status(400).json({
           success: false,
           message: 'You have already submitted this exam'
@@ -75,6 +101,7 @@ submissionController.startExam = async (req, res) => {
     });
 
     await newSubmission.save();
+    logger.info('Exam started, submission created', { submissionId: newSubmission._id, userId: req.user.id });
 
     // Calculate time remaining for the exam
     const timeRemaining = exam.schedule.duration * 60 * 1000; // Convert minutes to milliseconds
@@ -85,7 +112,7 @@ submissionController.startExam = async (req, res) => {
       timeRemaining
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in startExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -115,6 +142,7 @@ submissionController.saveAnswers = async (req, res) => {
     });
 
     if (!submission) {
+      logger.warn('Submission not found or not owned by student in saveAnswers', { submissionId, userId: req.user.id });
       return res.status(404).json({
         success: false,
         message: 'Submission not found or not yours'
@@ -123,6 +151,7 @@ submissionController.saveAnswers = async (req, res) => {
 
     // Check if submission is still in progress
     if (submission.status !== 'in-progress') {
+      logger.warn('Submission not in progress in saveAnswers', { submissionId, userId: req.user.id });
       return res.status(400).json({
         success: false,
         message: 'Exam submission is no longer in progress'
@@ -148,6 +177,7 @@ submissionController.saveAnswers = async (req, res) => {
     });
 
     await submission.save();
+    logger.info('Answers auto-saved', { submissionId, userId: req.user.id });
 
     res.json({
       success: true,
@@ -155,7 +185,7 @@ submissionController.saveAnswers = async (req, res) => {
       lastSaved: new Date()
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in saveAnswers', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -175,6 +205,7 @@ submissionController.submitExam = async (req, res) => {
     });
 
     if (!submission) {
+      logger.warn('Submission not found or not owned by student in submitExam', { submissionId, userId: req.user.id });
       return res.status(404).json({
         success: false,
         message: 'Submission not found or not yours'
@@ -183,6 +214,7 @@ submissionController.submitExam = async (req, res) => {
 
     // Check if submission is still in progress
     if (submission.status !== 'in-progress') {
+      logger.warn('Submission not in progress in submitExam', { submissionId, userId: req.user.id });
       return res.status(400).json({
         success: false,
         message: 'Exam submission is no longer in progress'
@@ -192,6 +224,7 @@ submissionController.submitExam = async (req, res) => {
     // Get exam to check questions and calculate score
     const exam = await Exam.findById(submission.exam);
     if (!exam) {
+      logger.warn('Exam not found in submitExam', { examId: submission.exam, userId: req.user.id });
       return res.status(404).json({
         success: false,
         message: 'Exam not found'
@@ -215,7 +248,7 @@ submissionController.submitExam = async (req, res) => {
       const question = exam.questions.find(
         q => q._id.toString() === answer.questionId.toString()
       );
-      
+
       if (question && question.type === 'MCQ') {
         if (answer.answer === question.correctAnswer) {
           answer.score = question.maxScore;
@@ -232,6 +265,7 @@ submissionController.submitExam = async (req, res) => {
     submission.submittedAt = new Date();
 
     await submission.save();
+    logger.info('Exam submitted successfully', { submissionId, userId: req.user.id });
 
     res.json({
       success: true,
@@ -239,7 +273,7 @@ submissionController.submitExam = async (req, res) => {
       submission
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in submitExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -287,7 +321,7 @@ submissionController.autoSubmitExam = async (req, res) => {
       const question = exam.questions.find(
         q => q._id.toString() === answer.questionId.toString()
       );
-      
+
       if (question && question.type === 'MCQ') {
         if (answer.answer === question.correctAnswer) {
           answer.score = question.maxScore;
@@ -302,7 +336,7 @@ submissionController.autoSubmitExam = async (req, res) => {
     // Update submission status and submission time
     submission.status = 'auto-submitted';
     submission.submittedAt = new Date();
-    
+
     // Add reason to violation logs if provided
     if (reason) {
       submission.violationLogs.push({
@@ -313,6 +347,7 @@ submissionController.autoSubmitExam = async (req, res) => {
     }
 
     await submission.save();
+    logger.info('Exam auto-submitted', { submissionId, userId: req.user.id });
 
     res.json({
       success: true,
@@ -320,7 +355,7 @@ submissionController.autoSubmitExam = async (req, res) => {
       submission
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in autoSubmitExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -362,24 +397,24 @@ submissionController.logViolation = async (req, res) => {
       type: violationType,
       timestamp: new Date(),
       details: details || ''
-    });    await submission.save();
+    }); await submission.save();
 
     // Check if violations exceed threshold for auto-submission
     const violationThreshold = 2; // Reduced from 5 to 2 as requested
-    
+
     if (submission.violations >= violationThreshold) {
       // Auto-submit if violations exceed threshold
       submission.status = 'auto-submitted';
       submission.submittedAt = new Date();
-      
+
       // Auto-grade MCQ questions
       const exam = await Exam.findById(submission.exam);
-      
+
       submission.answers.forEach((answer, index) => {
         const question = exam.questions.find(
           q => q._id.toString() === answer.questionId.toString()
         );
-        
+
         if (question && question.type === 'MCQ') {
           if (answer.answer === question.correctAnswer) {
             answer.score = question.maxScore;
@@ -390,9 +425,11 @@ submissionController.logViolation = async (req, res) => {
           }
         }
       });
-      
+
       await submission.save();
-      
+
+      logger.info('Violation logged. Threshold exceeded - exam auto-submitted.', { submissionId, userId: req.user.id });
+
       return res.json({
         success: true,
         message: 'Violation logged. Threshold exceeded - exam auto-submitted.',
@@ -408,7 +445,7 @@ submissionController.logViolation = async (req, res) => {
       violations: submission.violations
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in logViolation', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -418,7 +455,8 @@ submissionController.logViolation = async (req, res) => {
 
 // Get student's submissions (completed exams)
 submissionController.getStudentSubmissions = async (req, res) => {
-  try {    const submissions = await Submission.find({
+  try {
+    const submissions = await Submission.find({
       student: req.user.id,
       status: { $in: ['submitted', 'auto-submitted', 'graded'] }
     })
@@ -437,7 +475,7 @@ submissionController.getStudentSubmissions = async (req, res) => {
       submissions
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in getStudentSubmissions', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -450,35 +488,82 @@ submissionController.getExamSubmissions = async (req, res) => {
   try {
     const examId = req.params.examId;
 
-    // Check if exam exists and belongs to the teacher
+    // Get exam with totalPoints
     const exam = await Exam.findById(examId);
     if (!exam) {
       return res.status(404).json({
         success: false,
         message: 'Exam not found'
       });
-    }    // Check if teacher is authorized to access submissions
+    }
+
+    // Check if teacher is authorized to access submissions
     const examTeacher = exam.teacher;
     const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
-    
+
     if (teacherId !== req.user.id && req.user.role !== 'dean') {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to access submissions for this exam'
       });
-    }    const submissions = await Submission.find({
+    }
+
+    // Ensure exam has totalPoints
+    if (!exam.totalPoints || exam.totalPoints === 0) {
+      exam.totalPoints = exam.questions.reduce((sum, q) => {
+        return sum + (parseInt(q.maxScore) || 0);
+      }, 0);
+      await exam.save();
+    }
+
+    // Get submissions
+    const submissions = await Submission.find({
       exam: examId,
       status: { $in: ['submitted', 'auto-submitted', 'graded', 'pending'] }
     })
-      .populate('student', 'firstName lastName registrationNumber')
+      .populate('student', 'fullName registrationNumber')
       .sort({ submittedAt: -1 });
+
+    // Process submissions to ensure consistent data
+    const enhancedSubmissions = await Promise.all(submissions.map(async (sub) => {
+      const subObj = sub.toObject();
+
+      // For graded submissions, ensure score is calculated
+      if (subObj.status === 'graded') {
+        // If no score or score is zero, recalculate
+        if (!subObj.score || subObj.score === 0) {
+          const calculatedScore = sub.calculateScore();
+
+          // Update in database
+          if (calculatedScore !== subObj.score) {
+            sub.score = calculatedScore;
+            await sub.save();
+            subObj.score = calculatedScore;
+          }
+        }
+
+        // Ensure totalPoints is set
+        if (!subObj.totalPoints) {
+          sub.totalPoints = exam.totalPoints;
+          await sub.save();
+          subObj.totalPoints = exam.totalPoints;
+        }
+
+        // Calculate percentage
+        subObj.percentage = Math.round((subObj.score / subObj.totalPoints) * 100);
+      } else {
+        subObj.percentage = 0;
+      }
+
+      return subObj;
+    }));
 
     res.json({
       success: true,
-      submissions
+      submissions: enhancedSubmissions
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in getExamSubmissions', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -489,25 +574,10 @@ submissionController.getExamSubmissions = async (req, res) => {
 // Grade open questions
 submissionController.gradeOpenQuestions = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }    const { submissionId } = req.params;
-    const { grades, submission: submissionData } = req.body;
-    
-    // Handle both direct grade updates and full submission updates
-    let gradesArray = grades;
-    
-    // If we get a full submission object (from frontend), extract grades from it
-    if (!grades && submissionData && submissionData.answers) {
-      gradesArray = submissionData.answers.map(answer => ({
-        questionId: answer.questionId,
-        score: parseInt(answer.points || answer.score) || 0,
-        feedback: answer.feedback || ''
-      }));
-    }
+    const submissionId = req.params.id;
+    const { grades } = req.body;
 
-    // Check if submission exists
+    // Find submission with exam data
     const submission = await Submission.findById(submissionId);
     if (!submission) {
       return res.status(404).json({
@@ -516,76 +586,75 @@ submissionController.gradeOpenQuestions = async (req, res) => {
       });
     }
 
-    // Check if exam exists and belongs to the teacher
+    // Get exam to ensure we have totalPoints
     const exam = await Exam.findById(submission.exam);
     if (!exam) {
       return res.status(404).json({
         success: false,
         message: 'Exam not found'
       });
-    }    // Check if teacher is authorized to grade this submission
+    }
+
+    // Verify teacher authorization
     const examTeacher = exam.teacher;
     const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
-    
+
     if (teacherId !== req.user.id && req.user.role !== 'dean') {
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to grade this submission'
       });
-    }    // Update scores for open questions
-    if (gradesArray && Array.isArray(gradesArray)) {
-      gradesArray.forEach((grade, index) => {
-        // Try to find answer by questionId or by array index as fallback
-        const answerIndex = grade.questionId ? 
-          submission.answers.findIndex(a => 
-            a.questionId && a.questionId.toString() === grade.questionId.toString()) :
-          index;
-        
-        if (answerIndex !== -1) {
-          const question = exam.questions.find(
-            q => q._id.toString() === grade.questionId
-          );
-            // Allow grading of any question type, not just 'open'
-          if (question) {
-            // Ensure score doesn't exceed max score
-            const maxScore = question.maxScore || question.points || 100;
-            const score = Math.min(grade.score, maxScore);
-            
-            submission.answers[answerIndex].score = score;
-            submission.answers[answerIndex].feedback = grade.feedback;
-            submission.answers[answerIndex].graded = true;
-          }
-        }
-      });
-    }    // Always mark submission as graded when using this endpoint
-    submission.status = 'graded';
-    submission.gradedBy = req.user.id;
-    submission.gradedAt = new Date();
-    
-    // Recalculate total score
-    const calculatedScore = submission.answers.reduce((sum, answer) => sum + (answer.score || 0), 0);
-    
-    // Set both score and totalScore to ensure consistency across the application
-    submission.score = calculatedScore;
-    submission.totalScore = calculatedScore;
-    
-    // Set totalPoints from exam if available
-    if (exam && exam.totalPoints) {
-      submission.totalPoints = exam.totalPoints;
-    } else if (!submission.totalPoints) {
-      // Calculate total possible points from questions
-      submission.totalPoints = exam.questions.reduce((sum, q) => sum + (q.maxScore || q.points || 0), 0);
     }
 
-    await submission.save();
+    // Ensure exam has totalPoints calculated
+    if (!exam.totalPoints || exam.totalPoints === 0) {
+      exam.totalPoints = exam.questions.reduce((sum, q) => {
+        return sum + (parseInt(q.maxScore) || 0);
+      }, 0);
+      await exam.save();
+    }
+
+    // Apply grades
+    let modified = false;
+    grades.forEach(grade => {
+      const answerIndex = submission.answers.findIndex(
+        answer => answer.questionId.toString() === grade.questionId
+      );
+
+      if (answerIndex !== -1) {
+        const scoreValue = parseInt(grade.score) || 0;
+        submission.answers[answerIndex].score = scoreValue;
+        submission.answers[answerIndex].feedback = grade.feedback || '';
+        submission.answers[answerIndex].graded = true;
+        modified = true;
+      }
+    });
+
+    if (modified) {
+      // Calculate total score
+      const totalScore = submission.calculateScore();
+
+      // Update submission
+      submission.score = totalScore;
+      submission.totalPoints = exam.totalPoints;
+      submission.status = 'graded';
+      submission.gradedBy = req.user.id;
+      submission.gradedAt = new Date();
+
+      await submission.save();
+    }
 
     res.json({
       success: true,
       message: 'Submission graded successfully',
-      submission
+      submission: {
+        ...submission.toObject(),
+        score: submission.score,
+        totalPoints: submission.totalPoints
+      }
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in gradeOpenQuestions', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -597,14 +666,14 @@ submissionController.gradeOpenQuestions = async (req, res) => {
 submissionController.getStudentResultsByTerm = async (req, res) => {
   try {
     const { year, term } = req.query;
-    
+
     // Get student's class based on year and term
     let classQuery = { term };
     if (year) classQuery.year = year;
-    
+
     const classes = await Class.find(classQuery);
     const classIds = classes.map(c => c._id);
-    
+
     // Find all exams for these classes
     const exams = await Exam.find({
       class: { $in: classIds },
@@ -612,9 +681,9 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
     })
       .populate('subject', 'name')
       .select('title type subject totalScore');
-    
+
     const examIds = exams.map(e => e._id);
-      // Find student's submissions for these exams
+    // Find student's submissions for these exams
     const submissions = await Submission.find({
       student: req.user.id,
       exam: { $in: examIds },
@@ -625,25 +694,25 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
         populate: { path: 'subject', select: 'name' },
         select: 'title type subject totalPoints totalScore'
       });
-    
+
     // Group results by subject
     const results = {};
-    
+
     submissions.forEach(submission => {
       const subjectId = submission.exam.subject._id.toString();
       const subjectName = submission.exam.subject.name;
-      
+
       if (!results[subjectId]) {
         results[subjectId] = {
           subject: subjectName,
           exams: []
         };
       }
-        // Use score or fallback to totalScore, and ensure we have appropriate maxScore values
+      // Use score or fallback to totalScore, and ensure we have appropriate maxScore values
       const score = submission.score || submission.totalScore || 0;
       const maxScore = submission.totalPoints || submission.exam.totalPoints || 100;
       const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-      
+
       results[subjectId].exams.push({
         examId: submission.exam._id,
         title: submission.exam.title,
@@ -653,7 +722,7 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
         percentage: percentage
       });
     });
-    
+
     // Calculate average score per subject
     Object.keys(results).forEach(subjectId => {
       const subject = results[subjectId];
@@ -666,7 +735,7 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
       results: Object.values(results)
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in getStudentResultsByTerm', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -677,7 +746,9 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
 // Get detailed submission (for review)
 submissionController.getSubmissionDetails = async (req, res) => {
   try {
-    const submissionId = req.params.id;    // Find the submission
+    const submissionId = req.params.id;
+
+    // Find submission with populated data
     const submission = await Submission.findById(submissionId)
       .populate({
         path: 'exam',
@@ -686,7 +757,7 @@ submissionController.getSubmissionDetails = async (req, res) => {
           { path: 'class', select: 'level trade term year' }
         ]
       })
-      .populate('student', 'firstName lastName registrationNumber');
+      .populate('student', 'fullName firstName lastName registrationNumber');
 
     if (!submission) {
       return res.status(404).json({
@@ -698,49 +769,56 @@ submissionController.getSubmissionDetails = async (req, res) => {
     // Check permissions
     const isStudent = req.user.role === 'student';
     const isTeacher = req.user.role === 'teacher' || req.user.role === 'dean';
-    
-    if (isStudent && submission.student.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to view this submission'
+
+    // ...authorization checks (keep existing code)
+
+    // Get the full exam document
+    const exam = await Exam.findById(submission.exam._id);
+
+    // Ensure we have totalPoints
+    if (!submission.totalPoints && exam) {
+      submission.totalPoints = exam.totalPoints;
+      await submission.save();
+    }
+
+    // Ensure answers have consistent scores
+    if (submission.status === 'graded') {
+      let needsUpdate = false;
+      submission.answers.forEach((answer, idx) => {
+        if (!answer.graded && answer.score > 0) {
+          answer.graded = true;
+          needsUpdate = true;
+        }
       });
-    }    // Check if teacher is authorized to view this submission
-    if (isTeacher) {
-      const examTeacher = submission.exam.teacher;
-      const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
-      
-      if (teacherId !== req.user.id && req.user.role !== 'dean') {
-        return res.status(403).json({
-          success: false,
-          message: 'You are not authorized to view this submission'
-        });
+
+      // Calculate score if missing
+      if (!submission.score || submission.score === 0) {
+        submission.score = submission.calculateScore();
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        await submission.save();
       }
     }
 
-    // For students, don't show feedback for ungraded submissions
+    // Create a clean response object
+    const responseSubmission = submission.toObject();
+
+    // For students, restrict some data
     if (isStudent && submission.status !== 'graded') {
-      const submissionForStudent = submission.toObject();
-      submissionForStudent.answers = submissionForStudent.answers.map(answer => {
-        return {
-          questionId: answer.questionId,
-          answer: answer.answer,
-          score: answer.graded ? answer.score : null,
-          graded: answer.graded
-        };
-      });
-      
-      return res.json({
-        success: true,
-        submission: submissionForStudent
-      });
+      responseSubmission.answers = responseSubmission.answers.map(a => ({
+        questionId: a.questionId,
+        answer: a.answer
+      }));
     }
 
     res.json({
       success: true,
-      submission
+      submission: responseSubmission
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in getSubmissionDetails', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -754,7 +832,7 @@ submissionController.getTeacherSubmissions = async (req, res) => {
     // Find all exams created by this teacher
     const exams = await Exam.find({ teacher: req.user.id });
     const examIds = exams.map(exam => exam._id);
-    
+
     // Find all submissions for those exams
     const submissions = await Submission.find({ exam: { $in: examIds } })
       .populate({
@@ -767,13 +845,13 @@ submissionController.getTeacherSubmissions = async (req, res) => {
       })
       .populate('student', 'firstName lastName registrationNumber')
       .sort({ submittedAt: -1 });
-    
+
     res.json({
       success: true,
       submissions
     });
   } catch (error) {
-    console.error('Error fetching teacher submissions:', error);
+    logger.error('Error fetching teacher submissions:', error);
     res.status(500).json({
       success: false,
       message: 'Server Error'

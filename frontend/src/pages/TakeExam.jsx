@@ -11,7 +11,7 @@ import 'react-quill/dist/quill.snow.css';
 const TakeExam = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
-  
+
   const [exam, setExam] = useState(null);
   const [submission, setSubmission] = useState(null);
   const [answers, setAnswers] = useState([]);
@@ -22,51 +22,38 @@ const TakeExam = () => {
   const [markedForReview, setMarkedForReview] = useState([]);
   const [lastSaved, setLastSaved] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Setup anti-cheat detection
   useEffect(() => {
     if (!submission) return;
-    
-    const handleBlur = () => {
-      logViolation('tab-switch', 'User switched away from exam tab');
-    };
-    
+    const handleBlur = () => logViolation('tab-switch', 'User switched away from exam tab');
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        logViolation('hidden-tab', 'Exam tab was hidden');
-      }
+      if (document.hidden) logViolation('hidden-tab', 'Exam tab was hidden');
     };
-    
     const handleCopyPaste = (e) => {
       e.preventDefault();
       logViolation('copy-attempt', 'User attempted to copy/paste');
     };
-    
-    // Add event listeners
     window.addEventListener('blur', handleBlur);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('copy', handleCopyPaste);
     document.addEventListener('paste', handleCopyPaste);
-    
     return () => {
-      // Remove event listeners when component unmounts
       window.removeEventListener('blur', handleBlur);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('copy', handleCopyPaste);
       document.removeEventListener('paste', handleCopyPaste);
     };
   }, [submission]);
-  
+
   const logViolation = async (type, details) => {
     if (!submission) return;
-    
     try {
       const response = await submissionService.logViolation(
         submission._id,
         type,
         details
       );
-      
       if (response.shouldAutoSubmit) {
         await handleAutoSubmit('violations');
       }
@@ -74,11 +61,10 @@ const TakeExam = () => {
       console.error('Error logging violation:', error);
     }
   };
-  
+
   // Timer for countdown
   useEffect(() => {
     if (!timeRemaining) return;
-    
     const timer = setInterval(() => {
       setTimeRemaining(time => {
         if (time <= 1000) {
@@ -89,30 +75,26 @@ const TakeExam = () => {
         return time - 1000;
       });
     }, 1000);
-    
     return () => clearInterval(timer);
   }, [timeRemaining]);
-  
+
   // Format time remaining
   const formatTimeRemaining = () => {
     if (!timeRemaining) return '00:00:00';
-    
     const totalSeconds = Math.floor(timeRemaining / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    
     return [
       hours.toString().padStart(2, '0'),
       minutes.toString().padStart(2, '0'),
       seconds.toString().padStart(2, '0')
     ].join(':');
   };
-  
+
   // Auto-save answers every 30 seconds
   useEffect(() => {
     if (!submission || !answers.length) return;
-    
     const saveInterval = setInterval(async () => {
       try {
         await saveAnswers();
@@ -121,45 +103,24 @@ const TakeExam = () => {
         console.error('Error during auto-save:', error);
       }
     }, 30000);
-    
     return () => clearInterval(saveInterval);
   }, [submission, answers]);
-    // Fetch exam and start submission
+
+  // Fetch exam and start submission
   useEffect(() => {
     const fetchExamAndStartSubmission = async () => {
       setLoading(true);
       try {
-        // Fetch exam data
         const examData = await examService.getExamById(examId);
-        console.log('Exam data:', examData);
-        console.log('Questions:', examData.questions);
-        
-        if (!examData.questions || examData.questions.length === 0) {
-          console.warn('No questions found in exam data');
-        } else {
-          // Log question types and structure for debugging
-          console.log('First question type:', examData.questions[0].type);
-          console.log('First question details:', examData.questions[0]);
-        }
-        
         setExam(examData);
-        
-        // Start the exam submission
         const submissionData = await submissionService.startExam(examId);
-        console.log('Submission data:', submissionData);
         setSubmission(submissionData.submission);
-        
-        // Initialize answers array from submission or empty
         const initialAnswers = submissionData.submission.answers.map(a => ({
           questionId: a.questionId,
           answer: a.answer || ''
         }));
-        console.log('Initial answers:', initialAnswers);
         setAnswers(initialAnswers);
-        
-        // Set time remaining
         setTimeRemaining(submissionData.timeRemaining);
-        
       } catch (error) {
         console.error('Error fetching exam data:', error);
         setError(error.message || 'Failed to load exam');
@@ -167,14 +128,12 @@ const TakeExam = () => {
         setLoading(false);
       }
     };
-    
     fetchExamAndStartSubmission();
   }, [examId]);
-  
+
   // Save answers to server
   const saveAnswers = async () => {
     if (!submission) return;
-    
     try {
       await submissionService.saveAnswers(submission._id, answers);
       return true;
@@ -183,36 +142,31 @@ const TakeExam = () => {
       return false;
     }
   };
-  
+
   // Handle answer change
   const handleAnswerChange = (questionId, value) => {
-    setAnswers(prev => 
-      prev.map(a => 
-        a.questionId === questionId 
-          ? { ...a, answer: value } 
+    setAnswers(prev =>
+      prev.map(a =>
+        a.questionId === questionId
+          ? { ...a, answer: value }
           : a
       )
     );
   };
-  
-  // Navigate to next question
+
+  // Navigation
   const handleNextQuestion = () => {
     if (currentQuestionIndex < exam.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     }
   };
-  
-  // Navigate to previous question
   const handlePrevQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
-  
-  // Mark question for review
   const toggleMarkForReview = () => {
     const currentQuestionId = exam.questions[currentQuestionIndex]._id;
-    
     setMarkedForReview(prev => {
       if (prev.includes(currentQuestionId)) {
         return prev.filter(id => id !== currentQuestionId);
@@ -221,76 +175,66 @@ const TakeExam = () => {
       }
     });
   };
-  
-  // Navigate to a specific question
   const goToQuestion = (index) => {
     setCurrentQuestionIndex(index);
   };
-  
+
   // Submit exam
   const handleSubmitExam = async () => {
     if (!window.confirm('Are you sure you want to submit this exam? You cannot make changes after submission.')) {
       return;
     }
-    
-    if (submitting) return; // Prevent multiple submission attempts
-    
+    if (submitting) return;
     setSubmitting(true);
     try {
       await saveAnswers();
       await submissionService.submitExam(submission._id, answers);
-      navigate('/student/dashboard', { 
-        state: { message: 'Exam submitted successfully!' } 
+      navigate('/student/dashboard', {
+        state: { message: 'Exam submitted successfully!' }
       });
     } catch (error) {
       console.error('Error submitting exam:', error);
       setError('Failed to submit exam: ' + (error.message || 'Unknown error'));
-      
-      // Force navigation even after error with a delay
       setTimeout(() => {
-        navigate('/student/dashboard', { 
-          state: { message: 'Exam has been submitted, but there was an error processing your submission.' } 
+        navigate('/student/dashboard', {
+          state: { message: 'Exam has been submitted, but there was an error processing your submission.' }
         });
       }, 3000);
     }
   };
-  
+
   // Auto-submit exam
   const handleAutoSubmit = async (reason) => {
-    if (submitting) return; // Prevent multiple submission attempts
-    
+    if (submitting) return;
     setSubmitting(true);
     try {
       const reasonDetails = {
         type: reason === 'time-expired' ? 'other' : 'tab-switch',
-        details: reason === 'time-expired' 
-          ? 'Exam time expired' 
+        details: reason === 'time-expired'
+          ? 'Exam time expired'
           : 'Maximum violations exceeded'
       };
-      
       await submissionService.autoSubmitExam(submission._id, reasonDetails);
-      
-      // Force navigation even if there was an error with the API
       setTimeout(() => {
-        navigate('/student/dashboard', { 
-          state: { 
+        navigate('/student/dashboard', {
+          state: {
             message: reason === 'time-expired'
               ? 'Time expired. Exam auto-submitted.'
               : 'Maximum violations detected. Exam auto-submitted.'
-          } 
+          }
         });
       }, 1000);
     } catch (error) {
       console.error('Error auto-submitting exam:', error);
-      // Force navigation even if there was an error
-      navigate('/student/dashboard', { 
-        state: { 
+      navigate('/student/dashboard', {
+        state: {
           message: 'Exam has been submitted. There was an error processing your submission.'
-        } 
+        }
       });
     }
   };
-    // Render current question
+
+  // Render current question
   const renderCurrentQuestion = () => {
     if (!exam || !exam.questions || exam.questions.length === 0) {
       return (
@@ -299,69 +243,71 @@ const TakeExam = () => {
         </div>
       );
     }
-    
     const currentQuestion = exam.questions[currentQuestionIndex];
-    
     if (!currentQuestion) {
-      console.error('Current question is undefined', { currentQuestionIndex, questions: exam.questions });
       return (
         <div className="bg-red-50 border border-red-200 p-4 rounded-md">
           <p className="text-red-700">Error loading question. Please contact support.</p>
         </div>
       );
     }
-    
-    console.log('Rendering question:', currentQuestion);
-    
     const currentAnswer = answers.find(a => a.questionId === currentQuestion._id) || { answer: '' };
     const isMarkedForReview = markedForReview.includes(currentQuestion._id);
-    
+
     return (
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-medium">Question {currentQuestionIndex + 1}</h2>
           <div>
-            <span className={`px-2 py-1 rounded text-sm ${
-              isMarkedForReview 
-                ? 'bg-yellow-100 text-yellow-800' 
-                : currentAnswer.answer 
+            <span className={`px-2 py-1 rounded text-sm ${isMarkedForReview
+              ? 'bg-yellow-100 text-yellow-800'
+              : currentAnswer.answer
                 ? 'bg-green-100 text-green-800'
                 : 'bg-gray-100 text-gray-800'
-            }`}>
-              {isMarkedForReview 
-                ? 'Marked for Review' 
-                : currentAnswer.answer 
-                ? 'Answered' 
-                : 'Not Answered'}
+              }`}>
+              {isMarkedForReview
+                ? 'Marked for Review'
+                : currentAnswer.answer
+                  ? 'Answered'
+                  : 'Not Answered'}
             </span>
           </div>
         </div>
-        
         {/* Question Text */}
         <div className="mb-4">
           <p className="text-gray-800">{currentQuestion.text}</p>
         </div>
-          {/* Based on question type, render different input */}
+        {/* Based on question type, render different input */}
         {currentQuestion.type === 'MCQ' && (
           <div className="space-y-2">
-            {Array.isArray(currentQuestion.options) && currentQuestion.options.map((option, idx) => (
-              <div key={idx} className="flex items-center">
-                <input
-                  type="radio"
-                  id={`option-${idx}`}
-                  name={`question-${currentQuestion._id}`}
-                  checked={currentAnswer.answer === option}
-                  onChange={() => handleAnswerChange(currentQuestion._id, option)}
-                  className="mr-2"
-                />
-                <label htmlFor={`option-${idx}`} className="text-gray-700">
-                  {option}
-                </label>
-              </div>
-            ))}
+            {Array.isArray(currentQuestion.options) && currentQuestion.options.map((option, idx) => {
+              // Support both string and object option formats
+              const optionValue = typeof option === 'object' && option !== null
+                ? (option._id || option.value || JSON.stringify(option))
+                : option;
+              const optionLabel = typeof option === 'object' && option !== null
+                ? (option.text || option.label || option.value || JSON.stringify(option))
+                : option;
+
+              return (
+                <div key={optionValue} className="flex items-center">
+                  <input
+                    type="radio"
+                    id={`option-${idx}`}
+                    name={`question-${currentQuestion._id}`}
+                    checked={currentAnswer.answer === optionValue}
+                    onChange={() => handleAnswerChange(currentQuestion._id, optionValue)}
+                    className="mr-2"
+                  />
+                  <label htmlFor={`option-${idx}`} className="text-gray-700">
+                    {optionLabel}
+                  </label>
+                </div>
+              );
+            })}
           </div>
         )}
-          {currentQuestion.type === 'open' && (
+        {currentQuestion.type === 'open' && (
           <div className="mt-4">
             <label htmlFor="open-answer" className="block text-sm font-medium text-gray-700 mb-2">
               Your Answer:
@@ -379,7 +325,6 @@ const TakeExam = () => {
             </p>
           </div>
         )}
-        
         <div className="flex justify-between mt-8">
           <div>
             <Button
@@ -391,16 +336,16 @@ const TakeExam = () => {
             </Button>
           </div>
           <div>
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
               onClick={handlePrevQuestion}
               disabled={currentQuestionIndex === 0}
               className="mr-2"
             >
               Previous
             </Button>
-            <Button 
-              variant="primary" 
+            <Button
+              variant="primary"
               onClick={handleNextQuestion}
               disabled={currentQuestionIndex === exam.questions.length - 1}
             >
@@ -422,7 +367,6 @@ const TakeExam = () => {
       </Layout>
     );
   }
-  
   // Show error state
   if (error) {
     return (
@@ -439,7 +383,7 @@ const TakeExam = () => {
       </Layout>
     );
   }
-  
+
   // Render exam
   return (
     <Layout>
@@ -458,16 +402,14 @@ const TakeExam = () => {
           )}
         </div>
       </div>
-      
       <div className="grid grid-cols-3 gap-6">
         {/* Main content area */}
         <div className="col-span-2">
           {renderCurrentQuestion()}
-          
           <div className="flex justify-end mt-4">
-            <Button 
+            <Button
               variant="success"
-              onClick={handleSubmitExam} 
+              onClick={handleSubmitExam}
               className="ml-2"
               disabled={submitting}
             >
@@ -475,7 +417,6 @@ const TakeExam = () => {
             </Button>
           </div>
         </div>
-        
         {/* Sidebar / Question navigator */}
         <div className="col-span-1">
           <Card title="Questions">
@@ -484,13 +425,10 @@ const TakeExam = () => {
                 const questionAnswer = answers.find(a => a.questionId === q._id);
                 const isAnswered = questionAnswer && questionAnswer.answer && questionAnswer.answer.length > 0;
                 const isReview = markedForReview.includes(q._id);
-                
-                // Determine button style based on status
                 let buttonVariant = 'secondary';
                 if (idx === currentQuestionIndex) buttonVariant = 'primary';
                 else if (isReview) buttonVariant = 'warning';
                 else if (isAnswered) buttonVariant = 'success';
-                
                 return (
                   <Button
                     key={q._id}
@@ -504,7 +442,6 @@ const TakeExam = () => {
                 );
               })}
             </div>
-            
             <div className="mt-4">
               <p className="text-xs text-gray-600 mb-1">Legend:</p>
               <div className="flex flex-wrap text-xs gap-2">
@@ -523,11 +460,13 @@ const TakeExam = () => {
               </div>
             </div>
           </Card>
-          
           <Card title="Exam Info" className="mt-4">
             <p className="text-sm text-gray-600">
-              <span className="font-semibold">Subject: </span> 
-              {exam?.subject?.name}
+              <span className="font-semibold">Subject: </span>
+              {/* Render subject name if populated, else show ID as string */}
+              {typeof exam?.subject === 'object' && exam?.subject?.name
+                ? exam.subject.name
+                : (exam?.subject ? exam.subject.toString() : 'N/A')}
             </p>
             <p className="text-sm text-gray-600">
               <span className="font-semibold">Total Questions: </span>
@@ -538,12 +477,11 @@ const TakeExam = () => {
               {exam?.totalPoints}
             </p>
           </Card>
-          
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-4">
             <div className="flex">
               <div className="ml-3">
                 <p className="text-sm text-yellow-700">
-                  <span className="font-bold">Warning: </span> 
+                  <span className="font-bold">Warning: </span>
                   Do not leave this tab or the exam will be auto-submitted after a number of violations.
                 </p>
               </div>

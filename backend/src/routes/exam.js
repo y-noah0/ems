@@ -13,8 +13,9 @@ router.use(authMiddleware.authenticate);
 router.post(
   '/',
   authMiddleware.isTeacher, [
+  check('classIds').isArray({ min: 1 }).withMessage('At least one class ID is required'),
+  check('classIds.*').isMongoId().withMessage('Invalid class ID'),
   check('title', 'Exam title is required').notEmpty(),
-  check('classId', 'Class ID is required').notEmpty(),
   check('subjectId', 'Subject ID is required').notEmpty(),
   check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
 ],
@@ -45,7 +46,7 @@ router.get('/:examId', examController.getExamById);
 // @desc    Update exam
 // @access  Teachers
 router.put(
-  '/:id',
+  '/:examId',
   authMiddleware.isTeacher, [
   check('title', 'Exam title is required').notEmpty(),
   check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
@@ -56,7 +57,7 @@ router.put(
 // @route   DELETE api/exams/:id
 // @desc    Delete exam
 // @access  Teachers
-router.delete('/:id', authMiddleware.isTeacher, examController.deleteExam);
+router.delete('/:examId', authMiddleware.isTeacher, examController.deleteExam);
 
 // @route   GET api/exams/student/upcoming
 // @desc    Get upcoming exams for student
@@ -71,16 +72,16 @@ router.get('/student/class', authMiddleware.isStudent, examController.getStudent
 // @route   PUT api/exams/:id/activate
 // @desc    Activate exam (make it active)
 // @access  Teachers
-router.put('/:id/activate', authMiddleware.isTeacher, examController.activateExam);
+router.put('/:examId/activate', authMiddleware.isTeacher, examController.activateExam);
 
 // @route   PUT api/exams/:id/complete
 // @desc    Complete exam
 // @access  Teachers
-router.put('/:id/complete', authMiddleware.isTeacher, examController.completeExam);
+router.put('/:examId/complete', authMiddleware.isTeacher, examController.completeExam);
 
 // @route   PUT api/exams/:id/schedule
 // @desc    Schedule an exam
 // @access  Teachers
-router.put('/:id/schedule', authMiddleware.isTeacher, examController.scheduleExam);
+router.put('/:examId/schedule', authMiddleware.isTeacher, examController.scheduleExam);
 
 module.exports = router;

@@ -43,7 +43,7 @@ const examService = {
     }
   },
 
-  // Get exam by ID (uses 'id' param to match backend)
+  // Get exam by ID
   getExamById: async (examId) => {
     try {
       const response = await api.get(`/exams/${examId}`);
@@ -57,11 +57,9 @@ const examService = {
   // Update exam
   updateExam: async (id, examData) => {
     try {
-      // Ensure type is set
       if (!examData.type) {
         examData.type = 'midterm';
       }
-      // Validate questions before sending to backend
       if (examData.questions && examData.questions.length > 0) {
         examData.questions = examData.questions.map(q => {
           const question = { ...q };
@@ -156,10 +154,27 @@ const examService = {
   getSubmissionById: async (submissionId) => {
     try {
       const response = await api.get(`/submissions/${submissionId}`);
-      return response.data.submission;
+      const data = response.data;
+      if (data.success && data.submission) {
+        const submission = data.submission;
+        if (submission.status === 'graded' && (!submission.score || submission.score === 0)) {
+          submission.score = submission.answers.reduce(
+            (sum, answer) => sum + (parseInt(answer.score || answer.points || 0) || 0),
+            0
+          );
+        }
+        if (submission.answers) {
+          submission.answers = submission.answers.map(answer => ({
+            ...answer,
+            points: parseInt(answer.score || answer.points || 0) || 0
+          }));
+        }
+        return submission;
+      }
+      throw new Error('Invalid submission data received');
     } catch (error) {
-      console.error('Error fetching submission details:', error);
-      throw error.response ? error.response.data : { message: 'Failed to load submission. Please try again.' };
+      console.error('Error fetching submission:', error);
+      throw error;
     }
   },
 
@@ -175,24 +190,27 @@ const examService = {
 
   // Get teacher subjects
   getTeacherSubjects: async () => {
-    try {
-      const response = await api.get('/subjects/teacher');
-      return response.data.subjects;
-    } catch (error) {
-      console.error('Error fetching teacher subjects:', error);
-      throw error.response ? error.response.data : { message: 'Failed to load subjects. Please try again.' };
-    }
+    const response = await api.get('/subjects/teacher');
+    return response.data.subjects;
+  },
+  getClassesForTeacher: async () => {
+    const response = await api.get('/exams/classes');
+    return response.data.classes;
   },
 
   // Update submission with grades
   updateSubmissionGrades: async (submissionId, gradesData) => {
     try {
-      // Use PUT for updating grades (RESTful)
-      const response = await api.put(`/submissions/${submissionId}/grade`, gradesData);
-      return response.data.submission;
+      const response = await api.post(`/submissions/${submissionId}/grade`, gradesData);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update grades');
+      }
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('Error grading submission:', error);
-      throw error.response ? error.response.data : { message: 'Failed to save grades. Please try again.' };
+      console.error('Error updating submission grades:', error);
+      throw error;
     }
   },
 

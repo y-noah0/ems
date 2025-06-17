@@ -77,19 +77,19 @@ const StudentDashboard = () => {
                       <p>Teacher: {exam.teacher.fullName}</p>
                     </div>
                     <div className="mt-3">                      <Button
-                        as={Link}
-                        to={`/student/exams/${exam._id}`}
-                        variant="primary"
-                        size="sm"
-                      >
-                        View Details
-                      </Button>
+                      as={Link}
+                      to={`/student/exams/${exam._id}`}
+                      variant="primary"
+                      size="sm"
+                    >
+                      View Details
+                    </Button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-            
+
             <div className="mt-4">
               <Button
                 as={Link}
@@ -109,15 +109,21 @@ const StudentDashboard = () => {
               <div className="space-y-2">
                 {recentSubmissions.map((submission) => (
                   <div key={submission._id} className="border rounded-md p-4 bg-white shadow-sm">
-                    <h3 className="font-medium">{submission.exam.title}</h3>
+                    <h3 className="font-medium">
+                      {submission.exam ? submission.exam.title : 'Exam Deleted'}
+                    </h3>
                     <div className="mt-1 text-sm text-gray-500">
-                      <p>Subject: {submission.exam.subject.name}</p>
+                      <p>
+                        Subject: {submission.exam && submission.exam.subject && submission.exam.subject.name
+                          ? submission.exam.subject.name
+                          : 'N/A'}
+                      </p>
                       <p>
                         Submitted: {new Date(submission.submittedAt).toLocaleString()}
                       </p>
                       <p>
-                        Score: {submission.status === 'graded' 
-                          ? `${submission.totalScore} / ${submission.exam.totalScore}` 
+                        Score: {submission.status === 'graded' && submission.totalScore !== undefined && submission.exam && submission.exam.totalScore !== undefined
+                          ? `${submission.totalScore} / ${submission.exam.totalScore}`
                           : 'Pending'}
                       </p>
                     </div>
@@ -127,6 +133,7 @@ const StudentDashboard = () => {
                         to={`/student/submissions/${submission._id}`}
                         variant="secondary"
                         size="sm"
+                        disabled={!submission.exam}
                       >
                         View Details
                       </Button>
@@ -135,7 +142,7 @@ const StudentDashboard = () => {
                 ))}
               </div>
             )}
-            
+
             <div className="mt-4">
               <Button
                 as={Link}
