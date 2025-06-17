@@ -12,6 +12,8 @@ import adminService from '../../services/adminService';
 
 const DeanDashboard = () => {
   const { currentUser } = useAuth();
+
+  // Sidebar links based on role
   const [stats, setStats] = useState({
     classCount: 0,
     teacherCount: 0,
