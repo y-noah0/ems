@@ -14,6 +14,7 @@ import UsersManagement from './pages/UsersManagement';
 import ImportStudents from './pages/ImportStudents';
 import StudentProfile from './pages/StudentProfile';
 import StudentResults from './pages/StudentResults';
+import ExamManagement from './pages/ExamManagement';
 
 // Teacher Pages
 import TeacherDashboard from './pages/TeacherDashboard';
@@ -37,6 +38,7 @@ import ClassesPage from './components/class/ClassPage';
 import PerformancePage from './components/class/PerfomancePage';
 import TeacherPage from './components/class/TeacherPage';
 import StudentPage from './components/class/StudentPage';
+
 
 // Role-Based Redirect Component
 const RoleBasedRedirect = () => {
@@ -382,6 +384,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/dean/exams"
+              element={
+                <ProtectedRoute allowedRoles={['dean']}>
+                  <ExamManagement />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Admin Routes */}
             <Route
@@ -400,6 +410,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
+           
             <Route
               path="/admin/settings"
               element={
@@ -418,7 +429,7 @@ function App() {
             />
 
             {/* 404 Route */}
-            <Route path="*" element={<div>Page not found</div>} />
+            <Route path="*" element={<h1>Page not found</h1>} />
           </Routes>
         </GlobalExamProtection>
       </AuthProvider>
