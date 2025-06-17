@@ -201,7 +201,9 @@ const examService = {
   // Update submission with grades
   updateSubmissionGrades: async (submissionId, gradesData) => {
     try {
-      const response = await api.post(`/submissions/${submissionId}/grade`, gradesData);
+      // Use PUT for updating grades (RESTful)
+      const response = await api.put(`/submissions/${submissionId}/grade`, gradesData);
+      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to update grades');

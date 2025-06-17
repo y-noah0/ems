@@ -100,4 +100,23 @@ authMiddleware.isStudentOrTeacher = (req, res, next) => {
   }
 };
 
+// Check if user is a teacher, dean, or admin
+authMiddleware.isTeacherOrDeanOrAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required'
+    });
+  }
+  
+  if (req.user.role === 'teacher' || req.user.role === 'dean' || req.user.role === 'admin') {
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied'
+    });
+  }
+};
+
 module.exports = authMiddleware;

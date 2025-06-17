@@ -268,9 +268,20 @@ exports.getExamById = async (req, res) => {
     }
 
     // Authorization checks
+    // If totalPoints isn't calculated yet, calculate it
+    if (!exam.totalPoints) {
+      exam.totalPoints = exam.questions.reduce(
+        (total, question) => total + (question.maxScore || 0), 
+        0
+      );
+      await exam.save();
+    }
+
+    // --- FIX: Add checks before accessing nested properties ---
     if (req.user.role === 'teacher') {
       if (exam.teacher._id.toString() !== req.user.id) {
         logger.warn('Unauthorized teacher access to exam', { userId: req.user.id, examId: sanitizedExamId, examTeacherId: exam.teacher._id.toString() });
+        logger.warn('Unauthorized access to exam', { userId: req.user.id, examId: sanitizedExamId });
         return res.status(403).json({
           success: false,
           message: 'You are not authorized to access this exam'
