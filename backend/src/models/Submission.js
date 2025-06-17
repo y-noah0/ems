@@ -77,6 +77,14 @@ const SubmissionSchema = new Schema({
   },
   gradedAt: {
     type: Date
+  },
+  score: {
+    type: Number,
+    default: 0
+  },
+  totalPoints: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
@@ -89,6 +97,23 @@ SubmissionSchema.index({ exam: 1, student: 1 }, { unique: true });
 SubmissionSchema.pre('save', function(next) {
   if (this.isModified('answers')) {
     this.totalScore = this.answers.reduce((sum, answer) => sum + answer.score, 0);
+  }
+  next();
+});
+
+// Add a method to calculate score
+SubmissionSchema.methods.calculateScore = function() {
+  return this.answers.reduce((total, answer) => {
+    return total + (parseInt(answer.score) || 0);
+  }, 0);
+};
+
+// Pre-save hook to ensure score is calculated
+SubmissionSchema.pre('save', async function(next) {
+  if (this.isModified('answers') || this.isModified('status')) {
+    if (this.status === 'graded') {
+      this.score = this.calculateScore();
+    }
   }
   next();
 });

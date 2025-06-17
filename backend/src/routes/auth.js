@@ -23,7 +23,7 @@ router.post(
 router.post(
   '/login',
   [
-    check('email', 'Please include a valid email').isEmail(),
+    check('identifier', 'Please include a valid identifier').isEmail(),
     check('password', 'Password is required').exists()
   ],
   authController.login

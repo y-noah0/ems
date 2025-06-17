@@ -217,7 +217,7 @@ const ExamResults = () => {
               </div>
               <div>
                 <p><span className="font-medium">Total Questions:</span> {exam.questions?.length || 0}</p>
-                <p><span className="font-medium">Maximum Score:</span> {exam.totalPoints || 'N/A'}</p>
+                <p><span className="font-medium">Maximum Score:</span> {exam.totalPoints || '100'}</p>
               </div>
             </div>
           </div>
@@ -298,15 +298,20 @@ const ExamResults = () => {
                     {filteredSubmissions.map((submission) => (
                       <tr key={submission._id}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.student?.firstName} {submission.student?.lastName}
+                          {submission.student?.fullName || `${submission.student?.firstName || ''} ${submission.student?.lastName || ''}`}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {submission.student?.registrationNumber}
-                        </td>                        <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.status === 'pending' ? 'Pending' : `${submission.score || 0} / ${exam.totalPoints || 100}`}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.status === 'pending' ? 'Pending' : `${Math.round(((submission.score || 0) / (exam.totalPoints || 100)) * 100)}%`}
+                          {submission.status === 'graded' 
+                            ? `${submission.score || 0} / ${exam.totalPoints || 100}` 
+                            : 'Pending'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {submission.status === 'graded' 
+                            ? `${Math.round(((submission.score || 0) / (exam.totalPoints || 100)) * 100)}%`
+                            : 'Pending'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {new Date(submission.submittedAt).toLocaleString()}

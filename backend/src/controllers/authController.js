@@ -2,20 +2,38 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { validationResult } = require('express-validator');
+const winston = require('winston');
 
-const authController = {};
+// Logger configuration
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
 
 // Register new user
-authController.register = async (req, res) => {  try {
+const register = async (req, res) => {
+  try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validation errors in register', { errors: errors.array() });
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { email, password, fullName, role, registrationNumber, classId } = req.body;
-    
-    // Log registration request data for debugging
-    console.log('Registration request:', {
+
+    logger.info('Registration request', {
       email,
       fullName,
       role,
@@ -23,40 +41,40 @@ authController.register = async (req, res) => {  try {
       classId
     });
 
-    // Check if user exists
     let user = await User.findOne({ email });
     if (user) {
+      logger.warn('User already exists in register', { email });
       return res.status(400).json({
         success: false,
         message: 'User already exists'
       });
-    }    // Create new user
+    }
+
     user = new User({
       email,
-      passwordHash: password, // will be hashed in pre-save hook
+      passwordHash: password, // Will be hashed in pre-save hook
       fullName,
       role: role || 'student'
     });
-    
-    // Set registration number for students and teachers
+
     if (registrationNumber) {
       user.registrationNumber = registrationNumber;
     }
-      // Only add class field if the role is student
+
     if (!role || role === 'student') {
-      // Validate classId - ensure it's not empty and is a valid ObjectId
       if (!classId) {
+        logger.warn('Class ID missing for student registration', { email });
         return res.status(400).json({
           success: false,
           message: 'Class ID is required for student accounts'
         });
       }
-      
+
       try {
-        // Check if the class exists
         const Class = require('../models/Class');
         const classExists = await Class.findById(classId);
         if (!classExists) {
+          logger.warn('Invalid class ID: class not found', { classId });
           return res.status(400).json({
             success: false,
             message: 'Invalid class ID: class not found'
@@ -64,6 +82,7 @@ authController.register = async (req, res) => {  try {
         }
         user.class = classId;
       } catch (err) {
+        logger.warn('Invalid class ID format', { classId });
         return res.status(400).json({
           success: false,
           message: 'Invalid class ID format'
@@ -73,7 +92,6 @@ authController.register = async (req, res) => {  try {
 
     await user.save();
 
-    // Generate token
     const payload = {
       id: user.id,
       role: user.role
@@ -84,7 +102,11 @@ authController.register = async (req, res) => {  try {
       process.env.JWT_SECRET,
       { expiresIn: '12h' },
       (err, token) => {
-        if (err) throw err;
+        if (err) {
+          logger.error('JWT sign error in register', { error: err.message });
+          throw err;
+        }
+        logger.info('User registered successfully', { userId: user.id, email: user.email });
         res.status(201).json({
           success: true,
           token,
@@ -99,7 +121,7 @@ authController.register = async (req, res) => {  try {
       }
     );
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in register', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -107,35 +129,45 @@ authController.register = async (req, res) => {  try {
   }
 };
 
-// Login user
-authController.login = async (req, res) => {
+// Login user (by email or fullName)
+const login = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validation errors in login', { errors: errors.array() });
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password } = req.body;
+    const { identifier, password } = req.body; // identifier = email or fullName
 
-    // Check if user exists
-    const user = await User.findOne({ email });
+    logger.info('Login attempt', { identifier });
+
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { fullName: identifier }]
+    });
+
     if (!user) {
+      logger.warn('Login failed: user not found', { identifier });
       return res.status(400).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
-    // Validate password
+    logger.info('User found for login', { userId: user.id, identifier });
+
+    // Make sure password comparison is correct
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      logger.warn('Login failed: password mismatch', { identifier, userId: user.id });
       return res.status(400).json({
         success: false,
         message: 'Invalid credentials'
       });
     }
 
-    // Generate token
+    logger.info('Password match for login', { userId: user.id });
+
     const payload = {
       id: user.id,
       role: user.role
@@ -146,7 +178,11 @@ authController.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '12h' },
       (err, token) => {
-        if (err) throw err;
+        if (err) {
+          logger.error('JWT sign error in login', { error: err.message });
+          throw err;
+        }
+        logger.info('User logged in successfully', { userId: user.id, email: user.email });
         res.json({
           success: true,
           token,
@@ -161,7 +197,7 @@ authController.login = async (req, res) => {
       }
     );
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in login', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -170,26 +206,27 @@ authController.login = async (req, res) => {
 };
 
 // Get current user
-authController.getCurrentUser = async (req, res) => {
+const getCurrentUser = async (req, res) => {
   try {
-    // User is already in req from auth middleware
     const user = await User.findById(req.user.id)
       .select('-passwordHash')
       .populate('class', 'level trade year term');
 
     if (!user) {
+      logger.warn('User not found in getCurrentUser', { userId: req.user.id });
       return res.status(404).json({
         success: false,
         message: 'User not found'
       });
     }
 
+    logger.info('Fetched current user', { userId: user.id });
     res.json({
       success: true,
       user
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in getCurrentUser', { error: error.message, stack: error.stack });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -198,37 +235,37 @@ authController.getCurrentUser = async (req, res) => {
 };
 
 // Change password
-authController.changePassword = async (req, res) => {
+const changePassword = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validation errors in changePassword', { errors: errors.array(), userId: req.user.id });
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { currentPassword, newPassword } = req.body;
 
-    // Get user with password
     const user = await User.findById(req.user.id);
-
-    // Check current password
     const isMatch = await user.comparePassword(currentPassword);
+
     if (!isMatch) {
+      logger.warn('Current password incorrect in changePassword', { userId: req.user.id });
       return res.status(400).json({
         success: false,
         message: 'Current password is incorrect'
       });
     }
 
-    // Update password
     user.passwordHash = newPassword;
     await user.save();
 
+    logger.info('Password updated successfully', { userId: req.user.id });
     res.json({
       success: true,
       message: 'Password updated successfully'
     });
   } catch (error) {
-    console.error(error.message);
+    logger.error('Error in changePassword', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({
       success: false,
       message: 'Server Error'
@@ -236,4 +273,10 @@ authController.changePassword = async (req, res) => {
   }
 };
 
-module.exports = authController;
+// Export all functions individually
+module.exports = {
+  register,
+  login,
+  getCurrentUser,
+  changePassword
+};
