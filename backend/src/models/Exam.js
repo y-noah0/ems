@@ -60,8 +60,9 @@ const ExamSchema = new Schema({
   },
     type: {
     type: String,
-    enum: ['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'],
-    required: true
+    enum: ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'],
+    required: true,
+    default: 'quiz'
   },
   schedule: {
     start: {
@@ -85,6 +86,10 @@ const ExamSchema = new Schema({
       return this.questions.reduce((sum, q) => sum + q.maxScore, 0);
     }
   },
+  totalPoints: {
+    type: Number,
+    default: 0
+  },
   status: {
     type: String,
     enum: ['draft', 'scheduled', 'active', 'completed'],
@@ -105,5 +110,46 @@ ExamSchema.pre('save', function(next) {
   }
   next();
 });
+
+// Pre-save hook to calculate totalPoints
+ExamSchema.pre('save', async function(next) {
+  if (this.isModified('questions')) {
+    this.totalPoints = this.questions.reduce((sum, question) => {
+      return sum + (parseInt(question.maxScore) || 0);
+    }, 0);
+  }
+  next();
+});
+
+// Add static method to recalculate points for an exam
+ExamSchema.statics.recalculateTotalPoints = async function(examId) {
+  try {
+    const exam = await this.findById(examId);
+    if (!exam) return null;
+    
+    exam.totalPoints = exam.questions.reduce(
+      (sum, question) => sum + (question.maxScore || question.points || 0), 
+      0
+    );
+    await exam.save();
+    return exam;
+  } catch (error) {
+    console.error("Error recalculating exam points:", error);
+    return null;
+  }
+};
+
+// Add a static method to recalculate points
+ExamSchema.statics.recalculatePoints = async function(examId) {
+  const exam = await this.findById(examId);
+  if (!exam) return null;
+  
+  exam.totalPoints = exam.questions.reduce((sum, question) => {
+    return sum + (parseInt(question.maxScore) || 0);
+  }, 0);
+  
+  await exam.save();
+  return exam;
+};
 
 module.exports = mongoose.model('Exam', ExamSchema);

@@ -170,10 +170,35 @@ const examService = {
   getSubmissionById: async (submissionId) => {
     try {
       const response = await api.get(`/submissions/${submissionId}`);
-      return response.data.submission;
+      const data = response.data;
+      
+      // Handle data inconsistencies: ensure score and totalPoints fields exist
+      if (data.success && data.submission) {
+        const submission = data.submission;
+        
+        // Calculate score if missing
+        if (submission.status === 'graded' && (!submission.score || submission.score === 0)) {
+          submission.score = submission.answers.reduce(
+            (sum, answer) => sum + (parseInt(answer.score || answer.points || 0) || 0), 
+            0
+          );
+        }
+        
+        // Add points field for each answer if missing for frontend consistency
+        if (submission.answers) {
+          submission.answers = submission.answers.map(answer => ({
+            ...answer,
+            points: parseInt(answer.score || answer.points || 0) || 0
+          }));
+        }
+        
+        return submission;
+      }
+      
+      throw new Error('Invalid submission data received');
     } catch (error) {
-      console.error('Error fetching submission details:', error);
-      throw error.response ? error.response.data : { message: 'Failed to load submission. Please try again.' };
+      console.error('Error fetching submission:', error);
+      throw error;
     }
   },
 
@@ -200,10 +225,17 @@ const examService = {
   updateSubmissionGrades: async (submissionId, gradesData) => {
     try {
       const response = await api.post(`/submissions/${submissionId}/grade`, gradesData);
-      return response.data.submission;
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update grades');
+      }
+      
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('Error grading submission:', error);
-      throw error.response ? error.response.data : { message: 'Failed to save grades. Please try again.' };
+      console.error('Error updating submission grades:', error);
+      throw error;
     }
   },
   // Get all teacher submissions

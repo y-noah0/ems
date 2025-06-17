@@ -135,6 +135,15 @@ examController.getExamById = async (req, res) => {
       });
     }
 
+    // If totalPoints isn't calculated yet, calculate it
+    if (!exam.totalPoints) {
+      exam.totalPoints = exam.questions.reduce(
+        (total, question) => total + (question.maxScore || 0), 
+        0
+      );
+      await exam.save();
+    }
+
     // If user is a teacher, only allow access to their own exams
     if (req.user.role === 'teacher' && exam.teacher._id.toString() !== req.user.id) {
       return res.status(403).json({
