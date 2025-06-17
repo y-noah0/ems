@@ -193,6 +193,14 @@ router.get(
   submissionController.getStudentMarksByID
 );
 
+router.post(
+  '/:submissionId/update-grades',
+  authMiddleware.isTeacherOrDeanOrAdmin,
+  [check('grades', 'Grades should be an array').isArray()],
+  submissionController.updateSubmissionGrades
+);
+
+
 // @route   GET api/submissions/my-marks
 // @desc    Get marks for the currently logged in student
 // @access  Students

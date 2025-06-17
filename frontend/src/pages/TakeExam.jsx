@@ -277,11 +277,10 @@ const TakeExam = () => {
         <div className="mb-4">
           <p className="text-gray-800">{currentQuestion.text}</p>
         </div>
-        {/* Based on question type, render different input */}
+        {/* Render input based on question type */}
         {currentQuestion.type === 'MCQ' && (
           <div className="space-y-2">
             {Array.isArray(currentQuestion.options) && currentQuestion.options.map((option, idx) => {
-              // Support both string and object option formats
               const optionValue = typeof option === 'object' && option !== null
                 ? (option._id || option.value || JSON.stringify(option))
                 : option;
@@ -305,6 +304,36 @@ const TakeExam = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+        {currentQuestion.type === 'truefalse' && (
+          <div className="space-y-2">
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id={`true-${currentQuestion._id}`}
+                name={`question-${currentQuestion._id}`}
+                checked={currentAnswer.answer === 'true'}
+                onChange={() => handleAnswerChange(currentQuestion._id, 'true')}
+                className="mr-2"
+              />
+              <label htmlFor={`true-${currentQuestion._id}`} className="text-gray-700">
+                True
+              </label>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id={`false-${currentQuestion._id}`}
+                name={`question-${currentQuestion._id}`}
+                checked={currentAnswer.answer === 'false'}
+                onChange={() => handleAnswerChange(currentQuestion._id, 'false')}
+                className="mr-2"
+              />
+              <label htmlFor={`false-${currentQuestion._id}`} className="text-gray-700">
+                False
+              </label>
+            </div>
           </div>
         )}
         {currentQuestion.type === 'open' && (

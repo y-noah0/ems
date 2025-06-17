@@ -108,11 +108,11 @@ const ExamSchema = new Schema(
 });
 
 // Calculate total score when questions array changes
-ExamSchema.pre('save', function(next) {
+ExamSchema.pre('save', function (next) {
   if (this.isModified('questions')) {
     this.totalScore = this.questions.reduce((sum, q) => sum + q.maxScore, 0);
   }
-);
+});
 
 // Pre-save hook to calculate totalPoints
 ExamSchema.pre('save', function (next) {

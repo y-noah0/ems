@@ -198,23 +198,6 @@ const examService = {
     return response.data.classes;
   },
 
-  // Update submission with grades
-  updateSubmissionGrades: async (submissionId, gradesData) => {
-    try {
-      // Use PUT for updating grades (RESTful)
-      const response = await api.put(`/submissions/${submissionId}/grade`, gradesData);
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update grades');
-      }
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error updating submission grades:', error);
-      throw error;
-    }
-  },
 
   // Get all teacher submissions
   getTeacherSubmissions: async () => {

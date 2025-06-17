@@ -752,7 +752,7 @@ submissionController.getSubmissionDetails = async (req, res) => {
         message: 'Submission not found'
       });
     }
-    
+
     // Check permissions
     const isStudent = req.user.role === 'student';
     const isTeacher = req.user.role === 'teacher' || req.user.role === 'dean';
@@ -796,7 +796,7 @@ submissionController.getSubmissionDetails = async (req, res) => {
         answer: a.answer
       }));
     }
-    
+
     res.json({
       success: true,
       submission: responseSubmission
@@ -848,10 +848,10 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
   try {
     const { year, term, assessmentType, studentId } = req.query;
     const userRole = req.user.role;
-    
+
     // Determine which student's results to fetch based on user role and request
     let targetStudentId;
-    
+
     if (userRole === 'student') {
       // Students can only access their own results
       targetStudentId = req.user.id;
@@ -864,10 +864,10 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
         message: 'Unauthorized access to results'
       });
     }
-    
+
     // Get valid assessment types
     const validTypes = ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'];
-    
+
     if (assessmentType && !validTypes.includes(assessmentType)) {
       return res.status(400).json({
         success: false,
@@ -875,23 +875,23 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
         validTypes: validTypes
       });
     }
-    
+
     // Find exams of specified type (or all types if not specified)
     const examQuery = { status: 'completed' };
     if (assessmentType) {
       examQuery.type = assessmentType;
     }
-    
+
     const exams = await Exam.find(examQuery)
       .populate('subject', 'name')
       .populate('class', 'level trade year term')
       .populate('teacher', 'fullName');
-    
+
     // Filter by year and term if provided
     const filteredExams = exams.filter(exam => {
       // Check if exam.class exists before accessing properties
       if (!exam.class) return false;
-      
+
       if (year && term) {
         return exam.class.year === year && exam.class.term === term;
       }
@@ -903,19 +903,19 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
       }
       return true;
     });
-    
+
     const examIds = filteredExams.map(exam => exam._id);
-    
+
     // Find submissions - either for a specific student or all students
     const submissionQuery = {
       exam: { $in: examIds },
       status: 'graded'
     };
-    
+
     if (targetStudentId) {
       submissionQuery.student = targetStudentId;
     }
-    
+
     const submissions = await Submission.find(submissionQuery)
       .populate({
         path: 'exam',
@@ -926,30 +926,30 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
         ]
       })
       .populate('student', 'fullName registrationNumber');
-    
+
     // Different result processing based on whether viewing individual student or aggregated data
     if (targetStudentId) {
       // Individual student results - organize by subject
       const resultsBySubject = {};
-      
+
       submissions.forEach(submission => {
         // Check if submission.exam and submission.exam.subject exist
         if (!submission.exam || !submission.exam.subject) return;
-        
+
         const subjectId = submission.exam.subject._id ? submission.exam.subject._id.toString() : 'unknown';
         const subjectName = submission.exam.subject.name || 'Unknown Subject';
-        
+
         if (!resultsBySubject[subjectId]) {
           resultsBySubject[subjectId] = {
             subject: subjectName,
             results: []
           };
         }
-        
+
         const score = submission.score || 0;
         const totalPoints = submission.totalPoints || (submission.exam ? submission.exam.totalPoints || 100 : 100);
         const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-        
+
         // Add result only if we have a valid class
         if (submission.exam && submission.exam.class) {
           resultsBySubject[subjectId].results.push({
@@ -962,7 +962,7 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
           });
         }
       });
-      
+
       // Calculate average for each subject
       Object.values(resultsBySubject).forEach(subject => {
         if (subject.results.length > 0) {
@@ -972,14 +972,14 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
           subject.averagePercentage = 0;
         }
       });
-      
+
       // Get student info if not a student viewing own results
       let student = null;
       if (userRole !== 'student' && targetStudentId) {
         const User = require('../models/User');
         student = await User.findById(targetStudentId, 'fullName registrationNumber');
       }
-      
+
       res.json({
         success: true,
         assessmentType: assessmentType || 'all',
@@ -990,15 +990,15 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
       // For admins, deans, and teachers viewing aggregated results
       // Group by class and subject
       const aggregatedResults = {};
-      
+
       submissions.forEach(submission => {
         // Check if necessary properties exist
         if (!submission.exam || !submission.exam.class || !submission.exam.subject || !submission.student) return;
-        
+
         const classId = submission.exam.class._id ? submission.exam.class._id.toString() : 'unknown';
         const subjectId = submission.exam.subject._id ? submission.exam.subject._id.toString() : 'unknown';
         const classKey = `${classId}-${subjectId}`;
-        
+
         if (!aggregatedResults[classKey]) {
           aggregatedResults[classKey] = {
             class: {
@@ -1020,36 +1020,36 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
             students: {}
           };
         }
-        
+
         // Count unique students
         if (submission.student._id) {
           aggregatedResults[classKey].students[submission.student._id.toString()] = true;
         }
-        
+
         // Track exam types
         const examType = submission.exam.type || 'unknown';
         if (!aggregatedResults[classKey].examTypes[examType]) {
           aggregatedResults[classKey].examTypes[examType] = 0;
         }
         aggregatedResults[classKey].examTypes[examType]++;
-        
+
         // Update average calculation
         const score = submission.score || 0;
         const totalPoints = submission.totalPoints || (submission.exam ? submission.exam.totalPoints || 100 : 100);
         const percentage = totalPoints > 0 ? (score / totalPoints) * 100 : 0;
-        
+
         const currentTotal = aggregatedResults[classKey].averageScore * aggregatedResults[classKey].examCount;
         aggregatedResults[classKey].examCount++;
         aggregatedResults[classKey].averageScore = (currentTotal + percentage) / aggregatedResults[classKey].examCount;
       });
-      
+
       // Convert students object to count and finalize
       Object.values(aggregatedResults).forEach(item => {
         item.studentCount = Object.keys(item.students).length;
         item.averageScore = Math.round(item.averageScore);
         delete item.students; // Remove the temporary tracking object
       });
-      
+
       res.json({
         success: true,
         assessmentType: assessmentType || 'all',
@@ -1070,10 +1070,10 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
   try {
     const { year, term, studentId } = req.query;
     const userRole = req.user.role;
-    
+
     // Determine which student's results to fetch based on user role and request
     let targetStudentId;
-    
+
     if (userRole === 'student') {
       // Students can only access their own results
       targetStudentId = req.user.id;
@@ -1086,15 +1086,15 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
         message: 'Student ID is required for detailed view'
       });
     }
-    
+
     // Find all completed exams
     const exams = await Exam.find({
       status: 'completed'
     })
-    .populate('subject', 'name')
-    .populate('class', 'level trade year term')
-    .populate('teacher', 'fullName');
-    
+      .populate('subject', 'name')
+      .populate('class', 'level trade year term')
+      .populate('teacher', 'fullName');
+
     // Filter by year and term if provided
     const filteredExams = exams.filter(exam => {
       if (year && term) {
@@ -1108,34 +1108,34 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
       }
       return true;
     });
-    
+
     const examIds = filteredExams.map(exam => exam._id);
-    
+
     // Find student's submissions
     const submissions = await Submission.find({
       student: targetStudentId,
       exam: { $in: examIds },
       status: 'graded'
     })
-    .populate({
-      path: 'exam',
-      populate: [
-        { path: 'subject', select: 'name' },
-        { path: 'class', select: 'level trade year term' },
-        { path: 'teacher', select: 'fullName' }
-      ]
-    })
-    .populate('student', 'fullName registrationNumber');
-    
+      .populate({
+        path: 'exam',
+        populate: [
+          { path: 'subject', select: 'name' },
+          { path: 'class', select: 'level trade year term' },
+          { path: 'teacher', select: 'fullName' }
+        ]
+      })
+      .populate('student', 'fullName registrationNumber');
+
     // Organize results by subject with separated assessment types
     const resultsBySubject = {};
     const validTypes = ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'];
-    
+
     submissions.forEach(submission => {
       const subjectId = submission.exam.subject._id.toString();
       const subjectName = submission.exam.subject.name;
       const examType = submission.exam.type;
-      
+
       if (!resultsBySubject[subjectId]) {
         // Initialize all assessment type arrays
         const subjectResult = {
@@ -1143,19 +1143,19 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
           teacher: submission.exam.teacher ? submission.exam.teacher.fullName : 'Unknown',
           other: [] // For any non-standard types
         };
-        
+
         // Initialize arrays for all valid assessment types
         validTypes.forEach(type => {
           subjectResult[type] = [];
         });
-        
+
         resultsBySubject[subjectId] = subjectResult;
       }
-      
+
       const score = submission.score || 0;
       const totalPoints = submission.totalPoints || submission.exam.totalPoints || 100;
       const percentage = Math.round((score / totalPoints) * 100);
-      
+
       const resultObject = {
         examId: submission.exam._id,
         title: submission.exam.title,
@@ -1170,7 +1170,7 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
           term: submission.exam.class.term
         }
       };
-      
+
       // Add to the appropriate assessment type array
       if (validTypes.includes(examType)) {
         resultsBySubject[subjectId][examType].push(resultObject);
@@ -1178,13 +1178,13 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
         resultsBySubject[subjectId].other.push(resultObject);
       }
     });
-    
+
     // Calculate averages for each assessment type and final combined average
     Object.values(resultsBySubject).forEach(subject => {
       // Calculate average for each assessment type
       let totalWeightedScore = 0;
       let totalWeight = 0;
-      
+
       // Define weights for different assessment types
       const weights = {
         assessment1: 0.25,
@@ -1193,14 +1193,14 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
         homework: 0.05,
         quiz: 0.05
       };
-      
+
       // Calculate averages for each type
       validTypes.forEach(type => {
         if (subject[type] && subject[type].length > 0) {
           const totalPercentage = subject[type].reduce((sum, result) => sum + result.percentage, 0);
           const average = Math.round(totalPercentage / subject[type].length);
           subject[`${type}Average`] = average;
-          
+
           if (weights[type]) {
             totalWeightedScore += average * weights[type];
             totalWeight += weights[type];
@@ -1209,7 +1209,7 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
           subject[`${type}Average`] = 0;
         }
       });
-      
+
       // Calculate overall average for 'other' type if present
       if (subject.other.length > 0) {
         const otherTotal = subject.other.reduce((sum, result) => sum + result.percentage, 0);
@@ -1217,25 +1217,25 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
       } else {
         subject.otherAverage = 0;
       }
-      
+
       // Normalize final grade calculation if some components are missing
       if (totalWeight > 0) {
         subject.finalGrade = Math.round(totalWeightedScore / totalWeight);
       } else {
         subject.finalGrade = 0;
       }
-      
+
       // Add grade letter
       subject.gradeLetter = calculateGradeLetter(subject.finalGrade);
     });
-    
+
     // Get student details for the response
     const student = await User.findById(targetStudentId, 'fullName registrationNumber class');
     let studentClass = null;
     if (student && student.class) {
       studentClass = await Class.findById(student.class, 'level trade year term');
     }
-    
+
     res.json({
       success: true,
       student: student ? {
@@ -1295,7 +1295,7 @@ submissionController.getStudentResultsByAssessmentType = async (req, res) => {
 submissionController.getStudentMarksByID = async (req, res) => {
   try {
     const { studentId, assessmentType, year, term } = req.query;
-    
+
     // Validate student ID is provided
     if (!studentId) {
       return res.status(400).json({
@@ -1303,7 +1303,7 @@ submissionController.getStudentMarksByID = async (req, res) => {
         message: 'Student ID is required'
       });
     }
-    
+
     // Only allow teachers, deans, and admins to access this endpoint
     if (!['teacher', 'dean', 'admin'].includes(req.user.role)) {
       return res.status(403).json({
@@ -1311,7 +1311,7 @@ submissionController.getStudentMarksByID = async (req, res) => {
         message: 'Unauthorized access to student marks'
       });
     }
-    
+
     // Verify the student exists
     const User = require('../models/User');
     const student = await User.findById(studentId);
@@ -1321,12 +1321,12 @@ submissionController.getStudentMarksByID = async (req, res) => {
         message: 'Student not found'
       });
     }
-    
+
     // If a specific assessment type is requested, use that specific endpoint
     if (assessmentType) {
       // Modify the request to use the existing functions
       req.query.studentId = studentId;
-      
+
       // Route to the appropriate handler based on assessment type
       switch (assessmentType) {
         case 'assessment1':
@@ -1349,16 +1349,16 @@ submissionController.getStudentMarksByID = async (req, res) => {
           });
       }
     }
-    
+
     // If no assessment type is specified, fetch all types of results
     // Set up base queries
     const Class = require('../models/Class');
-    
+
     // Find relevant class if year and term are provided
     let classQuery = {};
     if (year) classQuery.year = year;
     if (term) classQuery.term = term;
-    
+
     // Get the student's class information - either current or from specified year/term
     let studentClasses = [];
     if (Object.keys(classQuery).length > 0) {
@@ -1367,41 +1367,41 @@ submissionController.getStudentMarksByID = async (req, res) => {
       const currentClass = await Class.findById(student.class);
       if (currentClass) studentClasses = [currentClass];
     }
-    
+
     const classIds = studentClasses.map(c => c._id);
-    
+
     // Find all completed exams relevant to this student
-    const examQuery = { 
+    const examQuery = {
       status: 'completed'
     };
-    
+
     // Add class filter if we have class information
     if (classIds.length > 0) {
       examQuery.class = { $in: classIds };
     }
-    
+
     const exams = await Exam.find(examQuery)
       .populate('subject', 'name')
       .populate('class', 'level trade year term')
       .populate('teacher', 'fullName');
-    
+
     const examIds = exams.map(exam => exam._id);
-    
+
     // Find student's submissions
     const submissions = await Submission.find({
       student: studentId,
       exam: { $in: examIds },
       status: 'graded'
     })
-    .populate({
-      path: 'exam',
-      populate: [
-        { path: 'subject', select: 'name' },
-        { path: 'class', select: 'level trade year term' },
-        { path: 'teacher', select: 'fullName' }
-      ]
-    });
-    
+      .populate({
+        path: 'exam',
+        populate: [
+          { path: 'subject', select: 'name' },
+          { path: 'class', select: 'level trade year term' },
+          { path: 'teacher', select: 'fullName' }
+        ]
+      });
+
     // Format the results by assessment type
     const validTypes = ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'];
     const resultsByType = {
@@ -1411,23 +1411,23 @@ submissionController.getStudentMarksByID = async (req, res) => {
         registrationNumber: student.registrationNumber
       }
     };
-    
+
     // Initialize results structure
     validTypes.forEach(type => {
       resultsByType[type] = [];
     });
-    
+
     // Categorize submissions by assessment type
     submissions.forEach(submission => {
       if (!submission.exam) return;
-      
+
       const examType = submission.exam.type;
       if (!validTypes.includes(examType)) return;
-      
+
       const score = submission.score || 0;
       const totalPoints = submission.totalPoints || submission.exam.totalPoints || 100;
       const percentage = Math.round((score / totalPoints) * 100);
-      
+
       resultsByType[examType].push({
         examId: submission.exam._id,
         title: submission.exam.title || 'Untitled',
@@ -1445,7 +1445,7 @@ submissionController.getStudentMarksByID = async (req, res) => {
         teacher: submission.exam.teacher ? submission.exam.teacher.fullName : 'Unknown'
       });
     });
-    
+
     // Calculate averages for each assessment type
     validTypes.forEach(type => {
       if (resultsByType[type].length > 0) {
@@ -1455,7 +1455,7 @@ submissionController.getStudentMarksByID = async (req, res) => {
         resultsByType[`${type}Average`] = 0;
       }
     });
-    
+
     // Calculate combined weighted average
     const weights = {
       assessment1: 0.25,
@@ -1464,17 +1464,17 @@ submissionController.getStudentMarksByID = async (req, res) => {
       homework: 0.05,
       quiz: 0.05
     };
-    
+
     let totalWeightedScore = 0;
     let totalWeight = 0;
-    
+
     validTypes.forEach(type => {
       if (resultsByType[`${type}Average`] > 0) {
         totalWeightedScore += resultsByType[`${type}Average`] * weights[type];
         totalWeight += weights[type];
       }
     });
-    
+
     if (totalWeight > 0) {
       resultsByType.finalGrade = Math.round(totalWeightedScore / totalWeight);
       resultsByType.gradeLetter = calculateGradeLetter(resultsByType.finalGrade);
@@ -1482,14 +1482,14 @@ submissionController.getStudentMarksByID = async (req, res) => {
       resultsByType.finalGrade = 0;
       resultsByType.gradeLetter = 'N/A';
     }
-    
+
     // Group by subject for a more organized view
     const resultsBySubject = {};
-    
+
     validTypes.forEach(type => {
       resultsByType[type].forEach(result => {
         const subject = result.subject;
-        
+
         if (!resultsBySubject[subject]) {
           resultsBySubject[subject] = {
             subject,
@@ -1500,21 +1500,21 @@ submissionController.getStudentMarksByID = async (req, res) => {
             quiz: []
           };
         }
-        
+
         resultsBySubject[subject][type].push(result);
       });
     });
-    
+
     // Calculate subject-specific averages
     Object.values(resultsBySubject).forEach(subjectData => {
       let subjectTotalWeightedScore = 0;
       let subjectTotalWeight = 0;
-      
+
       validTypes.forEach(type => {
         if (subjectData[type].length > 0) {
           const totalPercentage = subjectData[type].reduce((sum, item) => sum + item.percentage, 0);
           subjectData[`${type}Average`] = Math.round(totalPercentage / subjectData[type].length);
-          
+
           if (weights[type]) {
             subjectTotalWeightedScore += subjectData[`${type}Average`] * weights[type];
             subjectTotalWeight += weights[type];
@@ -1523,7 +1523,7 @@ submissionController.getStudentMarksByID = async (req, res) => {
           subjectData[`${type}Average`] = 0;
         }
       });
-      
+
       if (subjectTotalWeight > 0) {
         subjectData.finalGrade = Math.round(subjectTotalWeightedScore / subjectTotalWeight);
         subjectData.gradeLetter = calculateGradeLetter(subjectData.finalGrade);
@@ -1532,7 +1532,7 @@ submissionController.getStudentMarksByID = async (req, res) => {
         subjectData.gradeLetter = 'N/A';
       }
     });
-    
+
     res.json({
       success: true,
       student: resultsByType.student,
@@ -1554,7 +1554,7 @@ submissionController.getStudentMarksByID = async (req, res) => {
       },
       bySubject: Object.values(resultsBySubject)
     });
-    
+
   } catch (error) {
     console.error('Error fetching student marks by ID:', error.message);
     res.status(500).json({
@@ -1563,6 +1563,110 @@ submissionController.getStudentMarksByID = async (req, res) => {
     });
   }
 };
+
+
+
+// Update grades and scores for a submitted exam (teacher/dean/admin only, teacher must own the exam)
+submissionController.updateSubmissionGrades = async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const { grades } = req.body;
+
+    // Find the submission
+    const submission = await Submission.findById(submissionId);
+    if (!submission) {
+      logger.warn('Submission not found in updateSubmissionGrades', { submissionId, userId: req.user.id });
+      return res.status(404).json({
+        success: false,
+        message: 'Submission not found'
+      });
+    }
+
+    // Only allow update if submission is submitted or auto-submitted
+    if (!['submitted', 'auto-submitted'].includes(submission.status)) {
+      logger.warn('Submission not gradable in updateSubmissionGrades', { submissionId, userId: req.user.id, status: submission.status });
+      return res.status(400).json({
+        success: false,
+        message: 'Submission is not in a gradable state'
+      });
+    }
+
+    // Get the exam for totalPoints and teacher info
+    const exam = await Exam.findById(submission.exam);
+    if (!exam) {
+      logger.warn('Exam not found in updateSubmissionGrades', { examId: submission.exam, userId: req.user.id });
+      return res.status(404).json({
+        success: false,
+        message: 'Exam not found'
+      });
+    }
+
+    // Authorization: Only the teacher who owns the exam, dean, or admin can grade
+    const teacherId = typeof exam.teacher === 'object' ? exam.teacher.toString() : exam.teacher;
+    if (
+      req.user.role === 'teacher' && teacherId !== req.user.id
+    ) {
+      logger.warn('Unauthorized teacher tried to grade submission', { submissionId, userId: req.user.id, examTeacher: teacherId });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to grade this submission'
+      });
+    }
+    if (!['teacher', 'dean', 'admin'].includes(req.user.role)) {
+      logger.warn('Unauthorized role tried to grade submission', { submissionId, userId: req.user.id, role: req.user.role });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to grade this submission'
+      });
+    }
+
+    // Update answers with grades
+    let modified = false;
+    grades.forEach(grade => {
+      const idx = submission.answers.findIndex(
+        answer => answer.questionId.toString() === grade.questionId
+      );
+      if (idx !== -1) {
+        submission.answers[idx].score = parseInt(grade.score) || 0;
+        submission.answers[idx].feedback = grade.feedback || '';
+        submission.answers[idx].graded = true;
+        modified = true;
+      }
+    });
+
+    if (modified) {
+      // Calculate total score
+      const totalScore = submission.answers.reduce((sum, ans) => sum + (ans.score || 0), 0);
+      submission.score = totalScore;
+      submission.totalPoints = exam.totalPoints;
+      submission.status = 'graded';
+      submission.gradedBy = req.user.id;
+      submission.gradedAt = new Date();
+      await submission.save();
+      logger.info('Submission graded successfully', { submissionId, userId: req.user.id, score: submission.score });
+    } else {
+      logger.info('No grades modified in updateSubmissionGrades', { submissionId, userId: req.user.id });
+    }
+
+    res.json({
+      success: true,
+      message: 'Grades updated successfully',
+      submission: {
+        ...submission.toObject(),
+        score: submission.score,
+        totalPoints: submission.totalPoints
+      }
+    });
+  } catch (error) {
+    logger.error('Error in updateSubmissionGrades', { error: error.message, stack: error.stack, userId: req.user.id });
+    res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
+};
+
+
 
 // Get the currently logged-in student's marks
 submissionController.getMyMarks = async (req, res) => {

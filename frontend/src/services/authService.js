@@ -27,7 +27,7 @@ const authService = {
   login: async (identifier, password) => {
     try {
       console.log('Attempting login with:', { identifier, password });
-      const response = await api.post('/auth/login', { email:identifier, password });
+      const response = await api.post('/auth/login', { identifier, password });
 
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);

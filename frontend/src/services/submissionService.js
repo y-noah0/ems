@@ -67,8 +67,8 @@ const submissionService = {
   // Log violation
   logViolation: async (submissionId, violationType, details) => {
     try {
-      const response = await api.post('/submissions/log-violation', { 
-        submissionId, 
+      const response = await api.post('/submissions/log-violation', {
+        submissionId,
         violationType,
         details
       });
@@ -128,7 +128,17 @@ const submissionService = {
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
-  }
+  },
+
+  // Update grades for a submission
+  updateSubmissionGrades: async (submissionId, grades) => {
+    try {
+      const response = await api.post(`/submissions/${submissionId}/update-grades`, { grades });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
 };
 
 export default submissionService;

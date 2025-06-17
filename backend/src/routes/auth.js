@@ -10,7 +10,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 router.post(
   '/register',
   [
-    check('identifier', 'Please include a valid identifier').isEmail(),
+    check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password is required and should be at least 6 characters').isLength({ min: 6 }),
     check('fullName', 'Full name is required').notEmpty()
   ],
