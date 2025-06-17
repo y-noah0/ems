@@ -487,7 +487,6 @@ submissionController.getStudentSubmissions = async (req, res) => {
 submissionController.getExamSubmissions = async (req, res) => {
   try {
     const examId = req.params.examId;
-
     // Get exam with totalPoints
     const exam = await Exam.findById(examId);
     if (!exam) {
@@ -496,7 +495,6 @@ submissionController.getExamSubmissions = async (req, res) => {
         message: 'Exam not found'
       });
     }
-
     // Check if teacher is authorized to access submissions
     const examTeacher = exam.teacher;
     const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
@@ -533,7 +531,6 @@ submissionController.getExamSubmissions = async (req, res) => {
         // If no score or score is zero, recalculate
         if (!subObj.score || subObj.score === 0) {
           const calculatedScore = sub.calculateScore();
-
           // Update in database
           if (calculatedScore !== subObj.score) {
             sub.score = calculatedScore;
@@ -541,14 +538,12 @@ submissionController.getExamSubmissions = async (req, res) => {
             subObj.score = calculatedScore;
           }
         }
-
         // Ensure totalPoints is set
         if (!subObj.totalPoints) {
           sub.totalPoints = exam.totalPoints;
           await sub.save();
           subObj.totalPoints = exam.totalPoints;
         }
-
         // Calculate percentage
         subObj.percentage = Math.round((subObj.score / subObj.totalPoints) * 100);
       } else {
@@ -576,7 +571,6 @@ submissionController.gradeOpenQuestions = async (req, res) => {
   try {
     const submissionId = req.params.id;
     const { grades } = req.body;
-
     // Find submission with exam data
     const submission = await Submission.findById(submissionId);
     if (!submission) {
@@ -585,7 +579,6 @@ submissionController.gradeOpenQuestions = async (req, res) => {
         message: 'Submission not found'
       });
     }
-
     // Get exam to ensure we have totalPoints
     const exam = await Exam.findById(submission.exam);
     if (!exam) {
@@ -594,7 +587,6 @@ submissionController.gradeOpenQuestions = async (req, res) => {
         message: 'Exam not found'
       });
     }
-
     // Verify teacher authorization
     const examTeacher = exam.teacher;
     const teacherId = typeof examTeacher === 'object' ? examTeacher.toString() : examTeacher;
@@ -605,7 +597,6 @@ submissionController.gradeOpenQuestions = async (req, res) => {
         message: 'You are not authorized to grade this submission'
       });
     }
-
     // Ensure exam has totalPoints calculated
     if (!exam.totalPoints || exam.totalPoints === 0) {
       exam.totalPoints = exam.questions.reduce((sum, q) => {
@@ -613,14 +604,12 @@ submissionController.gradeOpenQuestions = async (req, res) => {
       }, 0);
       await exam.save();
     }
-
     // Apply grades
     let modified = false;
     grades.forEach(grade => {
       const answerIndex = submission.answers.findIndex(
         answer => answer.questionId.toString() === grade.questionId
       );
-
       if (answerIndex !== -1) {
         const scoreValue = parseInt(grade.score) || 0;
         submission.answers[answerIndex].score = scoreValue;
@@ -747,7 +736,6 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
 submissionController.getSubmissionDetails = async (req, res) => {
   try {
     const submissionId = req.params.id;
-
     // Find submission with populated data
     const submission = await Submission.findById(submissionId)
       .populate({
@@ -758,14 +746,13 @@ submissionController.getSubmissionDetails = async (req, res) => {
         ]
       })
       .populate('student', 'fullName firstName lastName registrationNumber');
-
     if (!submission) {
       return res.status(404).json({
         success: false,
         message: 'Submission not found'
       });
     }
-
+    
     // Check permissions
     const isStudent = req.user.role === 'student';
     const isTeacher = req.user.role === 'teacher' || req.user.role === 'dean';
@@ -780,7 +767,6 @@ submissionController.getSubmissionDetails = async (req, res) => {
       submission.totalPoints = exam.totalPoints;
       await submission.save();
     }
-
     // Ensure answers have consistent scores
     if (submission.status === 'graded') {
       let needsUpdate = false;
@@ -790,13 +776,11 @@ submissionController.getSubmissionDetails = async (req, res) => {
           needsUpdate = true;
         }
       });
-
       // Calculate score if missing
       if (!submission.score || submission.score === 0) {
         submission.score = submission.calculateScore();
         needsUpdate = true;
       }
-
       if (needsUpdate) {
         await submission.save();
       }
@@ -812,7 +796,7 @@ submissionController.getSubmissionDetails = async (req, res) => {
         answer: a.answer
       }));
     }
-
+    
     res.json({
       success: true,
       submission: responseSubmission
