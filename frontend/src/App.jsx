@@ -7,7 +7,7 @@ import useFullscreen from './hooks/useFullscreen';
 import LoginPage from './pages/LoginPage';
 import StudentDashboard from './pages/StudentDashboard';
 import TakeExam from './pages/TakeExam';
-import DeanDashboard from './pages/DeanDashboard';
+import DeanDashboard from './components/dashboard/DeanDashboard';
 import ClassesManagement from './pages/ClassesManagement';
 import ClassView from './pages/ClassView';
 import SubjectsManagement from './pages/SubjectsManagement';
