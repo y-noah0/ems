@@ -4,6 +4,11 @@ const Subject = require('../models/Subject');
 const User = require('../models/User');
 const { check, validationResult, param } = require('express-validator');
 const winston = require('winston');
+const mongoose = require('mongoose');
+const { validateEntity, validateEntities } = require('../utils/entityValidator');
+const { checkScheduleConflicts } = require('../utils/scheduleValidator');
+const { toUTC } = require('../utils/dateUtils');
+const { logAudit } = require('../utils/auditLogger');
 
 // Temporary sanitize function (replace with actual implementation if available)
 const sanitize = (value) => String(value || '');
@@ -31,13 +36,14 @@ if (process.env.NODE_ENV !== 'production') {
 // --- Validation Rules ---
 const allowedExamTypes = ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'];
 
+// Define validation arrays
 const validateCreateExam = [
   check('title').notEmpty().withMessage('Title is required'),
   check('type').isIn(allowedExamTypes).withMessage('Invalid exam type'),
   check('classIds').isArray({ min: 1 }).withMessage('At least one class ID is required'),
-  check('classIds.*').isMongoId().withMessage('Invalid class ID'),
-  check('subjectId').isMongoId().withMessage('Invalid subject ID'),
-  check('teacherId').isMongoId().withMessage('Invalid teacher ID'),
+  check('classIds.*').isMongoId().withMessage('Invalid class ID format'),
+  check('subjectId').isMongoId().withMessage('Invalid subject ID format'),
+  check('teacherId').isMongoId().withMessage('Invalid teacher ID format'),
   check('schedule.start').isISO8601().toDate().withMessage('Start time is required and must be a valid date'),
   check('schedule.duration').isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes'),
   check('questions').isArray({ min: 1 }).withMessage('At least one question is required'),
@@ -50,8 +56,8 @@ const validateUpdateExam = [
   check('title').optional().notEmpty().withMessage('Title cannot be empty'),
   check('type').optional().isIn(allowedExamTypes).withMessage('Invalid exam type'),
   check('classIds').optional().isArray({ min: 1 }).withMessage('At least one class ID is required'),
-  check('classIds.*').optional().isMongoId().withMessage('Invalid class ID'),
-  check('subjectId').optional().isMongoId().withMessage('Invalid subject ID'),
+  check('classIds.*').optional().isMongoId().withMessage('Invalid class ID format'),
+  check('subjectId').optional().isMongoId().withMessage('Invalid subject ID format'),
   check('schedule.start').optional().isISO8601().toDate().withMessage('Invalid schedule start date'),
   check('schedule.duration').optional().isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes'),
   check('questions').optional().isArray(),
@@ -61,11 +67,11 @@ const validateUpdateExam = [
 ];
 
 const validateExamIdParam = [
-  param('examId').isMongoId().withMessage('Invalid exam ID')
+  param('examId').isMongoId().withMessage('Invalid exam ID format')
 ];
 
 const validateScheduleExam = [
-  check('start').isISO8601().toDate().withMessage('Invalid start date'),
+  check('start').isISO8601().toDate().withMessage('Invalid start date format'),
   check('duration').isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes')
 ];
 // --- End Validation Rules ---
@@ -77,8 +83,10 @@ exports.createExam = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      logger.warn('Validation errors in createExam', { errors: errors.array(), userId: req.user.id });
       return res.status(400).json({ success: false, errors: errors.array() });
     }
+    
     const {
       title,
       type,
@@ -90,47 +98,109 @@ exports.createExam = async (req, res) => {
       instructions
     } = req.body;
 
-    // Validate referenced documents
-    const subject = await Subject.findById(subjectId);
-    if (!subject) return res.status(404).json({ success: false, message: 'Subject not found' });
+    // Validate referenced documents with soft-delete check
+    try {
+      const subject = await validateEntity(Subject, subjectId, 'Subject');
+      const teacher = await validateEntity(User, teacherId, 'Teacher');
+      const classes = await validateEntities(Class, classIds, 'Classes');
 
-    const teacher = await User.findById(teacherId);
-    if (!teacher || teacher.role !== 'teacher') {
-      return res.status(404).json({ success: false, message: 'Teacher not found or invalid' });
+      // Verify teacher is valid
+      if (teacher.role !== 'teacher') {
+        return res.status(400).json({ 
+          success: false, 
+          message: `User with ID ${teacherId} is not a teacher but has role: ${teacher.role}`
+        });
+      }
+
+      // Verify teacher matches the authenticated user
+      if (teacher._id.toString() !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          message: 'You are not authorized to create exams for other teachers'
+        });
+      }
+
+      // Verify teacher is assigned to subject
+      if (subject.teacher.toString() !== teacherId) {
+        return res.status(403).json({
+          success: false,
+          message: `Teacher ${teacher.fullName} (ID: ${teacherId}) is not assigned to subject ${subject.name} (ID: ${subjectId})`
+        });
+      }
+
+      // Convert schedule times to UTC
+      const scheduleStart = toUTC(schedule.start);
+      
+      // Check for scheduling conflicts
+      const conflictCheck = await checkScheduleConflicts(
+        null, // No examId for new exam
+        classIds,
+        scheduleStart,
+        schedule.duration
+      );
+
+      if (conflictCheck.hasConflict) {
+        const conflictingExam = conflictCheck.exams[0];
+        return res.status(400).json({
+          success: false,
+          message: `Scheduling conflict with exam "${conflictingExam.title}" at ${new Date(conflictingExam.schedule.start).toISOString()}`,
+          conflicts: conflictCheck.exams
+        });
+      }
+
+      // Prepare questions array
+      const preparedQuestions = questions.map(q => ({
+        type: q.type,
+        text: q.text,
+        options: q.options || [],
+        correctAnswer: q.correctAnswer || '',
+        maxScore: q.maxScore
+      }));
+
+      const exam = new Exam({
+        title,
+        type,
+        classes: classIds,
+        subject: subjectId,
+        teacher: teacherId,
+        schedule: {
+          start: scheduleStart,
+          duration: schedule.duration
+        },
+        questions: preparedQuestions,
+        instructions: instructions || undefined
+      });
+
+      await exam.save();
+      
+      // Add audit log
+      await logAudit(
+        'exam',
+        exam._id,
+        'create',
+        req.user.id,
+        null,
+        { 
+          title: exam.title, 
+          status: exam.status, 
+          schedule: exam.schedule 
+        }
+      );
+
+      logger.info('Exam created successfully', { 
+        examId: exam._id, 
+        teacherId: req.user.id 
+      });
+      
+      res.status(201).json({ success: true, exam });
+    } catch (validationError) {
+      return res.status(validationError.statusCode || 400).json({ 
+        success: false, 
+        message: validationError.message 
+      });
     }
-
-    const classes = await Class.find({ _id: { $in: classIds } });
-    if (classes.length !== classIds.length) {
-      return res.status(404).json({ success: false, message: 'One or more classes not found' });
-    }
-
-    // Prepare questions array
-    const preparedQuestions = questions.map(q => ({
-      type: q.type,
-      text: q.text,
-      options: q.options || [],
-      correctAnswer: q.correctAnswer || '',
-      maxScore: q.maxScore
-    }));
-
-    const exam = new Exam({
-      title,
-      type,
-      classes: classIds,
-      subject: subjectId,
-      teacher: teacherId,
-      schedule: {
-        start: schedule.start,
-        duration: schedule.duration
-      },
-      questions: preparedQuestions,
-      instructions: instructions || undefined
-    });
-
-    await exam.save();
-    res.status(201).json({ success: true, exam });
   } catch (error) {
-    logger.error('createExam error', { error: error.message });
+    logger.error('createExam error', { error: error.message, stack: error.stack });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -456,43 +526,68 @@ exports.activateExam = async (req, res) => {
     }
 
     const { examId } = req.params;
-    const sanitizedExamId = sanitize(examId);
+    
+    try {
+      const exam = await validateEntity(Exam, examId, 'Exam');
 
-    const exam = await Exam.findById(sanitizedExamId);
-    if (!exam) {
-      logger.warn('Exam not found for activation', { examId: sanitizedExamId, userId: req.user.id });
-      return res.status(404).json({ success: false, message: 'Exam not found' });
-    }
+      if (exam.teacher.toString() !== req.user.id) {
+        logger.warn('Unauthorized attempt to activate exam', { userId: req.user.id, examId });
+        return res.status(403).json({
+          success: false,
+          message: 'You are not authorized to activate this exam'
+        });
+      }
 
-    if (exam.teacher.toString() !== req.user.id) {
-      logger.warn('Unauthorized attempt to activate exam', { userId: req.user.id, examId: sanitizedExamId });
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to activate this exam'
+      if (exam.status !== 'scheduled') {
+        logger.warn('Cannot activate exam with status', { 
+          examId, 
+          status: exam.status, 
+          userId: req.user.id 
+        });
+        return res.status(400).json({
+          success: false,
+          message: `Exam status must be 'scheduled' to activate. Current status: '${exam.status}'.`
+        });
+      }
+
+      if (exam.schedule && new Date(exam.schedule.start) > new Date()) {
+        logger.warn('Cannot activate exam before its scheduled start time', { 
+          examId, 
+          userId: req.user.id, 
+          scheduledStart: exam.schedule.start 
+        });
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot activate exam before its scheduled start time.'
+        });
+      }
+
+      const previousStatus = exam.status;
+      exam.status = 'active';
+      await exam.save();
+
+      // Add audit log
+      await logAudit(
+        'exam',
+        exam._id,
+        'status_change',
+        req.user.id,
+        { status: previousStatus },
+        { status: 'active' }
+      );
+
+      logger.info('Exam activated successfully', { examId, teacherId: req.user.id });
+      res.status(200).json({ 
+        success: true, 
+        message: 'Exam activated successfully', 
+        exam: exam.toObject() 
+      });
+    } catch (validationError) {
+      return res.status(validationError.statusCode || 400).json({ 
+        success: false, 
+        message: validationError.message 
       });
     }
-
-    if (exam.status !== 'scheduled') {
-      logger.warn('Cannot activate exam with status', { examId: sanitizedExamId, status: exam.status, userId: req.user.id });
-      return res.status(400).json({
-        success: false,
-        message: `Exam status must be 'scheduled' to activate. Current status: '${exam.status}'.`
-      });
-    }
-
-    if (exam.schedule && new Date(exam.schedule.start) > new Date()) {
-      logger.warn('Cannot activate exam before its scheduled start time', { examId: sanitizedExamId, userId: req.user.id, scheduledStart: exam.schedule.start });
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot activate exam before its scheduled start time.'
-      });
-    }
-
-    exam.status = 'active';
-    await exam.save();
-
-    logger.info('Exam activated successfully', { examId: sanitizedExamId, teacherId: req.user.id });
-    res.status(200).json({ success: true, message: 'Exam activated successfully', exam: exam.toObject() });
   } catch (error) {
     logger.error('Error in activateExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -511,44 +606,92 @@ exports.completeExam = async (req, res) => {
     }
 
     const { examId } = req.params;
-    const sanitizedExamId = sanitize(examId);
+    
+    try {
+      const exam = await validateEntity(Exam, examId, 'Exam');
 
-    const exam = await Exam.findById(sanitizedExamId);
-    if (!exam) {
-      logger.warn('Exam not found for completion', { examId: sanitizedExamId, userId: req.user.id });
-      return res.status(404).json({ success: false, message: 'Exam not found' });
-    }
+      if (exam.teacher.toString() !== req.user.id) {
+        logger.warn('Unauthorized attempt to complete exam', { userId: req.user.id, examId });
+        return res.status(403).json({
+          success: false,
+          message: 'You are not authorized to complete this exam'
+        });
+      }
 
-    if (exam.teacher.toString() !== req.user.id) {
-      logger.warn('Unauthorized attempt to complete exam', { userId: req.user.id, examId: sanitizedExamId });
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to complete this exam'
+      if (exam.status !== 'active') {
+        logger.warn('Cannot complete exam with status', { 
+          examId, 
+          status: exam.status, 
+          userId: req.user.id 
+        });
+        return res.status(400).json({
+          success: false,
+          message: `Exam status must be 'active' to complete. Current status: '${exam.status}'.`
+        });
+      }
+
+      const previousStatus = exam.status;
+      exam.status = 'completed';
+      await exam.save();
+
+      // Add audit log
+      await logAudit(
+        'exam',
+        exam._id,
+        'status_change',
+        req.user.id,
+        { status: previousStatus },
+        { status: 'completed' }
+      );
+
+      logger.info('Exam completed successfully', { examId, teacherId: req.user.id });
+      res.status(200).json({ 
+        success: true, 
+        message: 'Exam marked as completed', 
+        exam: exam.toObject() 
+      });
+    } catch (validationError) {
+      return res.status(validationError.statusCode || 400).json({ 
+        success: false, 
+        message: validationError.message 
       });
     }
-
-    if (exam.status !== 'active') {
-      logger.warn('Cannot complete exam with status', { examId: sanitizedExamId, status: exam.status, userId: req.user.id });
-      return res.status(400).json({
-        success: false,
-        message: `Exam status must be 'active' to complete. Current status: '${exam.status}'.`
-      });
-    }
-
-    exam.status = 'completed';
-    await exam.save();
-
-    logger.info('Exam completed successfully', { examId: sanitizedExamId, teacherId: req.user.id });
-    res.status(200).json({ success: true, message: 'Exam marked as completed', exam: exam.toObject() });
   } catch (error) {
     logger.error('Error in completeExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-// @route   PUT /api/exams/:examId/schedule
-// @desc    Schedule an exam
+// @route   GET /api/exams/teacher
+// @desc    Get all exams created by teacher
 // @access  Private (Teacher)
+exports.getTeacherExams = async (req, res) => {
+  try {
+    const exams = await Exam.find({ 
+      teacher: req.user.id,
+      isDeleted: false 
+    })
+      .populate('classes', 'level trade year term')
+      .populate('subject', 'name')
+      .sort({ 'schedule.start': -1 })
+      .lean();
+    
+    logger.info('Teacher exams fetched', { 
+      teacherId: req.user.id, 
+      examCount: exams.length 
+    });
+    
+    res.status(200).json({ success: true, exams });
+  } catch (error) {
+    logger.error('Error fetching teacher exams', { 
+      error: error.message, 
+      stack: error.stack,
+      userId: req.user.id 
+    });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
 exports.scheduleExam = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -559,117 +702,187 @@ exports.scheduleExam = async (req, res) => {
 
     const { examId } = req.params;
     const { start, duration } = req.body;
-    const sanitizedExamId = sanitize(examId);
+    
+    try {
+      const exam = await validateEntity(Exam, examId, 'Exam');
 
-    const exam = await Exam.findById(sanitizedExamId);
-    if (!exam) {
-      logger.warn('Exam not found for scheduling', {
-        examId: sanitizedExamId, userId: req.user
+      if (exam.teacher.toString() !== req.user.id) {
+        logger.warn('Unauthorized attempt to schedule exam', { userId: req.user.id, examId });
+        return res.status(403).json({
+          success: false,
+          message: 'You are not authorized to schedule this exam'
+        });
+      }
 
-          .id
+      if (exam.status === 'active' || exam.status === 'completed') {
+        logger.warn('Cannot schedule exam that is active or completed', { 
+          examId, 
+          status: exam.status, 
+          userId: req.user.id 
+        });
+        return res.status(400).json({
+          success: false,
+          message: `Cannot schedule exam with status '${exam.status}'.`
+        });
+      }
+
+      const startDate = toUTC(start);
+      if (startDate <= new Date()) {
+        logger.warn('Invalid start date: must be in the future for scheduled exam', { 
+          userId: req.user.id, 
+          startDate 
+        });
+        return res.status(400).json({
+          success: false,
+          message: 'Exam start time must be in the future.'
+        });
+      }
+      
+      // Check for scheduling conflicts
+      const conflictCheck = await checkScheduleConflicts(
+        examId,
+        exam.classes,
+        startDate,
+        duration
+      );
+
+      if (conflictCheck.hasConflict) {
+        const conflictingExam = conflictCheck.exams[0];
+        return res.status(400).json({
+          success: false,
+          message: `Scheduling conflict with exam "${conflictingExam.title}" at ${new Date(conflictingExam.schedule.start).toISOString()}`,
+          conflicts: conflictCheck.exams
+        });
+      }
+
+      const previousValues = {
+        status: exam.status,
+        schedule: exam.schedule
+      };
+
+      exam.schedule = {
+        start: startDate,
+        duration
+      };
+      exam.status = 'scheduled';
+
+      await exam.save();
+
+      // Add audit log
+      await logAudit(
+        'exam',
+        exam._id,
+        'schedule',
+        req.user.id,
+        previousValues,
+        { 
+          status: exam.status,
+          schedule: exam.schedule 
+        }
+      );
+
+      logger.info('Exam scheduled successfully', { 
+        examId, 
+        teacherId: req.user.id, 
+        schedule: exam.schedule 
       });
-      return res.status(404).json({ success: false, message: 'Exam not found' });
-    }
-
-    if (exam.teacher.toString() !== req.user.id) {
-      logger.warn('Unauthorized attempt to schedule exam', { userId: req.user.id, examId: sanitizedExamId });
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to schedule this exam'
+      
+      res.status(200).json({ 
+        success: true, 
+        message: 'Exam scheduled successfully', 
+        exam: exam.toObject() 
+      });
+    } catch (validationError) {
+      return res.status(validationError.statusCode || 400).json({ 
+        success: false, 
+        message: validationError.message 
       });
     }
-
-    if (exam.status === 'active' || exam.status === 'completed') {
-      logger.warn('Cannot schedule exam that is active or completed', { examId: sanitizedExamId, status: exam.status, userId: req.user.id });
-      return res.status(400).json({
-        success: false,
-        message: `Cannot schedule exam with status '${exam.status}'.`
-      });
-    }
-
-    const startDate = new Date(sanitize(start));
-    if (startDate <= new Date()) {
-      logger.warn('Invalid start date: must be in the future for scheduled exam', { userId: req.user.id, startDate });
-      return res.status(400).json({
-        success: false,
-        message: 'Exam start time must be in the future.'
-      });
-    }
-
-    exam.schedule = {
-      start: startDate,
-      duration: sanitize(duration)
-    };
-    exam.status = 'scheduled';
-
-    await exam.save();
-
-    logger.info('Exam scheduled successfully', { examId: sanitizedExamId, teacherId: req.user.id, schedule: exam.schedule });
-    res.status(200).json({ success: true, message: 'Exam scheduled successfully', exam: exam.toObject() });
   } catch (error) {
     logger.error('Error in scheduleExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-// @route   GET /api/teacher/subjects
+// @route   GET /api/exams/classes/teacher
+// @desc    Get classes for logged in teacher
+// @access  Private (Teacher)
+exports.getClassesForTeacher = async (req, res) => {
+  try {
+    const teacher = await User.findById(req.user.id).lean();
+    if (!teacher) {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+    
+    // Find subjects this teacher teaches
+    const subjects = await Subject.find({ teacher: req.user.id, isDeleted: false })
+      .select('classes')
+      .lean();
+    
+    if (!subjects || subjects.length === 0) {
+      return res.status(200).json({ success: true, classes: [] });
+    }
+    
+    // Get all class IDs from subjects
+    const classIds = [];
+    subjects.forEach(subject => {
+      if (subject.classes && subject.classes.length > 0) {
+        subject.classes.forEach(classId => {
+          if (!classIds.includes(classId.toString())) {
+            classIds.push(classId.toString());
+          }
+        });
+      }
+    });
+    
+    // Get class details
+    const classes = await Class.find({ 
+      _id: { $in: classIds },
+      isDeleted: false
+    })
+    .lean();
+    
+    logger.info('Classes for teacher fetched', { 
+      teacherId: req.user.id,
+      classCount: classes.length
+    });
+    
+    res.status(200).json({ success: true, classes });
+  } catch (error) {
+    logger.error('Error fetching classes for teacher', { 
+      error: error.message, 
+      stack: error.stack,
+      userId: req.user.id 
+    });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// @route   GET /api/subjects/teacher
 // @desc    Get all subjects assigned to teacher
 // @access  Private (Teacher)
 exports.getTeacherSubjects = async (req, res) => {
   try {
-    const subjects = await Subject.find({ teacher: req.user.id })
-      .populate('class', 'level trade year term name')
-      .sort({ name: 1 })
+    const subjects = await Subject.find({ 
+      teacher: req.user.id,
+      isDeleted: false 
+    })
+      .populate('classes', 'level trade year term')
+      .populate('school', 'name')
       .lean();
-
-    logger.info('Teacher subjects fetched', { userId: req.user.id });
+    
+    logger.info('Teacher subjects fetched', { 
+      teacherId: req.user.id, 
+      subjectCount: subjects.length 
+    });
+    
     res.status(200).json({ success: true, subjects });
   } catch (error) {
-    logger.error('Error in getTeacherSubjects', { error: error.message, stack: error.stack, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
-  }
-};
-
-// @route   GET /api/teacher/classes
-// @desc    Get classes associated with subjects taught by teacher
-// @access  Private (Teacher)
-exports.getClassesForTeacher = async (req, res) => {
-  try {
-    const teacherSubjects = await Subject.find({ teacher: req.user.id }).lean();
-    const classIds = [...new Set(teacherSubjects.map(subject => subject.class.toString()))].map(id => new mongoose.Types.ObjectId(id));
-
-    if (classIds.length === 0) {
-      logger.info('No classes found for teacher', { userId: req.user.id });
-      return res.status(200).json({ success: true, classes: [] });
-    }
-
-    const classes = await Class.find({ _id: { $in: classIds } })
-      .sort({ level: 1, trade: 1, year: 1, term: 1 })
-      .lean();
-
-    logger.info('Classes fetched for teacher', { userId: req.user.id });
-    res.status(200).json({ success: true, classes });
-  } catch (error) {
-    logger.error('Error in getClassesForTeacher', { error: error.message, stack: error.stack, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
-  }
-};
-
-// @route   GET /api/exams/teacher
-// @desc    Get all exams created by teacher
-// @access  Private (Teacher)
-exports.getTeacherExams = async (req, res) => {
-  try {
-    const exams = await Exam.find({ teacher: req.user.id })
-      .populate('classes', 'level trade year term')
-      .populate('subject', 'name')
-      .sort({ createdAt: -1 })
-      .lean();
-
-    logger.info('Teacher exams fetched', { userId: req.user.id, examCount: exams.length });
-    res.status(200).json({ success: true, exams });
-  } catch (error) {
-    logger.error('Error in getTeacherExams', { error: error.message, stack: error.stack, userId: req.user.id });
+    logger.error('Error fetching teacher subjects', { 
+      error: error.message, 
+      stack: error.stack,
+      userId: req.user.id 
+    });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -679,17 +892,17 @@ module.exports = {
   createExam: exports.createExam,
   getExamById: exports.getExamById,
   updateExam: exports.updateExam,
+  scheduleExam: exports.scheduleExam, 
   deleteExam: exports.deleteExam,
   getUpcomingExamsForStudent: exports.getUpcomingExamsForStudent,
   getStudentClassExams: exports.getStudentClassExams,
   activateExam: exports.activateExam,
   completeExam: exports.completeExam,
-  scheduleExam: exports.scheduleExam,
-  getTeacherSubjects: exports.getTeacherSubjects,
-  getClassesForTeacher: exports.getClassesForTeacher,
   getTeacherExams: exports.getTeacherExams,
-  validateCreateExam: exports.validateCreateExam,
-  validateUpdateExam: exports.validateUpdateExam,
-  validateExamIdParam: exports.validateExamIdParam,
-  validateScheduleExam: exports.validateScheduleExam
+  getTeacherSubjects: exports.getTeacherSubjects,
+  getClassesForTeacher: exports.getClassesForTeacher,  // Add this line
+  validateCreateExam,
+  validateUpdateExam,
+  validateExamIdParam,
+  validateScheduleExam
 };

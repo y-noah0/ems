@@ -5,6 +5,9 @@ const Class = require('../models/Class');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
+const { validateEntity } = require('../utils/entityValidator');
+const { logAudit } = require('../utils/auditLogger');
+const { toUTC } = require('../utils/dateUtils');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -29,7 +32,7 @@ const submissionController = {};
 // Helper: calculate time remaining
 const calculateTimeRemaining = (submission, exam) => {
   const now = new Date();
-  const startedAt = new Date(submission.startedAt);
+  const startedAt = toUTC(submission.startedAt);
   const duration = exam.schedule.duration * 60 * 1000;
   const timeElapsed = now - startedAt;
   return Math.max(0, duration - timeElapsed);
@@ -346,31 +349,165 @@ submissionController.gradeOpenQuestions = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
+    
     const { submissionId } = req.params;
-    const { grades } = req.body;
-    const submission = await Submission.findById(submissionId).populate('exam');
-    if (!submission) {
-      return res.status(404).json({ success: false, message: 'Submission not found' });
-    }
-    if (submission.exam.teacher.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
-    }
-    let totalScore = 0;
-    grades.forEach(grade => {
-      const idx = submission.answers.findIndex(a => a.questionId.toString() === grade.questionId);
-      if (idx !== -1) {
-        submission.answers[idx].score = parseInt(grade.score) || 0;
-        totalScore += submission.answers[idx].score;
+    const { grades, feedback } = req.body;
+    
+    try {
+      const submission = await validateEntity(Submission, submissionId, 'Submission');
+      const exam = await validateEntity(Exam, submission.exam, 'Exam');
+      
+      if (exam.teacher.toString() !== req.user.id && !['dean', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'You are not authorized to grade this submission' 
+        });
       }
-    });
-    const maxScore = submission.exam.questions.reduce((sum, q) => sum + q.maxScore, 0);
-    submission.totalScore = totalScore;
-    submission.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
-    submission.gradeLetter = calculateGradeLetter(submission.percentage);
-    await submission.save();
-    res.json({ success: true, submission });
+      
+      // Create a copy of current answers for audit
+      const previousAnswers = JSON.parse(JSON.stringify(submission.answers));
+      
+      let totalScore = 0;
+      let modified = false;
+      
+      grades.forEach(grade => {
+        const idx = submission.answers.findIndex(a => a.questionId.toString() === grade.questionId);
+        if (idx !== -1) {
+          submission.answers[idx].score = parseInt(grade.score) || 0;
+          submission.answers[idx].graded = true;
+          submission.answers[idx].feedback = grade.feedback || submission.answers[idx].feedback || '';
+          submission.answers[idx].gradedAt = new Date();
+          submission.answers[idx].gradedBy = req.user.id;
+          totalScore += submission.answers[idx].score;
+          modified = true;
+        }
+      });
+      
+      if (!modified) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'No valid question grades provided' 
+        });
+      }
+      
+      const maxScore = exam.questions.reduce((sum, q) => sum + q.maxScore, 0);
+      
+      submission.totalScore = totalScore;
+      submission.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+      submission.gradeLetter = calculateGradeLetter(submission.percentage);
+      submission.gradedBy = req.user.id;
+      submission.gradedAt = new Date();
+      
+      if (submission.answers.every(a => a.graded)) {
+        submission.status = 'graded';
+      }
+      
+      await submission.save();
+      
+      // Log the grading action
+      await logAudit(
+        'submission',
+        submission._id,
+        'grade',
+        req.user.id,
+        { answers: previousAnswers, status: submission.status !== 'graded' ? 'partially_graded' : null },
+        { totalScore, percentage: submission.percentage, status: 'graded' }
+      );
+      
+      res.json({ success: true, submission });
+    } catch (validationError) {
+      return res.status(validationError.statusCode || 400).json({ 
+        success: false, 
+        message: validationError.message 
+      });
+    }
   } catch (error) {
     logger.error('gradeOpenQuestions error', { error: error.message, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// Update submission grades
+submissionController.updateSubmissionGrades = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    
+    const { submissionId } = req.params;
+    const { grades } = req.body;
+    
+    try {
+      const submission = await validateEntity(Submission, submissionId, 'Submission');
+      const exam = await validateEntity(Exam, submission.exam, 'Exam');
+      
+      if (exam.teacher.toString() !== req.user.id && !['dean', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'You are not authorized to update grades for this submission' 
+        });
+      }
+      
+      // Create a copy of current answers for audit
+      const previousAnswers = JSON.parse(JSON.stringify(submission.answers));
+      
+      let totalScore = 0;
+      let modified = false;
+      
+      grades.forEach(grade => {
+        const idx = submission.answers.findIndex(a => a.questionId.toString() === grade.questionId);
+        if (idx !== -1) {
+          submission.answers[idx].score = parseInt(grade.score) || 0;
+          submission.answers[idx].graded = true;
+          submission.answers[idx].feedback = grade.feedback || submission.answers[idx].feedback || '';
+          submission.answers[idx].gradedAt = new Date();
+          submission.answers[idx].gradedBy = req.user.id;
+          totalScore += submission.answers[idx].score;
+          modified = true;
+        }
+      });
+      
+      if (!modified) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'No valid question grades provided' 
+        });
+      }
+      
+      const maxScore = exam.questions.reduce((sum, q) => sum + q.maxScore, 0);
+      
+      submission.totalScore = totalScore;
+      submission.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+      submission.gradeLetter = calculateGradeLetter(submission.percentage);
+      submission.gradedBy = req.user.id;
+      submission.gradedAt = new Date();
+      
+      if (submission.answers.every(a => a.graded)) {
+        submission.status = 'graded';
+      }
+      
+      await submission.save();
+      
+      // Log the update grading action
+      await logAudit(
+        'submission',
+        submission._id,
+        'grade',
+        req.user.id,
+        { answers: previousAnswers },
+        { totalScore, percentage: submission.percentage }
+      );
+      
+      res.json({ success: true, submission });
+    } catch (validationError) {
+      return res.status(validationError.statusCode || 400).json({ 
+        success: false, 
+        message: validationError.message 
+      });
+    }
+  } catch (error) {
+    logger.error('updateSubmissionGrades error', { error: error.message, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -670,29 +807,78 @@ submissionController.updateSubmissionGrades = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
+    
     const { submissionId } = req.params;
     const { grades } = req.body;
-    const submission = await Submission.findById(submissionId).populate('exam');
-    if (!submission) {
-      return res.status(404).json({ success: false, message: 'Submission not found' });
-    }
-    if (submission.exam.teacher.toString() !== req.user.id && !['dean', 'admin'].includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
-    }
-    let totalScore = 0;
-    grades.forEach(grade => {
-      const idx = submission.answers.findIndex(a => a.questionId.toString() === grade.questionId);
-      if (idx !== -1) {
-        submission.answers[idx].score = parseInt(grade.score) || 0;
-        totalScore += submission.answers[idx].score;
+    
+    try {
+      const submission = await validateEntity(Submission, submissionId, 'Submission');
+      const exam = await validateEntity(Exam, submission.exam, 'Exam');
+      
+      if (exam.teacher.toString() !== req.user.id && !['dean', 'admin'].includes(req.user.role)) {
+        return res.status(403).json({ 
+          success: false, 
+          message: 'You are not authorized to update grades for this submission' 
+        });
       }
-    });
-    const maxScore = submission.exam.questions.reduce((sum, q) => sum + q.maxScore, 0);
-    submission.totalScore = totalScore;
-    submission.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
-    submission.gradeLetter = calculateGradeLetter(submission.percentage);
-    await submission.save();
-    res.json({ success: true, submission });
+      
+      // Create a copy of current answers for audit
+      const previousAnswers = JSON.parse(JSON.stringify(submission.answers));
+      
+      let totalScore = 0;
+      let modified = false;
+      
+      grades.forEach(grade => {
+        const idx = submission.answers.findIndex(a => a.questionId.toString() === grade.questionId);
+        if (idx !== -1) {
+          submission.answers[idx].score = parseInt(grade.score) || 0;
+          submission.answers[idx].graded = true;
+          submission.answers[idx].feedback = grade.feedback || submission.answers[idx].feedback || '';
+          submission.answers[idx].gradedAt = new Date();
+          submission.answers[idx].gradedBy = req.user.id;
+          totalScore += submission.answers[idx].score;
+          modified = true;
+        }
+      });
+      
+      if (!modified) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'No valid question grades provided' 
+        });
+      }
+      
+      const maxScore = exam.questions.reduce((sum, q) => sum + q.maxScore, 0);
+      
+      submission.totalScore = totalScore;
+      submission.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+      submission.gradeLetter = calculateGradeLetter(submission.percentage);
+      submission.gradedBy = req.user.id;
+      submission.gradedAt = new Date();
+      
+      if (submission.answers.every(a => a.graded)) {
+        submission.status = 'graded';
+      }
+      
+      await submission.save();
+      
+      // Log the update grading action
+      await logAudit(
+        'submission',
+        submission._id,
+        'grade',
+        req.user.id,
+        { answers: previousAnswers },
+        { totalScore, percentage: submission.percentage }
+      );
+      
+      res.json({ success: true, submission });
+    } catch (validationError) {
+      return res.status(validationError.statusCode || 400).json({ 
+        success: false, 
+        message: validationError.message 
+      });
+    }
   } catch (error) {
     logger.error('updateSubmissionGrades error', { error: error.message, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
