@@ -7,28 +7,49 @@ const SubjectSchema = new Schema({
     required: true,
     trim: true
   },
-  class: [{
+  description: {
+    type: String,
+    trim: true
+  },
+  school: {
     type: Schema.Types.ObjectId,
-    ref: 'Class',
+    ref: 'School',
     required: true
+  },
+  classes: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Class'
+  }],
+  trades: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Trade'
   }],
   teacher: {
     type: Schema.Types.ObjectId,
     ref: 'User'
   },
-  description: {
-    type: String,
-    trim: true
-  },
   credits: {
     type: Number,
-    default: 1
+    default: 1,
+    min: 1
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
   }
-}, {
-  timestamps: true
-});
+}, { timestamps: true });
 
-// Create a compound index to ensure uniqueness of name and class combination
-SubjectSchema.index({ name: 1, class: 1 }, { unique: true });
+SubjectSchema.index({ name: 1, school: 1 }, { unique: true });
+
+SubjectSchema.pre('save', async function (next) {
+  if (this.isModified('teacher') && this.teacher) {
+    const User = mongoose.model('User');
+    const user = await User.findById(this.teacher);
+    if (!user || user.role !== 'teacher') {
+      return next(new Error('Teacher must be a user with role "teacher"'));
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model('Subject', SubjectSchema);

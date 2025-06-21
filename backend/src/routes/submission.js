@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { check } = require('express-validator');
+const { check, query } = require('express-validator');
 const submissionController = require('../controllers/submissionController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
-// All routes here require authentication
+// All routes require authentication
 router.use(authMiddleware.authenticate);
 
 // @route   POST api/submissions/start
@@ -13,9 +13,7 @@ router.use(authMiddleware.authenticate);
 router.post(
   '/start',
   authMiddleware.isStudent,
-  [
-    check('examId', 'Exam ID is required').notEmpty()
-  ],
+  [check('examId', 'Exam ID is required').notEmpty()],
   submissionController.startExam
 );
 
@@ -38,9 +36,7 @@ router.post(
 router.post(
   '/submit',
   authMiddleware.isStudent,
-  [
-    check('submissionId', 'Submission ID is required').notEmpty()
-  ],
+  [check('submissionId', 'Submission ID is required').notEmpty()],
   submissionController.submitExam
 );
 
@@ -50,9 +46,7 @@ router.post(
 router.post(
   '/auto-submit',
   authMiddleware.isStudent,
-  [
-    check('submissionId', 'Submission ID is required').notEmpty()
-  ],
+  [check('submissionId', 'Submission ID is required').notEmpty()],
   submissionController.autoSubmitExam
 );
 
@@ -82,7 +76,12 @@ router.get('/teacher', authMiddleware.isTeacher, submissionController.getTeacher
 // @route   GET api/submissions/exam/:examId
 // @desc    Get submissions for an exam (teacher view)
 // @access  Teachers
-router.get('/exam/:examId', authMiddleware.isTeacher, submissionController.getExamSubmissions);
+router.get(
+  '/exam/:examId',
+  authMiddleware.isTeacher,
+  [check('examId', 'Valid Exam ID is required').isMongoId()],
+  submissionController.getExamSubmissions
+);
 
 // @route   POST api/submissions/:submissionId/grade
 // @desc    Grade open questions
@@ -91,6 +90,7 @@ router.post(
   '/:submissionId/grade',
   authMiddleware.isTeacher,
   [
+    check('submissionId', 'Valid Submission ID is required').isMongoId(),
     check('grades', 'Grades should be an array').isArray()
   ],
   submissionController.gradeOpenQuestions
@@ -99,81 +99,68 @@ router.post(
 // @route   GET api/submissions/student/results
 // @desc    Get student's exam results by term
 // @access  Students
-router.get('/student/results', authMiddleware.isStudent, submissionController.getStudentResultsByTerm);
+router.get(
+  '/student/results',
+  authMiddleware.isStudent,
+  [query('termId', 'Valid Term ID is required').optional().isMongoId()],
+  submissionController.getStudentResultsByTerm
+);
 
 // @route   GET api/submissions/:id
 // @desc    Get detailed submission (for review)
 // @access  Students & Teachers (with restrictions)
-router.get('/:id', submissionController.getSubmissionDetails);
-
-// Add these routes to support the new functionality
+router.get(
+  '/:id',
+  [check('id', 'Valid Submission ID is required').isMongoId()],
+  submissionController.getSubmissionDetails
+);
 
 // @route   GET api/submissions/results/homework
 // @desc    Get homework results
 // @access  All authenticated users
-router.get(
-  '/results/homework',
-  submissionController.getHomeworkResults
-);
+router.get('/results/homework', submissionController.getHomeworkResults);
 
 // @route   GET api/submissions/results/quiz
 // @desc    Get quiz results
 // @access  All authenticated users
-router.get(
-  '/results/quiz',
-  submissionController.getQuizResults
-);
+router.get('/results/quiz', submissionController.getQuizResults);
 
 // @route   GET api/submissions/results/by-type
 // @desc    Get results by assessment type with role-based filtering
 // @access  All authenticated users
 router.get(
   '/results/by-type',
+  [
+    query('type', 'Valid assessment type is required')
+      .isIn(['assessment1', 'assessment2', 'exam', 'homework', 'quiz'])
+  ],
   submissionController.getResultsByAssessmentType
 );
 
 // @route   GET api/submissions/results/detailed
 // @desc    Get detailed performance report across all assessment types
 // @access  All authenticated users
-router.get(
-  '/results/detailed',
-  submissionController.getCombinedDetailedResults
-);
-
-// Update existing assessment routes to be accessible by all authenticated users
-// (Remove the authMiddleware.isStudent restriction)
+router.get('/results/detailed', submissionController.getCombinedDetailedResults);
 
 // @route   GET api/submissions/results/assessment1
 // @desc    Get Assessment 1 results
-// @access  All authenticated users (previously only students)
-router.get(
-  '/results/assessment1',
-  submissionController.getAssessment1Results
-);
+// @access  All authenticated users
+router.get('/results/assessment1', submissionController.getAssessment1Results);
 
 // @route   GET api/submissions/results/assessment2
 // @desc    Get Assessment 2 results
-// @access  All authenticated users (previously only students)
-router.get(
-  '/results/assessment2',
-  submissionController.getAssessment2Results
-);
+// @access  All authenticated users
+router.get('/results/assessment2', submissionController.getAssessment2Results);
 
 // @route   GET api/submissions/results/exam
 // @desc    Get Exam results
-// @access  All authenticated users (previously only students)
-router.get(
-  '/results/exam',
-  submissionController.getExamResults
-);
+// @access  All authenticated users
+router.get('/results/exam', submissionController.getExamResults);
 
 // @route   GET api/submissions/results/combined
 // @desc    Get combined results report
-// @access  All authenticated users (previously only students)
-router.get(
-  '/results/combined',
-  submissionController.getCombinedResults
-);
+// @access  All authenticated users
+router.get('/results/combined', submissionController.getCombinedResults);
 
 // @route   GET api/submissions/student/assessment-results
 // @desc    Get a specific student's results by assessment type (for teachers)
@@ -181,6 +168,16 @@ router.get(
 router.get(
   '/student/assessment-results',
   authMiddleware.isTeacher,
+  [
+    query('studentId', 'Valid Student ID is required').isMongoId(),
+    query('type', 'Valid assessment type is required').isIn([
+      'assessment1',
+      'assessment2',
+      'exam',
+      'homework',
+      'quiz'
+    ])
+  ],
   submissionController.getStudentResultsByAssessmentType
 );
 
@@ -190,24 +187,26 @@ router.get(
 router.get(
   '/student/marks',
   authMiddleware.isTeacherOrDeanOrAdmin,
+  [query('studentId', 'Valid Student ID is required').isMongoId()],
   submissionController.getStudentMarksByID
 );
 
+// @route   POST api/submissions/:submissionId/update-grades
+// @desc    Update submission grades
+// @access  Teachers, Deans, Admins
 router.post(
   '/:submissionId/update-grades',
   authMiddleware.isTeacherOrDeanOrAdmin,
-  [check('grades', 'Grades should be an array').isArray()],
+  [
+    check('submissionId', 'Valid Submission ID is required').isMongoId(),
+    check('grades', 'Grades should be an array').isArray()
+  ],
   submissionController.updateSubmissionGrades
 );
 
-
 // @route   GET api/submissions/my-marks
-// @desc    Get marks for the currently logged in student
+// @desc    Get marks for the currently logged-in student
 // @access  Students
-router.get(
-  '/my-marks',
-  authMiddleware.isStudent,
-  submissionController.getMyMarks
-);
+router.get('/my-marks', authMiddleware.isStudent, submissionController.getMyMarks);
 
 module.exports = router;

@@ -2,10 +2,11 @@ const Exam = require('../models/Exam');
 const Class = require('../models/Class');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
-const mongoose = require('mongoose');
 const { check, validationResult, param } = require('express-validator');
-const sanitize = require('mongo-sanitize');
 const winston = require('winston');
+
+// Temporary sanitize function (replace with actual implementation if available)
+const sanitize = (value) => String(value || '');
 
 // --- Logger Configuration ---
 const logger = winston.createLogger({
@@ -28,54 +29,44 @@ if (process.env.NODE_ENV !== 'production') {
 // --- End Logger Configuration ---
 
 // --- Validation Rules ---
+const allowedExamTypes = ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'];
+
 const validateCreateExam = [
   check('title').notEmpty().withMessage('Title is required'),
-  check('type').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice']).withMessage('Invalid exam type'),
+  check('type').isIn(allowedExamTypes).withMessage('Invalid exam type'),
   check('classIds').isArray({ min: 1 }).withMessage('At least one class ID is required'),
   check('classIds.*').isMongoId().withMessage('Invalid class ID'),
-  check('subjectId').isMongoId().withMessage('Invalid subject ID')
+  check('subjectId').isMongoId().withMessage('Invalid subject ID'),
+  check('teacherId').isMongoId().withMessage('Invalid teacher ID'),
+  check('schedule.start').isISO8601().toDate().withMessage('Start time is required and must be a valid date'),
+  check('schedule.duration').isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes'),
+  check('questions').isArray({ min: 1 }).withMessage('At least one question is required'),
+  check('questions.*.type').isIn(['multiple-choice', 'true-false', 'short-answer', 'essay']).withMessage('Invalid question type'),
+  check('questions.*.text').notEmpty().withMessage('Question text is required'),
+  check('questions.*.maxScore').isInt({ min: 1 }).withMessage('Question maxScore must be at least 1')
 ];
 
 const validateUpdateExam = [
   check('title').optional().notEmpty().withMessage('Title cannot be empty'),
-  check('type').optional().isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice']).withMessage('Invalid exam type'),
+  check('type').optional().isIn(allowedExamTypes).withMessage('Invalid exam type'),
   check('classIds').optional().isArray({ min: 1 }).withMessage('At least one class ID is required'),
   check('classIds.*').optional().isMongoId().withMessage('Invalid class ID'),
   check('subjectId').optional().isMongoId().withMessage('Invalid subject ID'),
-  check('schedule.start')
-    .optional()
-    .isISO8601()
-    .toDate()
-    .withMessage('Invalid schedule start date format (YYYY-MM-DDTHH:MM:SSZ)'),
-  check('schedule.duration')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Duration must be a positive integer'),
-  check('questions')
-    .optional()
-    .isArray()
-    .withMessage('Questions must be an array'),
-  check('questions.*.text')
-    .optional()
-    .notEmpty()
-    .withMessage('Question text cannot be empty'),
-  check('questions.*.type')
-    .optional()
-    .isIn(['multiple-choice', 'true-false', 'short-answer', 'essay'])
-    .withMessage('Invalid question type'),
-  check('questions.*.maxScore')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Question score must be a positive integer'),
-];
-
-const validateScheduleExam = [
-  check('start').isISO8601().toDate().withMessage('Start time is required and must be a valid date'),
-  check('duration').isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes')
+  check('schedule.start').optional().isISO8601().toDate().withMessage('Invalid schedule start date'),
+  check('schedule.duration').optional().isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes'),
+  check('questions').optional().isArray(),
+  check('questions.*.type').optional().isIn(['multiple-choice', 'true-false', 'short-answer', 'essay']).withMessage('Invalid question type'),
+  check('questions.*.text').optional().notEmpty().withMessage('Question text cannot be empty'),
+  check('questions.*.maxScore').optional().isInt({ min: 1 }).withMessage('Question maxScore must be at least 1')
 ];
 
 const validateExamIdParam = [
   param('examId').isMongoId().withMessage('Invalid exam ID')
+];
+
+const validateScheduleExam = [
+  check('start').isISO8601().toDate().withMessage('Invalid start date'),
+  check('duration').isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes')
 ];
 // --- End Validation Rules ---
 
@@ -86,159 +77,60 @@ exports.createExam = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      logger.warn('Validation errors in createExam', { errors: errors.array(), userId: req.user.id });
       return res.status(400).json({ success: false, errors: errors.array() });
     }
-
     const {
       title,
       type,
+      classIds,
+      subjectId,
+      teacherId,
       schedule,
       questions,
-      instructions,
-      classIds,
-      subjectId
+      instructions
     } = req.body;
 
-    // Ensure classIds is provided and is an array
-    if (!Array.isArray(classIds) || classIds.length === 0) {
-      logger.warn('classIds missing or not an array in createExam', { userId: req.user.id, classIds });
-      return res.status(400).json({ success: false, message: 'classIds is required and must be a non-empty array' });
+    // Validate referenced documents
+    const subject = await Subject.findById(subjectId);
+    if (!subject) return res.status(404).json({ success: false, message: 'Subject not found' });
+
+    const teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== 'teacher') {
+      return res.status(404).json({ success: false, message: 'Teacher not found or invalid' });
     }
 
-    const sanitizedClassIds = classIds.map(id => sanitize(id));
-    const classes = await Class.find({ _id: { $in: sanitizedClassIds } }).lean();
-    if (classes.length !== sanitizedClassIds.length) {
-      logger.warn('One or more classes not found', { classIds: sanitizedClassIds, userId: req.user.id });
+    const classes = await Class.find({ _id: { $in: classIds } });
+    if (classes.length !== classIds.length) {
       return res.status(404).json({ success: false, message: 'One or more classes not found' });
     }
 
-    const sanitizedSubjectId = sanitize(subjectId);
-    const subject = await Subject.findById(sanitizedSubjectId).lean();
-    if (!subject) {
-      logger.warn('Subject not found', { subjectId: sanitizedSubjectId, userId: req.user.id });
-      return res.status(404).json({ success: false, message: 'Subject not found' });
-    }
+    // Prepare questions array
+    const preparedQuestions = questions.map(q => ({
+      type: q.type,
+      text: q.text,
+      options: q.options || [],
+      correctAnswer: q.correctAnswer || '',
+      maxScore: q.maxScore
+    }));
 
-    if (subject.teacher.toString() !== req.user.id) {
-      logger.warn('Unauthorized attempt to create exam for subject', {
-        userId: req.user.id,
-        subjectId: sanitizedSubjectId,
-        teacherOfSubject: subject.teacher.toString()
-      });
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to create exams for this subject'
-      });
-    }
-
-    // Ensure teacher is assigned to all classes (optional, depending on requirements)
-    const teacherSubjects = await Subject.find({ teacher: req.user.id, class: { $in: sanitizedClassIds } }).lean();
-    const teacherClassIds = teacherSubjects.map(s => s.class.toString());
-    const invalidClasses = sanitizedClassIds.filter(id => !teacherClassIds.includes(id));
-    if (invalidClasses.length > 0) {
-      logger.warn('Teacher not authorized for some classes', { userId: req.user.id, invalidClasses });
-      return res.status(403).json({
-        success: false,
-        message: 'You are not authorized to create exams for some of the specified classes'
-      });
-    }
-
-    let sanitizedQuestions = [];
-    if (questions && Array.isArray(questions)) {
-      sanitizedQuestions = questions.map(q => {
-        const sanitizedQuestion = {
-          type: sanitize(q.type) || 'multiple-choice',
-          text: sanitize(q.text) || '',
-          maxScore: parseInt(q.maxScore || q.points || 10) || 10,
-        };
-
-        if (q.options && Array.isArray(q.options)) {
-          sanitizedQuestion.options = q.options.map(o => ({
-            text: sanitize(typeof o === 'object' ? o.text : String(o)),
-            isCorrect: typeof o === 'object' ? !!o.isCorrect : false
-          }));
-        } else {
-          sanitizedQuestion.options = [];
-        }
-
-        if (q.correctAnswer) {
-          sanitizedQuestion.correctAnswer = sanitize(String(q.correctAnswer));
-        } else if (sanitizedQuestion.type === 'multiple-choice' && sanitizedQuestion.options.length > 0) {
-          const correctOption = sanitizedQuestion.options.find(opt => opt.isCorrect);
-          sanitizedQuestion.correctAnswer = correctOption ? correctOption.text : '';
-        } else {
-          sanitizedQuestion.correctAnswer = '';
-        }
-        return sanitizedQuestion;
-      });
-    }
-
-    const newExam = new Exam({
-      title: sanitize(title),
-      classes: sanitizedClassIds,
-      subject: sanitizedSubjectId,
-      teacher: req.user.id,
-      type: sanitize(type),
-      instructions: sanitize(instructions),
-      questions: sanitizedQuestions,
-      status: 'draft'
+    const exam = new Exam({
+      title,
+      type,
+      classes: classIds,
+      subject: subjectId,
+      teacher: teacherId,
+      schedule: {
+        start: schedule.start,
+        duration: schedule.duration
+      },
+      questions: preparedQuestions,
+      instructions: instructions || undefined
     });
 
-    if (schedule && schedule.start && schedule.duration) {
-      await Promise.all(validateScheduleExam.map(validator => validator.run(req)));
-      const scheduleErrors = validationResult(req);
-      const actualScheduleErrors = scheduleErrors.array().filter(err => err.path.startsWith('schedule.'));
-      if (actualScheduleErrors.length > 0) {
-        logger.warn('Schedule validation errors during exam creation', { errors: actualScheduleErrors, userId: req.user.id });
-        return res.status(400).json({ success: false, errors: actualScheduleErrors, message: 'Invalid schedule provided' });
-      }
-
-      const startDate = new Date(sanitize(schedule.start));
-      if (startDate <= new Date()) {
-        logger.warn('Invalid start date: must be in the future for scheduled exam', { userId: req.user.id, startDate });
-        return res.status(400).json({
-          success: false,
-          message: 'Exam start time must be in the future for a scheduled exam'
-        });
-      }
-      newExam.schedule = {
-        start: startDate,
-        duration: sanitize(schedule.duration)
-      };
-      newExam.status = 'scheduled';
-    }
-
-    await newExam.save();
-
-    logger.info('Exam created successfully', {
-      examId: newExam._id,
-      teacherId: req.user.id,
-      status: newExam.status
-    });
-
-    res.status(201).json({ success: true, exam: newExam.toObject() });
+    await exam.save();
+    res.status(201).json({ success: true, exam });
   } catch (error) {
-    logger.error('Error in createExam', { error: error.message, stack: error.stack, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
-  }
-};
-
-// @route   GET /api/exams/teacher
-// @desc    Get all exams created by the teacher
-// @access  Private (Teacher)
-exports.getTeacherExams = async (req, res) => {
-  try {
-    const exams = await Exam.find({ teacher: req.user.id })
-      .populate('classes', 'level trade year term name')
-      .populate('subject', 'name')
-      .sort({ createdAt: -1 })
-      .lean();
-
-    logger.info('Teacher exams fetched', { userId: req.user.id });
-    res.status(200).json({ success: true, exams });
-  } catch (error) {
-    logger.error('Error in getTeacherExams', { error: error.message, stack: error.stack, userId: req.user.id });
+    logger.error('createExam error', { error: error.message });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -248,82 +140,25 @@ exports.getTeacherExams = async (req, res) => {
 // @access  Private (Teacher, Student)
 exports.getExamById = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      logger.warn('Validation errors in getExamById', { errors: errors.array(), userId: req.user.id });
-      return res.status(400).json({ success: false, errors: errors.array() });
-    }
-
     const { examId } = req.params;
-    const sanitizedExamId = sanitize(examId);
-
-    const exam = await Exam.findById(sanitizedExamId)
-      .populate('classes', 'level trade year term name')
+    const exam = await Exam.findById(examId)
+      .populate('classes', 'level trade year term')
       .populate('subject', 'name')
-      .populate('teacher', 'fullName email');
-
+      .populate('teacher', 'fullName');
     if (!exam) {
-      logger.warn('Exam not found', { examId: sanitizedExamId, userId: req.user.id });
       return res.status(404).json({ success: false, message: 'Exam not found' });
     }
-
-    // Authorization checks
-    // If totalPoints isn't calculated yet, calculate it
-    if (!exam.totalPoints) {
-      exam.totalPoints = exam.questions.reduce(
-        (total, question) => total + (question.maxScore || 0), 
-        0
-      );
-      await exam.save();
-    }
-
-    // --- FIX: Add checks before accessing nested properties ---
-    if (req.user.role === 'teacher') {
-      if (exam.teacher._id.toString() !== req.user.id) {
-        logger.warn('Unauthorized teacher access to exam', { userId: req.user.id, examId: sanitizedExamId, examTeacherId: exam.teacher._id.toString() });
-        logger.warn('Unauthorized access to exam', { userId: req.user.id, examId: sanitizedExamId });
-        return res.status(403).json({
-          success: false,
-          message: 'You are not authorized to access this exam'
-        });
-      }
-    } else if (req.user.role === 'student') {
-      if (!req.user.class) {
-        logger.warn('Student class not found in user object for authorization', { userId: req.user.id });
-        return res.status(404).json({ success: false, message: 'Your class information is not available.' });
-      }
-
-      // Check if student's class is in exam.classes and exam status is 'scheduled' or 'active'
-      const classIds = exam.classes.map(c => c._id.toString());
-      if (!classIds.includes(req.user.class.toString()) || !['scheduled', 'active'].includes(exam.status)) {
-        logger.warn('Unauthorized student access to exam (class mismatch or invalid status)', {
-          userId: req.user.id,
-          examId: sanitizedExamId,
-          studentClass: req.user.class.toString(),
-          examClasses: classIds,
-          examStatus: exam.status
-        });
-        return res.status(403).json({
-          success: false,
-          message: 'You are not authorized to access this exam or it is not yet available.'
-        });
-      }
-
-      // For students, remove correct answers from questions
-      exam.questions = exam.questions.map(q => {
-        const questionObj = q.toObject();
-        const { correctAnswer, ...rest } = questionObj;
+    // Remove correctAnswer from questions for students
+    let examObj = exam.toObject();
+    if (req.user.role === 'student') {
+      examObj.questions = examObj.questions.map(q => {
+        const { correctAnswer, ...rest } = q;
         return rest;
       });
-    } else {
-      logger.warn('Unauthorized access attempt by unknown role', { userId: req.user.id, role: req.user.role });
-      return res.status(403).json({ success: false, message: 'Unauthorized access.' });
     }
-
-    logger.info('Exam fetched by ID', { examId: exam._id, userId: req.user.id });
-    res.status(200).json({ success: true, exam: exam.toObject() });
+    res.json({ success: true, exam: examObj });
   } catch (error) {
-    logger.error('Error in getExamById', { error: error.message, stack: error.stack, userId: req.user.id });
+    logger.error('getExamById error', { error: error.message });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
@@ -728,7 +563,11 @@ exports.scheduleExam = async (req, res) => {
 
     const exam = await Exam.findById(sanitizedExamId);
     if (!exam) {
-      logger.warn('Exam not found for scheduling', { examId: sanitizedExamId, userId: req.user.id });
+      logger.warn('Exam not found for scheduling', {
+        examId: sanitizedExamId, userId: req.user
+
+          .id
+      });
       return res.status(404).json({ success: false, message: 'Exam not found' });
     }
 
@@ -816,8 +655,41 @@ exports.getClassesForTeacher = async (req, res) => {
   }
 };
 
-// Export validation arrays for use in routes
-exports.validateCreateExam = validateCreateExam;
-exports.validateUpdateExam = validateUpdateExam;
-exports.validateExamIdParam = validateExamIdParam;
-exports.validateScheduleExam = validateScheduleExam;
+// @route   GET /api/exams/teacher
+// @desc    Get all exams created by teacher
+// @access  Private (Teacher)
+exports.getTeacherExams = async (req, res) => {
+  try {
+    const exams = await Exam.find({ teacher: req.user.id })
+      .populate('classes', 'level trade year term')
+      .populate('subject', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    logger.info('Teacher exams fetched', { userId: req.user.id, examCount: exams.length });
+    res.status(200).json({ success: true, exams });
+  } catch (error) {
+    logger.error('Error in getTeacherExams', { error: error.message, stack: error.stack, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// Export all functions and validation arrays
+module.exports = {
+  createExam: exports.createExam,
+  getExamById: exports.getExamById,
+  updateExam: exports.updateExam,
+  deleteExam: exports.deleteExam,
+  getUpcomingExamsForStudent: exports.getUpcomingExamsForStudent,
+  getStudentClassExams: exports.getStudentClassExams,
+  activateExam: exports.activateExam,
+  completeExam: exports.completeExam,
+  scheduleExam: exports.scheduleExam,
+  getTeacherSubjects: exports.getTeacherSubjects,
+  getClassesForTeacher: exports.getClassesForTeacher,
+  getTeacherExams: exports.getTeacherExams,
+  validateCreateExam: exports.validateCreateExam,
+  validateUpdateExam: exports.validateUpdateExam,
+  validateExamIdParam: exports.validateExamIdParam,
+  validateScheduleExam: exports.validateScheduleExam
+};

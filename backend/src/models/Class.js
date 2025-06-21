@@ -8,34 +8,33 @@ const ClassSchema = new Schema({
     enum: ['L3', 'L4', 'L5']
   },
   trade: {
-    type: String,
-    required: true,
-    enum: ['SOD', 'NIT', 'MMP']
+    type: Schema.Types.ObjectId,
+    ref: 'Trade',
+    required: true
   },
   year: {
     type: Number,
     required: true
   },
-  term: {
-    type: Number,
-    required: true,
-    min: 1,
-    max: 3
+  school: {
+    type: Schema.Types.ObjectId,
+    ref: 'School',
+    required: true
   },
   subjects: [{
     type: Schema.Types.ObjectId,
     ref: 'Subject'
-  }]
-}, {
-  timestamps: true
-});
+  }],
+  isDeleted: {
+    type: Boolean,
+    default: false
+  }
+}, { timestamps: true });
 
-// Create a compound index to ensure uniqueness of level, trade, year, term combination
-ClassSchema.index({ level: 1, trade: 1, year: 1, term: 1 }, { unique: true });
+ClassSchema.index({ level: 1, trade: 1, year: 1, school: 1 }, { unique: true });
 
-// Virtual property to get the class name (e.g., L3SOD)
-ClassSchema.virtual('className').get(function() {
-  return `${this.level}${this.trade}`;
+ClassSchema.virtual('className').get(function () {
+  return `${this.level}${this.trade.code}`;
 });
 
 module.exports = mongoose.model('Class', ClassSchema);

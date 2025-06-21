@@ -4,6 +4,10 @@ const { check } = require('express-validator');
 const examController = require('../controllers/examController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
+// Debug logging to verify import
+console.log('examController:', examController);
+console.log('getTeacherSubjects:', examController.getTeacherSubjects);
+
 // All routes here require authentication
 router.use(authMiddleware.authenticate);
 
@@ -17,7 +21,7 @@ router.post(
   check('classIds.*').isMongoId().withMessage('Invalid class ID'),
   check('title', 'Exam title is required').notEmpty(),
   check('subjectId', 'Subject ID is required').notEmpty(),
-  check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
+  check('type', 'Exam type is required').isIn(['assessment1', 'assessment2', 'homework', 'exam', 'quiz'])
 ],
   examController.createExam
 );
@@ -49,7 +53,7 @@ router.put(
   '/:examId',
   authMiddleware.isTeacher, [
   check('title', 'Exam title is required').notEmpty(),
-  check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
+  check('type', 'Exam type is required').isIn(['assessment1', 'assessment2', 'homework', 'exam', 'quiz'])
 ],
   examController.updateExam
 );
