@@ -2,17 +2,24 @@ const express = require('express');
 const router = express.Router();
 const { check } = require('express-validator');
 const adminController = require('../controllers/adminController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const {
+  authenticate,
+  isAdmin,
+  isStudent,
+  isDean,
+  loginValidation,
+  registerValidation
+} = require('../middlewares/authMiddleware');
 const multer = require('multer');
 
 // Configure multer for file uploads
-const upload = multer({ 
+const upload = multer({
   dest: 'temp/uploads/',
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 
 // All routes here require dean privileges
-router.use(authMiddleware.authenticate, authMiddleware.isDean);
+router.use(authenticate, isDean);
 
 // @route   GET api/admin/classes
 // @desc    Get all classes

@@ -43,7 +43,7 @@ const examService = {
     }
   },
 
-  // Get exam by ID (uses 'id' param to match backend)
+  // Get exam by ID
   getExamById: async (examId) => {
     try {
       const response = await api.get(`/exams/${examId}`);
@@ -57,11 +57,9 @@ const examService = {
   // Update exam
   updateExam: async (id, examData) => {
     try {
-      // Ensure type is set
       if (!examData.type) {
         examData.type = 'midterm';
       }
-      // Validate questions before sending to backend
       if (examData.questions && examData.questions.length > 0) {
         examData.questions = examData.questions.map(q => {
           const question = { ...q };
@@ -157,30 +155,22 @@ const examService = {
     try {
       const response = await api.get(`/submissions/${submissionId}`);
       const data = response.data;
-      
-      // Handle data inconsistencies: ensure score and totalPoints fields exist
       if (data.success && data.submission) {
         const submission = data.submission;
-        
-        // Calculate score if missing
         if (submission.status === 'graded' && (!submission.score || submission.score === 0)) {
           submission.score = submission.answers.reduce(
-            (sum, answer) => sum + (parseInt(answer.score || answer.points || 0) || 0), 
+            (sum, answer) => sum + (parseInt(answer.score || answer.points || 0) || 0),
             0
           );
         }
-        
-        // Add points field for each answer if missing for frontend consistency
         if (submission.answers) {
           submission.answers = submission.answers.map(answer => ({
             ...answer,
             points: parseInt(answer.score || answer.points || 0) || 0
           }));
         }
-        
         return submission;
       }
-      
       throw new Error('Invalid submission data received');
     } catch (error) {
       console.error('Error fetching submission:', error);
@@ -200,33 +190,14 @@ const examService = {
 
   // Get teacher subjects
   getTeacherSubjects: async () => {
-    try {
-      const response = await api.get('/subjects/teacher');
-      return response.data.subjects;
-    } catch (error) {
-      console.error('Error fetching teacher subjects:', error);
-      throw error.response ? error.response.data : { message: 'Failed to load subjects. Please try again.' };
-    }
+    const response = await api.get('/subjects/teacher');
+    return response.data.subjects;
+  },
+  getClassesForTeacher: async () => {
+    const response = await api.get('/exams/classes');
+    return response.data.classes;
   },
 
-  // Update submission with grades
-  updateSubmissionGrades: async (submissionId, gradesData) => {
-    try {
-      // Use PUT for updating grades (RESTful)
-      const response = await api.put(`/submissions/${submissionId}/grade`, gradesData);
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update grades');
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Error updating submission grades:', error);
-      throw error;
-    }
-  },
 
   // Get all teacher submissions
   getTeacherSubmissions: async () => {
