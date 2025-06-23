@@ -146,3 +146,116 @@ Weighted Assessment Calculation
 Conclusion
 ----------
 The EMS backend provides a robust, modular foundation for managing educational processes, supporting flexible assessments and standardized reporting for clear insights at all institutional levels.
+
+
+
+
+Reporting phase  
+
+
+single student report  
+
+{
+  "studentId": "YOUR_STUDENT_ID_HERE",
+  "academicYear": "2025",
+  "termId": "YOUR_TERM_ID_HERE",
+  "schoolId": "YOUR_SCHOOL_ID_HERE"
+}
+
+
+Entire class report  
+
+{
+  "classId": "YOUR_CLASS_ID_HERE",
+  "academicYear": "2025",
+  "termId": "YOUR_TERM_ID_HERE",
+  "schoolId": "YOUR_SCHOOL_ID_HERE"
+}
+
+
+Term Report  
+
+{
+  "academicYear": "2025",
+  "termId": "YOUR_TERM_ID_HERE",
+  "schoolId": "YOUR_SCHOOL_ID_HERE"
+}
+
+Entre school Report 
+
+{
+  "schoolId": "YOUR_SCHOOL_ID_HERE",
+  "academicYear": "2025"
+}
+
+
+
+Subject Report  
+
+{
+  "subjectId": "YOUR_SUBJECT_ID_HERE",
+  "academicYear": "2025",
+  "termId": "YOUR_TERM_ID_HERE",
+  "schoolId": "YOUR_SCHOOL_ID_HERE"
+}
+
+
+
+Trade Report 
+
+{
+  "tradeId": "YOUR_TRADE_ID_HERE",
+  "academicYear": "2025",
+  "termId": "YOUR_TERM_ID_HERE",
+  "schoolId": "YOUR_SCHOOL_ID_HERE"
+}
+
+
+Promotion Report  
+
+{
+  "schoolId": "YOUR_SCHOOL_ID_HERE",
+  "academicYear": "2025"
+}
+
+Teacher Report
+
+{
+  "schoolId": "YOUR_SCHOOL_ID_HERE",
+  "academicYear": "2025",
+  "termId": "YOUR_TERM_ID_HERE"
+}
+
+
+
+assessment report 
+
+{
+  "assessmentType": "assessment1",
+  "schoolId": "YOUR_SCHOOL_ID_HERE",
+  "academicYear": 2025,
+  "termId": "YOUR_TERM_ID_HERE"
+}
+
+
+student specific assessment
+
+{
+  "assessmentType": "assessment1",
+  "schoolId": "YOUR_SCHOOL_ID_HERE",
+  "studentId": "YOUR_STUDENT_ID_HERE",
+  "academicYear": 2025,
+  "termId": "YOUR_TERM_ID_HERE"
+}
+
+
+class specific assessment
+
+
+{
+  "assessmentType": "assessment2",
+  "schoolId": "YOUR_SCHOOL_ID_HERE",
+  "classId": "YOUR_CLASS_ID_HERE",
+  "academicYear": 2025,
+  "termId": "YOUR_TERM_ID_HERE"
+}

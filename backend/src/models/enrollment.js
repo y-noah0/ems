@@ -22,6 +22,12 @@ const EnrollmentSchema = new Schema({
         ref: 'School',
         required: true
     },
+    promotionStatus: {
+        type: String,
+        enum: ['eligible', 'repeat', 'expelled'],
+        default: 'eligible'
+    },
+
     isActive: {
         type: Boolean,
         default: true
@@ -29,7 +35,7 @@ const EnrollmentSchema = new Schema({
     isDeleted: {
         type: Boolean,
         default: false
-    }
+    },
 }, { timestamps: true });
 
 EnrollmentSchema.index({ student: 1, term: 1 }, { unique: true });

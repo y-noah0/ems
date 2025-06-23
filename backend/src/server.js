@@ -53,7 +53,17 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam
   useFindAndModify: false,
   useCreateIndex: true
 })
-  .then(() => console.log('MongoDB connected'))
+  .then(() => {
+    console.log('MongoDB connected');
+
+    // Start scheduled jobs only after DB connection is ready
+    require('./jobs/promotionScheduler');
+
+    // Start the server
+    server.listen(PORT, () => {
+      console.log(`Server is running on http://localhost:${PORT}`);
+    });
+  })
   .catch(err => {
     console.error('MongoDB connection error:', err);
     process.exit(1);
@@ -70,9 +80,4 @@ app.use((err, req, res, next) => {
     message: 'Server Error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
-});
-
-// Start server
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
 });

@@ -107,7 +107,57 @@ const UserSchema = new Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+
+  // --- Student-specific optional fields ---
+
+  // Parent info fields (optional, only for students)
+  parentFullName: {
+    type: String,
+    trim: true,
+    default: null,
+    required: false,
+    validate: {
+      validator: function (v) {
+        if (this.role === 'student' && v != null) return v.length > 0;
+        return true;
+      },
+      message: 'Parent full name must not be empty if provided'
+    }
+  },
+  parentNationalId: {
+    type: String,
+    trim: true,
+    default: null,
+    required: false,
+    validate: {
+      validator: function (v) {
+        if (this.role === 'student' && v != null) return v.length > 0;
+        return true;
+      },
+      message: 'Parent national ID must not be empty if provided'
+    }
+  },
+  parentPhoneNumber: {
+    type: String,
+    trim: true,
+    match: [/^\+?\d{10,15}$/, 'Please enter a valid phone number'],
+    default: null,
+    required: false
+  },
+
+  // Graduation status (optional)
+  graduated: {
+    type: Boolean,
+    default: false,
+    required: false
+  },
+  graduationDate: {
+    type: Date,
+    default: null,
+    required: false
   }
+
 }, { timestamps: true });
 
 UserSchema.index({ email: 1 }, { unique: true, sparse: true });
