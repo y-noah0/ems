@@ -10,6 +10,8 @@ const { checkScheduleConflicts } = require('../utils/scheduleValidator');
 const { toUTC } = require('../utils/dateUtils');
 const { logAudit } = require('../utils/auditLogger');
 const notificationService = require('../utils/notificationService');
+const { sendSMS } = require('../services/twilioService');
+const { sendEmail } = require('../services/emailService');
 
 // Temporary sanitize function (replace with actual implementation if available)
 const sanitize = (value) => String(value || '');
@@ -194,6 +196,44 @@ exports.createExam = async (req, res) => {
       });
       
       res.status(201).json({ success: true, exam });
+
+      // Notify students about the new exam
+      try {
+        // Find all students in the classes for this exam
+        const students = await User.find({
+          class: { $in: exam.classes || classIds },
+          role: 'student'
+        });
+
+        for (const student of students) {
+          // Send SMS
+          try {
+            if (student.phone) {
+              await sendSMS(
+                student.phone,
+                `New exam "${exam.title}" has been scheduled. Check your dashboard for details.`
+              );
+            }
+          } catch (smsErr) {
+            console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
+          }
+
+          // Send Email
+          try {
+            if (student.email) {
+              await sendEmail(
+                student.email,
+                'New Exam Scheduled',
+                `Dear ${student.fullName},\n\nA new exam "${exam.title}" has been scheduled. Please check your dashboard for details.`
+              );
+            }
+          } catch (emailErr) {
+            console.error(`Failed to send email to ${student.email}:`, emailErr.message);
+          }
+        }
+      } catch (notifyErr) {
+        console.error('Error notifying students:', notifyErr.message);
+      }
     } catch (validationError) {
       return res.status(validationError.statusCode || 400).json({ 
         success: false, 

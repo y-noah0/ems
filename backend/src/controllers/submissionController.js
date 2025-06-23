@@ -9,6 +9,8 @@ const { validateEntity } = require('../utils/entityValidator');
 const { logAudit } = require('../utils/auditLogger');
 const { toUTC } = require('../utils/dateUtils');
 const notificationService = require('../utils/notificationService');
+const { sendSMS } = require('../services/twilioService');
+const { sendEmail } = require('../services/emailService');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -212,6 +214,73 @@ submissionController.submitExam = async (req, res) => {
     // Send notification if the submission is fully graded
     if (submission.status === 'graded') {
       await notificationService.sendGradeNotification(req.io, submission.student, submission);
+    }
+
+    // Notify teacher via SMS and Email
+    try {
+      // Find the exam and teacher
+      const exam = await Exam.findById(submission.exam).populate('teacher', 'fullName email phone');
+      const teacher = exam.teacher;
+
+      // Notify teacher by SMS
+      try {
+        if (teacher.phone) {
+          await sendSMS(
+            teacher.phone,
+            `Student ${req.user.fullName} has submitted the exam "${exam.title}".`
+          );
+        }
+      } catch (smsErr) {
+        console.error(`Failed to send SMS to ${teacher.phone}:`, smsErr.message);
+      }
+
+      // Notify teacher by Email
+      try {
+        if (teacher.email) {
+          await sendEmail(
+            teacher.email,
+            'Exam Submission Notification',
+            `Dear ${teacher.fullName},\n\nStudent ${req.user.fullName} has submitted the exam "${exam.title}".`
+          );
+        }
+      } catch (emailErr) {
+        console.error(`Failed to send email to ${teacher.email}:`, emailErr.message);
+      }
+    } catch (notifyErr) {
+      console.error('Error notifying teacher:', notifyErr.message);
+    }
+
+    // Notify student via SMS and Email
+    try {
+      // Find the student
+      const student = await User.findById(submission.student);
+
+      // Send SMS to student
+      try {
+        if (student.phone) {
+          await sendSMS(
+            student.phone,
+            `Your exam "${exam.title}" has been graded. Check your dashboard for details.`
+          );
+        }
+      } catch (smsErr) {
+        console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
+      }
+
+      // Send Email to student
+      try {
+        if (student.email) {
+          await sendEmail(
+            student.email,
+            'Exam Graded Notification',
+            `Dear ${student.fullName},\n\nYour exam "${exam.title}" has been graded. Please check your dashboard for your results.`
+          );
+        }
+      } catch (emailErr) {
+        console.error(`Failed to send email to ${student.email}:`, emailErr.message);
+      }
+    } catch (notifyErr) {
+      console.error('Error notifying student:', notifyErr.message);
     }
     
     res.json({ 
@@ -477,6 +546,39 @@ submissionController.gradeOpenQuestions = async (req, res) => {
       // Send notification if the submission is fully graded
       if (submission.status === 'graded') {
         await notificationService.sendGradeNotification(req.io, submission.student, submission);
+      }
+      
+      // Notify student via SMS and Email
+      try {
+        // Find the student
+        const student = await User.findById(submission.student);
+
+        // Notify student by SMS
+        try {
+          if (student.phone) {
+            await sendSMS(
+              student.phone,
+              `Your exam "${exam.title}" has been graded. Check your dashboard for details.`
+            );
+          }
+        } catch (smsErr) {
+          console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
+        }
+
+        // Notify student by Email
+        try {
+          if (student.email) {
+            await sendEmail(
+              student.email,
+              'Exam Graded Notification',
+              `Dear ${student.fullName},\n\nYour exam "${exam.title}" has been graded. Please check your dashboard for your results.`
+            );
+          }
+        } catch (emailErr) {
+          console.error(`Failed to send email to ${student.email}:`, emailErr.message);
+        }
+      } catch (notifyErr) {
+        console.error('Error notifying student:', notifyErr.message);
       }
       
       res.json({ success: true, submission });
