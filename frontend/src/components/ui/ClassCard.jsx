@@ -41,7 +41,7 @@ export default function ClassCard({ classItem }) {
     };
 
     const handleReportsClick = () => {
-        navigate(`/class/${classItem.classId}/reports`);
+        navigate(`/dean/class/${classItem.classId}/reports`);
     };
 
     return (
