@@ -9,6 +9,7 @@ const { validateEntity, validateEntities } = require('../utils/entityValidator')
 const { checkScheduleConflicts } = require('../utils/scheduleValidator');
 const { toUTC } = require('../utils/dateUtils');
 const { logAudit } = require('../utils/auditLogger');
+const notificationService = require('../utils/notificationService');
 
 // Temporary sanitize function (replace with actual implementation if available)
 const sanitize = (value) => String(value || '');
@@ -780,6 +781,13 @@ exports.scheduleExam = async (req, res) => {
           schedule: exam.schedule 
         }
       );
+
+      // Get students in the class
+      const students = await User.find({ class: { $in: exam.classes }, role: 'student' });
+      // Notify each student
+      for (const student of students) {
+        await notificationService.sendExamScheduledNotification(req.io, student._id, exam);
+      }
 
       logger.info('Exam scheduled successfully', { 
         examId, 

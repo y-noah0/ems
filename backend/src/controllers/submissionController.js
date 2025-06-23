@@ -8,6 +8,7 @@ const winston = require('winston');
 const { validateEntity } = require('../utils/entityValidator');
 const { logAudit } = require('../utils/auditLogger');
 const { toUTC } = require('../utils/dateUtils');
+const notificationService = require('../utils/notificationService');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -167,15 +168,19 @@ submissionController.submitExam = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
+    
     const { submissionId, answers } = req.body;
     const submission = await Submission.findOne({
       _id: submissionId,
       student: req.user.id,
       isDeleted: false
     });
+    
     if (!submission || submission.status !== 'in-progress') {
       return res.status(400).json({ success: false, message: 'Submission not found or not in progress' });
     }
+    
+    // Update submission with latest answers
     if (answers && Array.isArray(answers)) {
       answers.forEach(answer => {
         const idx = submission.answers.findIndex(a => a.questionId.toString() === answer.questionId);
@@ -185,10 +190,36 @@ submissionController.submitExam = async (req, res) => {
         }
       });
     }
-    submission.status = 'submitted';
+    
     submission.submittedAt = new Date();
+    
+    // Auto-grade objective questions
+    await autoGradeObjectiveQuestions(submission, submission.exam);
+    
+    // Save the submission
     await submission.save();
-    res.json({ success: true, message: 'Exam submitted', submission });
+    
+    // Log the submission event
+    await logAudit(
+      'submission',
+      submission._id,
+      'submit',
+      req.user.id,
+      { status: 'in-progress' },
+      { status: submission.status, submittedAt: submission.submittedAt }
+    );
+    
+    // Send notification if the submission is fully graded
+    if (submission.status === 'graded') {
+      await notificationService.sendGradeNotification(req.io, submission.student, submission);
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Exam submitted',
+      submission,
+      autoGraded: submission.status === 'graded'
+    });
   } catch (error) {
     logger.error('submitExam error', { error: error.message, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -202,15 +233,18 @@ submissionController.autoSubmitExam = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
+    
     const { submissionId, reason } = req.body;
     const submission = await Submission.findOne({
       _id: submissionId,
       student: req.user.id,
       isDeleted: false
     });
+    
     if (!submission || submission.status !== 'in-progress') {
       return res.status(400).json({ success: false, message: 'Submission not found or not in progress' });
     }
+    
     if (reason && reason.answers && Array.isArray(reason.answers)) {
       reason.answers.forEach(answer => {
         const idx = submission.answers.findIndex(a => a.questionId.toString() === answer.questionId);
@@ -220,8 +254,9 @@ submissionController.autoSubmitExam = async (req, res) => {
         }
       });
     }
-    submission.status = 'auto-submitted';
+    
     submission.submittedAt = new Date();
+    
     if (reason) {
       submission.violationLogs.push({
         type: reason.type || 'other',
@@ -229,8 +264,33 @@ submissionController.autoSubmitExam = async (req, res) => {
         details: reason.details || 'Auto-submitted'
       });
     }
+    
+    // Auto-grade objective questions
+    await autoGradeObjectiveQuestions(submission, submission.exam);
+    
+    // If auto-grading didn't change the status to 'graded', set it to 'auto-submitted'
+    if (submission.status !== 'graded') {
+      submission.status = 'auto-submitted';
+    }
+    
     await submission.save();
-    res.json({ success: true, message: 'Exam auto-submitted', submission });
+    
+    // Log the auto-submission
+    await logAudit(
+      'submission',
+      submission._id,
+      'auto-submit',
+      req.user.id,
+      { status: 'in-progress' },
+      { status: submission.status, reason: reason?.type || 'time-expired' }
+    );
+    
+    res.json({ 
+      success: true, 
+      message: 'Exam auto-submitted', 
+      submission,
+      autoGraded: submission.status === 'graded'
+    });
   } catch (error) {
     logger.error('autoSubmitExam error', { error: error.message, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -414,6 +474,11 @@ submissionController.gradeOpenQuestions = async (req, res) => {
         { totalScore, percentage: submission.percentage, status: 'graded' }
       );
       
+      // Send notification if the submission is fully graded
+      if (submission.status === 'graded') {
+        await notificationService.sendGradeNotification(req.io, submission.student, submission);
+      }
+      
       res.json({ success: true, submission });
     } catch (validationError) {
       return res.status(validationError.statusCode || 400).json({ 
@@ -424,6 +489,100 @@ submissionController.gradeOpenQuestions = async (req, res) => {
   } catch (error) {
     logger.error('gradeOpenQuestions error', { error: error.message, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// Helper function to auto-grade multiple-choice and true-false questions
+const autoGradeObjectiveQuestions = async (submission, examId) => {
+  try {
+    // Get the exam with questions
+    const exam = await Exam.findById(examId);
+    if (!exam) return false;
+    
+    let totalScore = 0;
+    let autoGradedCount = 0;
+    
+    // Create a map of questions by ID for easier lookup
+    const questionsMap = {};
+    exam.questions.forEach(q => {
+      questionsMap[q._id.toString()] = q;
+    });
+    
+    // Loop through each answer and auto-grade if it's multiple-choice or true-false
+    submission.answers.forEach((answer, index) => {
+      const questionId = answer.questionId.toString();
+      const question = questionsMap[questionId];
+      
+      // Only auto-grade multiple-choice and true-false questions
+      if (question && ['multiple-choice', 'true-false'].includes(question.type)) {
+        const studentAnswer = answer.answer;
+        
+        // For multiple-choice questions
+        if (question.type === 'multiple-choice' && question.options) {
+          // Find the correct option
+          const correctOption = question.options.find(opt => opt.isCorrect);
+          
+          if (correctOption) {
+            // Check if student answer matches the text of correct option
+            if (studentAnswer === correctOption.text) {
+              submission.answers[index].score = question.maxScore;
+              submission.answers[index].graded = true;
+              submission.answers[index].gradedAt = new Date();
+              submission.answers[index].feedback = 'Auto-graded: Correct';
+            } else {
+              submission.answers[index].score = 0;
+              submission.answers[index].graded = true;
+              submission.answers[index].gradedAt = new Date();
+              submission.answers[index].feedback = 'Auto-graded: Incorrect';
+            }
+            autoGradedCount++;
+          }
+        }
+        
+        // For true-false questions
+        if (question.type === 'true-false') {
+          const correctAnswer = question.correctAnswer?.toString().toLowerCase();
+          const studentAnswerLower = studentAnswer?.toString().toLowerCase();
+          
+          if (correctAnswer && (correctAnswer === studentAnswerLower)) {
+            submission.answers[index].score = question.maxScore;
+            submission.answers[index].graded = true;
+            submission.answers[index].gradedAt = new Date();
+            submission.answers[index].feedback = 'Auto-graded: Correct';
+          } else {
+            submission.answers[index].score = 0;
+            submission.answers[index].graded = true;
+            submission.answers[index].gradedAt = new Date();
+            submission.answers[index].feedback = 'Auto-graded: Incorrect';
+          }
+          autoGradedCount++;
+        }
+        
+        // Add the score to total
+        totalScore += submission.answers[index].score;
+      }
+    });
+    
+    // Calculate the maximum possible score
+    const maxScore = exam.questions.reduce((sum, q) => sum + q.maxScore, 0);
+    
+    // Update submission with the new total score and percentage
+    submission.totalScore = totalScore;
+    submission.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+    submission.gradeLetter = calculateGradeLetter(submission.percentage);
+    
+    // If all questions are auto-graded (no open-ended questions)
+    if (autoGradedCount === exam.questions.length) {
+      submission.status = 'graded';
+      submission.gradedAt = new Date();
+    } else {
+      submission.status = 'submitted'; // Needs manual grading for open-ended questions
+    }
+    
+    return true;
+  } catch (error) {
+    logger.error('autoGradeObjectiveQuestions error', { error: error.message });
+    return false;
   }
 };
 
@@ -796,91 +955,6 @@ submissionController.getStudentMarksByID = async (req, res) => {
     res.json({ success: true, results: submissions });
   } catch (error) {
     logger.error('getStudentMarksByID error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
-  }
-};
-
-// Update submission grades
-submissionController.updateSubmissionGrades = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
-    }
-    
-    const { submissionId } = req.params;
-    const { grades } = req.body;
-    
-    try {
-      const submission = await validateEntity(Submission, submissionId, 'Submission');
-      const exam = await validateEntity(Exam, submission.exam, 'Exam');
-      
-      if (exam.teacher.toString() !== req.user.id && !['dean', 'admin'].includes(req.user.role)) {
-        return res.status(403).json({ 
-          success: false, 
-          message: 'You are not authorized to update grades for this submission' 
-        });
-      }
-      
-      // Create a copy of current answers for audit
-      const previousAnswers = JSON.parse(JSON.stringify(submission.answers));
-      
-      let totalScore = 0;
-      let modified = false;
-      
-      grades.forEach(grade => {
-        const idx = submission.answers.findIndex(a => a.questionId.toString() === grade.questionId);
-        if (idx !== -1) {
-          submission.answers[idx].score = parseInt(grade.score) || 0;
-          submission.answers[idx].graded = true;
-          submission.answers[idx].feedback = grade.feedback || submission.answers[idx].feedback || '';
-          submission.answers[idx].gradedAt = new Date();
-          submission.answers[idx].gradedBy = req.user.id;
-          totalScore += submission.answers[idx].score;
-          modified = true;
-        }
-      });
-      
-      if (!modified) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'No valid question grades provided' 
-        });
-      }
-      
-      const maxScore = exam.questions.reduce((sum, q) => sum + q.maxScore, 0);
-      
-      submission.totalScore = totalScore;
-      submission.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
-      submission.gradeLetter = calculateGradeLetter(submission.percentage);
-      submission.gradedBy = req.user.id;
-      submission.gradedAt = new Date();
-      
-      if (submission.answers.every(a => a.graded)) {
-        submission.status = 'graded';
-      }
-      
-      await submission.save();
-      
-      // Log the update grading action
-      await logAudit(
-        'submission',
-        submission._id,
-        'grade',
-        req.user.id,
-        { answers: previousAnswers },
-        { totalScore, percentage: submission.percentage }
-      );
-      
-      res.json({ success: true, submission });
-    } catch (validationError) {
-      return res.status(validationError.statusCode || 400).json({ 
-        success: false, 
-        message: validationError.message 
-      });
-    }
-  } catch (error) {
-    logger.error('updateSubmissionGrades error', { error: error.message, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
