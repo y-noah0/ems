@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import examService from '../services/examService';
+import ExamCard from '../components/ui/ExamCard';
 
 const TeacherDashboard = () => {
   const { currentUser } = useAuth();
@@ -70,36 +71,23 @@ const TeacherDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {groupedExams.draft.map(exam => (
-                  <div key={exam._id} className="border rounded-md p-4 bg-white shadow-sm">
-                    <h3 className="font-medium">{exam.title}</h3>
-                    <div className="mt-1 text-sm text-gray-500">
-                      <p>Subject: {exam.subject.name}</p>
-                      <p>Class: {
+                  <Link to={`/teacher/exams/${exam._id}/edit`} key={exam._id}>
+                    <ExamCard 
+                      title={exam.title}
+                      subject={exam.subject.name}
+                      classCode={
                         Array.isArray(exam.classes) && exam.classes.length > 0
                           ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
                           : 'No class assigned'
-                      }</p>
-                      <p>Type: {exam.type.toUpperCase()}</p>
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button
-                        as={Link}
-                        to={`/teacher/exams/${exam._id}/edit`}
-                        variant="primary"
-                        size="sm"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        as={Link}
-                        to={`/teacher/exams/${exam._id}/schedule`}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        Schedule
-                      </Button>
-                    </div>
-                  </div>
+                      }
+                      description={`${exam.type.toUpperCase()} - Draft`}
+                      status="upcoming"
+                      startTime="Not scheduled"
+                      endTime="Not scheduled"
+                      questions={exam.questions?.length || 0}
+                      totalPoints={exam.totalPoints || 0}
+                    />
+                  </Link>
                 ))}
               </div>
             )}
@@ -112,36 +100,23 @@ const TeacherDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {groupedExams.scheduled.map(exam => (
-                  <div key={exam._id} className="border rounded-md p-4 bg-white shadow-sm">
-                    <h3 className="font-medium">{exam.title}</h3>
-                    <div className="mt-1 text-sm text-gray-500">
-                      <p>Subject: {exam.subject.name}</p>
-                      <p>Class: {
+                  <Link to={`/teacher/exams/${exam._id}`} key={exam._id}>
+                    <ExamCard 
+                      title={exam.title}
+                      subject={exam.subject.name}
+                      classCode={
                         Array.isArray(exam.classes) && exam.classes.length > 0
                           ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
                           : 'No class assigned'
-                      }</p>
-                      <p>Scheduled: {new Date(exam.schedule.start).toLocaleString()}</p>
-                      <p>Duration: {exam.schedule.duration} minutes</p>
-                    </div>
-                    <div className="mt-3 flex space-x-2">
-                      <Button
-                        as={Link}
-                        to={`/teacher/exams/${exam._id}`}
-                        variant="primary"
-                        size="sm"
-                      >
-                        View
-                      </Button>
-                      <Button
-                        onClick={() => examService.activateExam(exam._id)}
-                        variant="success"
-                        size="sm"
-                      >
-                        Activate
-                      </Button>
-                    </div>
-                  </div>
+                      }
+                      description={exam.description || `Scheduled exam: ${exam.title}`}
+                      status="upcoming"
+                      startTime={new Date(exam.schedule.start).toLocaleString()}
+                      endTime={new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString()}
+                      questions={exam.questions?.length || 0}
+                      totalPoints={exam.totalPoints || 0}
+                    />
+                  </Link>
                 ))}
               </div>
             )}
@@ -154,37 +129,24 @@ const TeacherDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {groupedExams.active.map(exam => (
-                  <div key={exam._id} className="border rounded-md p-4 bg-white shadow-sm">
-                    <div className="flex justify-between">
-                      <h3 className="font-medium">{exam.title}</h3>
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Active</span>
-                    </div>
-                    <div className="mt-1 text-sm text-gray-500">
-                      <p>Subject: {exam.subject.name}</p>
-                      <p>Class: {
+                  <Link to={`/teacher/exams/${exam._id}/results`} key={exam._id}>
+                    <ExamCard 
+                      title={exam.title}
+                      subject={exam.subject.name}
+                      classCode={
                         Array.isArray(exam.classes) && exam.classes.length > 0
                           ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
                           : 'No class assigned'
-                      }</p>
-                      <p>Started: {new Date(exam.schedule.start).toLocaleString()}</p>
-                    </div>
-                    <div className="mt-3 flex space-x-2">                      <Button
-                      as={Link}
-                      to={`/teacher/exams/${exam._id}/results`}
-                      variant="primary"
-                      size="sm"
-                    >
-                      View Results
-                    </Button>
-                      <Button
-                        onClick={() => examService.completeExam(exam._id)}
-                        variant="warning"
-                        size="sm"
-                      >
-                        Complete Exam
-                      </Button>
-                    </div>
-                  </div>
+                      }
+                      description={exam.description || `Active exam: ${exam.title}`}
+                      status="active"
+                      startTime={new Date(exam.schedule.start).toLocaleString()}
+                      endTime={new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString()}
+                      questions={exam.questions?.length || 0}
+                      totalPoints={exam.totalPoints || 0}
+                      progress={50} // You can calculate a more accurate progress based on time elapsed
+                    />
+                  </Link>
                 ))}
               </div>
             )}
@@ -197,27 +159,25 @@ const TeacherDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {groupedExams.completed.slice(0, 5).map(exam => (
-                  <div key={exam._id} className="border rounded-md p-4 bg-white shadow-sm">
-                    <h3 className="font-medium">{exam.title}</h3>
-                    <div className="mt-1 text-sm text-gray-500">
-                      <p>Subject: {exam.subject.name}</p>
-                      <p>Class: {
+                  <Link to={`/teacher/exams/${exam._id}/results`} key={exam._id}>
+                    <ExamCard 
+                      title={exam.title}
+                      subject={exam.subject.name}
+                      classCode={
                         Array.isArray(exam.classes) && exam.classes.length > 0
                           ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
                           : 'No class assigned'
-                      }</p>
-                      <p>Completed: {new Date(exam.updatedAt).toLocaleDateString()}</p>
-                    </div>
-                    <div className="mt-3">                      <Button
-                      as={Link}
-                      to={`/teacher/exams/${exam._id}/results`}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      View & Grade Results
-                    </Button>
-                    </div>
-                  </div>
+                      }
+                      description={exam.description || `Completed on ${new Date(exam.updatedAt).toLocaleDateString()}`}
+                      status="completed"
+                      startTime={exam.schedule?.start ? new Date(exam.schedule.start).toLocaleString() : "N/A"}
+                      endTime={exam.schedule?.start && exam.schedule?.duration ? 
+                        new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString() : "N/A"}
+                      questions={exam.questions?.length || 0}
+                      totalPoints={exam.totalPoints || 0}
+                      progress={100} // Completed exams have 100% progress
+                    />
+                  </Link>
                 ))}
                 {groupedExams.completed.length > 5 && (
                   <div className="text-center pt-2">

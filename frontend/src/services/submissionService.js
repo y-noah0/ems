@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -126,12 +127,15 @@ const submissionService = {
     }
   },
 
-  // Submit exam
+  // Submit exam  
   submitExam: async (submissionId, answers) => {
     try {
       const response = await api.post('/submissions/submit', { submissionId, answers });
+      toast.success('Exam submitted successfully!');
       return response.data;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to submit exam';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },

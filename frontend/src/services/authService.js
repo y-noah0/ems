@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -40,6 +41,7 @@ const authService = {
 
     } catch (error) {
       console.error('Login error:', error.response?.data);
+      toast.error(error.response?.data?.message || 'Login failed');
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
@@ -55,6 +57,7 @@ const authService = {
       }
       return response.data;
     } catch (error) {
+      toast.error(error.response?.data?.message || 'Registration failed');
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
@@ -63,6 +66,7 @@ const authService = {
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    toast.success('Logout successful');
   },
 
   // Get current user
@@ -82,8 +86,10 @@ const authService = {
         currentPassword,
         newPassword
       });
+      toast.success('Password changed successfully');
       return response.data;
     } catch (error) {
+      toast.error(error.response?.data?.message || 'Password change failed');
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },

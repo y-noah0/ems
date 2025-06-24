@@ -20,7 +20,7 @@ const ExamCreator = () => {
     description: '',
     subjectId: '',
     classId: '',
-    type: 'midterm',
+    type: 'quiz',
     duration: 60, // minutes
     startTime: '',
     totalPoints: 100,
@@ -264,10 +264,11 @@ const ExamCreator = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
-                  <option value="midterm">Midterm Exam</option>
-                  <option value="final">Final Exam</option>
+                  <option value="assessment1">Assessment 1</option>
+                  <option value="assessment2">Assessment 2</option>
                   <option value="quiz">Quiz</option>
-                  <option value="practice">Practice Test</option>
+                  <option value="homework">Homework</option>
+                  <option value="exam">Exam</option>
                 </select>
               </div>
 

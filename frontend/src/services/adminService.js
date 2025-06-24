@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -44,21 +45,25 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Failed to load classes. Please try again.' };
     }
   },
-
   createClass: async (classData) => {
     try {
       const response = await api.post('/admin/classes', classData);
+      toast.success('Class created successfully!');
       return response.data.class;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to create class';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-
   updateClass: async (id, classData) => {
     try {
       const response = await api.put(`/admin/classes/${id}`, classData);
+      toast.success('Class updated successfully!');
       return response.data.class;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to update class';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
@@ -124,17 +129,18 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  createStudent: async (studentData) => {
+    createStudent: async (studentData) => {
     try {
       const response = await api.post('/admin/students', studentData);
+      toast.success('Student created successfully!');
       return response.data;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Error creating student';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Error creating student' };
     }
   },
-  
-  importStudents: async (formData) => {
+    importStudents: async (formData) => {
     try {
       // For file uploads, we need to use multipart/form-data
       const response = await api.post('/admin/import-students', formData, {
@@ -142,8 +148,11 @@ const adminService = {
           'Content-Type': 'multipart/form-data'
         }
       });
+      toast.success('Students imported successfully!');
       return response.data;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Error importing students';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Error importing students' };
     }
   },
