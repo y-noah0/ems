@@ -14,6 +14,8 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  console.log(recentSubmissions);
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
@@ -84,11 +86,19 @@ const StudentDashboard = () => {
                     >
                       View Details
                     </Button>
+                      as={Link}
+                      to={`/student/exams/${exam._id}`}
+                      variant="primary"
+                      size="sm"
+                    >
+                      View Details
+                    </Button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+
 
             <div className="mt-4">
               <Button
@@ -119,7 +129,9 @@ const StudentDashboard = () => {
                           : 'N/A'}
                       </p>
                       <p>
-                        Submitted: {new Date(submission.submittedAt).toLocaleString()}
+                        Submitted: {submission.submittedAt
+                          ? new Date(submission.submittedAt).toLocaleString()
+                          : 'N/A'}
                       </p>
                       <p>
                         Score: {submission.status === 'graded' && submission.totalScore !== undefined && submission.exam && submission.exam.totalScore !== undefined
@@ -134,6 +146,7 @@ const StudentDashboard = () => {
                         variant="secondary"
                         size="sm"
                         disabled={!submission.exam}
+                        disabled={!submission.exam}
                       >
                         View Details
                       </Button>
@@ -142,6 +155,7 @@ const StudentDashboard = () => {
                 ))}
               </div>
             )}
+
 
             <div className="mt-4">
               <Button
