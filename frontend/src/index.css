@@ -1,10 +1,22 @@
 @import 'tailwindcss';
-*{
+
+* {
     user-select: none;
 }
-@apply
-    bg-gray-100
-    text-gray-900
-    dark:bg-gray-900
-    dark:text-gray-100
 
+@theme {
+    --color-text: #2F303A;
+    --color-main-blue: #155DFC;
+    --color-main-red: #FB2C36;
+    --color-main-green: #016630;
+    --color-main-gray: #65666A;
+}
+@layer components{
+    .title{
+        @apply text-xl font-bold text-text;
+    }
+    .titlebar{
+        @apply flex items-center justify-between p-2 border-b border-black/10;
+    }
+
+}

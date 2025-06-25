@@ -1,84 +1,129 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import AdminLayout from '../../components/layout/AdminLayout';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import Layout from "../../components/layout/Layout";
+import StatsCards from "../../components/dashboard/StatsCards";
+import Button from "../../components/ui/Button1";
 
 const AdminDashboard = () => {
-  const { currentUser } = useAuth();
-  const navigate = useNavigate();
-  const [error] = useState('');
+    const { currentUser } = useAuth();
+    const navigate = useNavigate();
+    const [stats, setStats] = useState({});
 
-  useEffect(() => {
-    // Verify user is admin
-    if (!currentUser || currentUser.role !== 'admin') {
-      navigate('/login');
+    useEffect(() => {
+        if (!currentUser || currentUser.role !== "admin") {
+            navigate("/login");
+        }
+    }, [currentUser, navigate]);
+    useEffect(() => {
+        if (currentUser && currentUser.role === "admin") {
+            setStats({
+                classCount: 23,
+                teacherCount: 244,
+                studentCount: 26532,
+                examCount: 23,
+            });
+        }
+    }, [currentUser]);
+
+    if (!currentUser || currentUser.role !== "admin") {
+        return (
+            <div className="flex justify-center items-center py-5">
+                Loading...
+            </div>
+        );
     }
-  }, [currentUser, navigate]);
-
-  if (!currentUser || currentUser.role !== 'admin') {
-    return <div className="flex justify-center items-center py-5">Loading...</div>;
-  }
-
-  return (
-    <AdminLayout>
-      <div className="container mx-auto px-4 py-6">
-        <h1 className="text-center text-2xl font-bold mb-6">System Administration Dashboard</h1>
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden h-full">
-            <div className="p-6 flex flex-col h-full">
-              <h2 className="text-xl font-semibold mb-2">User Management</h2>
-              <p className="text-gray-600 mb-6 flex-grow">
-                Manage all teachers, administrators, and deans. Create new accounts, update credentials, or remove users.
-              </p>
-              <button 
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
-                onClick={() => navigate('/admin/users')}
-              >
-                Manage Users
-              </button>
+    const topSchools = [
+        {
+            id: 1,
+            name: "mather marry",
+            students: 322,
+        },
+        {
+            id: 2,
+            name: "john doe",
+            students: 422,
+        },
+        {
+            id: 3,
+            name: "jane smith",
+            students: 522,
+        },
+    ];
+    const payments = [
+        {
+            id: 1,
+            name: "mather marry",
+            status: "active",
+        },
+        {
+            id: 2,
+            name: "john doe",
+            status: "pending"
+        },
+        {
+            id: 3,
+            name: "jane smith",
+            status: "suspended"
+        },
+    ];
+    return (
+        <Layout>
+            <div className="px-10 py-6">
+                <div className="h-fit">
+                    <StatsCards stats={stats} />
+                </div>
+                <div className="flex justify-between gap-6">
+                    <div className="w-1/2 border rounded-lg border-black/10 px-6 py-4">
+                        <div className="flex justify-between mb-4 border-b border-b-black/10">
+                            <h1 className="title mb-4">Top schools</h1>
+                            <Button to={"/admin/schools"} size="sm" className="h-8">
+                                Manage
+                            </Button>
+                        </div>
+                        <table className="w-full bg-black/1">
+                            <tr className="flex justify-between border-b-black/10 border-b bg-main-blue/10 px-4 py-2 rounded-t-lg">
+                                <td className="">School</td>
+                                <td className="">Students</td>
+                            </tr>
+                            {topSchools.map((school) => (
+                                <tr
+                                    key={school.id}
+                                    className="flex justify-between border-b-black/10 border-b  px-4 py-2"
+                                >
+                                    <td className="">{school.name}</td>
+                                    <td className="">{school.students}</td>
+                                </tr>
+                            ))}
+                        </table>
+                    </div>
+                    <div className="w-1/2 border rounded-lg border-black/10 px-6 py-4">
+                        <div className="flex justify-between mb-4 border-b border-b-black/10">
+                            <h1 className="title mb-4">Payment Statuses</h1>
+                            <Button to={"/admin/schools"} size="sm" className="h-8">
+                                Manage
+                            </Button>
+                        </div>
+                        <table className="w-full bg-black/1">
+                            <tr className="flex justify-between border-b-black/10 border-b bg-main-blue/10 px-4 py-2 rounded-t-lg">
+                                <td className="">School</td>
+                                <td className="">Status</td>
+                            </tr>
+                            {payments.map((school) => (
+                                <tr
+                                    key={school.id}
+                                    className="flex justify-between border-b-black/10 border-b  px-4 py-2"
+                                >
+                                    <td className="">{school.name}</td>
+                                    <td className={school.status=="active"? 'bg-main-green/10':school.status=="pending"?'bg-yellow-400/10':'bg-main-red/10'}>{school.status}</td>
+                                </tr>
+                            ))}
+                        </table>
+                    </div>
+                </div>
             </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md overflow-hidden h-full">
-            <div className="p-6 flex flex-col h-full">
-              <h2 className="text-xl font-semibold mb-2">System Settings</h2>
-              <p className="text-gray-600 mb-6 flex-grow">
-                Configure system-wide settings and parameters.
-              </p>
-              <button 
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
-                onClick={() => navigate('/admin/settings')}
-              >
-                System Settings
-              </button>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md overflow-hidden h-full">
-            <div className="p-6 flex flex-col h-full">
-              <h2 className="text-xl font-semibold mb-2">System Logs</h2>
-              <p className="text-gray-600 mb-6 flex-grow">
-                View system activity logs and user actions.
-              </p>
-              <button 
-                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
-                onClick={() => navigate('/admin/logs')}
-              >
-                View Logs
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </AdminLayout>
-  );
+        </Layout>
+    );
 };
 
 export default AdminDashboard;

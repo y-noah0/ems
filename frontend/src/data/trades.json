@@ -1,0 +1,62 @@
+{
+  "REB": {
+    "olevel": ["S1", "S2", "S3"],
+    "alevel": {
+      "S4": ["PCM", "PCB", "MPC", "MCB", "MCE", "MEG", "HEG", "HLP", "HGL"],
+      "S5": ["PCM", "PCB", "MPC", "MCB", "MCE", "MEG", "HEG", "HLP", "HGL"],
+      "S6": ["PCM", "PCB", "MPC", "MCB", "MCE", "MEG", "HEG", "HLP", "HGL"]
+    }
+  },
+  "TVET": {
+    "L1": [
+      "Tailoring",
+      "Hairdressing",
+      "Welding",
+      "Masonry",
+      "Plumbing",
+      "Driving (Motorcycle & Vehicle)",
+      "Small-scale Mining",
+      "Leather Works"
+    ],
+    "L2": [
+      "Graphic Arts",
+      "Ceramics",
+      "Automobile Technology",
+      "Motorcycle Repair",
+      "Forest & Tree Nursery Operations",
+      "Flower & Nursery Production",
+      "Cash Crops & Food Processing"
+    ],
+    "L3": [
+      "Software Development",
+      "Computer Applications",
+      "Computer Systems & Architecture",
+      "Multimedia Production",
+      "Networking & Internet Technologies",
+      "Building Construction",
+      "Civil Construction",
+      "Plumbing Technology",
+      "Electronics & Telecommunication",
+      "Food & Beverage Services",
+      "Housekeeping",
+      "Agriculture"
+    ],
+    "L4": [
+      "Biomedical Equipment",
+      "Mechanical Engineering Production",
+      "Land Surveying",
+      "Industrial Electricity",
+      "Renewable Energy Systems",
+      "Heavy Machinery Operations",
+      "Auto Body Works"
+    ],
+    "L5": [
+      "Civil Construction",
+      "Concrete Masonry",
+      "Visible Renewable Energy",
+      "Auto Maintenance & Repair",
+      "Software Development",
+      "Land Surveying"
+    ]
+  }
+}

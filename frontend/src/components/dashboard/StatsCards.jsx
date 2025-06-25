@@ -48,11 +48,11 @@ const StatsCards = ({ stats }) => {
             shadow-md hover:shadow-lg
             transition-all duration-200
             relative
+            flex
+            gap-5
           `}
           aria-label={`${card.title} statistics card`}
         >
-          {/* Optional subtle corner accent */}
-          <div className={`absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 ${card.borderColor} rounded-bl-lg`}></div>
           
           <div className={`w-14 h-14 ${card.bgColor} rounded-lg flex items-center justify-center mb-4 border ${card.borderColor}`}>
             <card.icon className={`w-7 h-7 ${card.color}`} aria-hidden="true" />

@@ -10,6 +10,7 @@ import {
     FileBarChart,
     Menu,
     Clock,
+    Ticket,
 } from "lucide-react";
 
 const Sidebar = ({ userRole = "student" }) => {
@@ -106,17 +107,24 @@ const Sidebar = ({ userRole = "student" }) => {
         },
         // Admin specific items
         {
-            title: "User Management",
+            title: "School Management",
             icon: Users,
-            path: "/admin/users",
-            active: location.pathname.includes("/admin/users"),
+            path: "/admin/schools",
+            active: location.pathname.includes("/admin/schools"),
             roles: ["admin"],
         },
         {
-            title: "System Settings",
+            title: "Trades Catalog",
             icon: Building2,
-            path: "/admin/settings",
-            active: location.pathname.includes("/admin/settings"),
+            path: "/admin/trades",
+            active: location.pathname.includes("/admin/trades"),
+            roles: ["admin"],
+        },
+        {
+            title: "Subscription Management",
+            icon: Ticket,
+            path: "/admin/subscriptions",
+            active: location.pathname.includes("/admin/subscriptions"),
             roles: ["admin"],
         },
         {

@@ -33,7 +33,6 @@ import SubmissionView from "./pages/SubmissionView";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import UserManagement from "./pages/admin/UserManagement";
 import SystemSettings from "./pages/admin/SystemSettings";
 import SystemLogs from "./pages/admin/SystemLogs";
 import StudentExams from "./pages/StudentExams";
@@ -46,6 +45,9 @@ import StudentPage from "./components/class/StudentPage";
 import ExamDetails from "./pages/Dean/ExamDetails";
 import ReportingPage from "./pages/Dean/Reporting/ReportingPage";
 import ClassReports from "./pages/Dean/Reporting/ClassReports";
+import SchoolManagement from "./pages/admin/SchoolManagement";
+import AddSchool from "./pages/admin/AddSchool";
+import TradesCatalog from "./pages/admin/TradesCatalog";
 
 // Role-Based Redirect Component
 const RoleBasedRedirect = () => {
@@ -90,7 +92,6 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
 // Global Exam Protection Wrapper (now applies to ALL routes)
 const GlobalExamProtection = ({ children }) => {
-    // eslint-disable-next-line no-unused-vars
     // const location = useLocation();
     // const isFullscreen = useFullscreen();
 
@@ -444,10 +445,26 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/admin/users"
+                                path="/admin/schools"
                                 element={
                                     <ProtectedRoute allowedRoles={["admin"]}>
-                                        <UserManagement />
+                                        <SchoolManagement />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/schools/add"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <AddSchool />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/trades"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <TradesCatalog />
                                     </ProtectedRoute>
                                 }
                             />
