@@ -11,15 +11,29 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/school-exam-system", {
+    await mongoose.connect("mongodb://localhost:27017/school-exam-system", {
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
+      useFindAndModify: false, // Add this line
+      useCreateIndex: true     // Add this line for index warning
     });
     console.log('MongoDB connected for seeding...');
   } catch (err) {
     console.error('Database connection error:', err.message);
     process.exit(1);
   }
+};
+
+const createUserWithoutHook = async (userData) => {
+  const collection = mongoose.connection.collection('users');
+  const userWithHashedPassword = {
+    ...userData,
+    passwordHash: bcrypt.hashSync(userData.passwordHash, 10),
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+  const result = await collection.insertOne(userWithHashedPassword);
+  return User.findById(result.insertedId);
 };
 
 const seedDatabase = async () => {
@@ -31,8 +45,7 @@ const seedDatabase = async () => {
     await Submission.deleteMany({});
     console.log('Previous data cleared');
 
-    // Create system admin
-    const systemAdmin = await User.create({
+    const systemAdmin = await createUserWithoutHook({
       fullName: 'System Administrator',
       email: 'admin@example.com',
       passwordHash: 'admin123',
@@ -68,12 +81,12 @@ const seedDatabase = async () => {
     ];
     const teachers = [];
     for (const teacherDoc of teachersDocs) {
-      const teacher = await User.create(teacherDoc);
+      const teacher = await createUserWithoutHook(teacherDoc);
       teachers.push(teacher);
     }
     console.log('Teachers created');
 
-    const dean = await User.create({
+    const dean = await createUserWithoutHook({
       fullName: 'Robert Brown',
       email: 'dean@example.com',
       passwordHash: 'dean123',
@@ -122,46 +135,47 @@ const seedDatabase = async () => {
     });
     console.log('Teachers updated with subjects');
 
-    // Create students using User.create to use the pre-save hook
-    const studentsToCreate = [];
+    const collection = mongoose.connection.collection('users');
+    const studentsToInsert = [];
     for (let i = 1; i <= 5; i++) {
-      studentsToCreate.push({
+      studentsToInsert.push({
         fullName: `Student ${i} L3SOD`,
         email: `student${i}l3@example.com`,
         registrationNumber: `L3SOD${String(i).padStart(3, '0')}`,
-        passwordHash: 'student123',
+        passwordHash: bcrypt.hashSync('student123', 10),
         role: 'student',
-        class: classes[0]._id
+        class: classes[0]._id,
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
     }
     for (let i = 1; i <= 5; i++) {
-      studentsToCreate.push({
+      studentsToInsert.push({
         fullName: `Student ${i} L4NIT`,
         email: `student${i}l4@example.com`,
         registrationNumber: `L4NIT${String(i).padStart(3, '0')}`,
-        passwordHash: 'student123',
+        passwordHash: bcrypt.hashSync('student123', 10),
         role: 'student',
-        class: classes[1]._id
+        class: classes[1]._id,
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
     }
     for (let i = 1; i <= 5; i++) {
-      studentsToCreate.push({
+      studentsToInsert.push({
         fullName: `Student ${i} L5MMP`,
         email: `student${i}l5@example.com`,
         registrationNumber: `L5MMP${String(i).padStart(3, '0')}`,
-        passwordHash: 'student123',
+        passwordHash: bcrypt.hashSync('student123', 10),
         role: 'student',
-        class: classes[2]._id
+        class: classes[2]._id,
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
     }
-    
-    // Create students one by one to ensure pre-save hooks work
-    const createdStudents = [];
-    for (const studentData of studentsToCreate) {
-      const student = await User.create(studentData);
-      createdStudents.push(student);
-    }
+    await collection.insertMany(studentsToInsert);
     console.log('Students created');
+    const createdStudents = await User.find({ role: 'student' });
 
     const now = new Date();
     const sixMonthsAgo = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);

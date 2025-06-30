@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { check } = require('express-validator');
 const examController = require('../controllers/examController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { param } = require('express-validator');
 
 // All routes here require authentication
 router.use(authMiddleware.authenticate);
@@ -12,13 +12,8 @@ router.use(authMiddleware.authenticate);
 // @access  Teachers
 router.post(
   '/',
-  authMiddleware.isTeacher, [
-  check('classIds').isArray({ min: 1 }).withMessage('At least one class ID is required'),
-  check('classIds.*').isMongoId().withMessage('Invalid class ID'),
-  check('title', 'Exam title is required').notEmpty(),
-  check('subjectId', 'Subject ID is required').notEmpty(),
-  check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
-],
+  authMiddleware.isTeacher,
+  examController.validateCreateExam,
   examController.createExam
 );
 
@@ -27,37 +22,34 @@ router.post(
 // @access  Teachers
 router.get('/teacher', authMiddleware.isTeacher, examController.getTeacherExams);
 
-// @route   GET api/subjects/teacher
-// @desc    Get all subjects assigned to teacher
-// @access  Teachers
-router.get('/subjects/teacher', authMiddleware.isTeacher, examController.getTeacherSubjects);
-
-// @route   GET api/exams/classes
-// @desc    Get all classes (teacher access)
-// @access  Teachers
-router.get('/classes', authMiddleware.isTeacher, examController.getClassesForTeacher);
-
-// @route   GET api/exams/:id
+// @route   GET api/exams/:examId
 // @desc    Get exam by ID
-// @access  Teachers & Students (with restrictions)
-router.get('/:examId', examController.getExamById);
+// @access  Teachers/Students
+router.get('/:examId', 
+  [param('examId').isMongoId().withMessage('Invalid exam ID format')],
+  examController.getExamById
+);
 
-// @route   PUT api/exams/:id
+// @route   PUT api/exams/:examId
 // @desc    Update exam
 // @access  Teachers
 router.put(
   '/:examId',
-  authMiddleware.isTeacher, [
-  check('title', 'Exam title is required').notEmpty(),
-  check('type', 'Exam type is required').isIn(['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'])
-],
+  authMiddleware.isTeacher,
+  examController.validateExamIdParam,
+  examController.validateUpdateExam,
   examController.updateExam
 );
 
-// @route   DELETE api/exams/:id
+// @route   DELETE api/exams/:examId
 // @desc    Delete exam
 // @access  Teachers
-router.delete('/:examId', authMiddleware.isTeacher, examController.deleteExam);
+router.delete(
+  '/:examId', 
+  authMiddleware.isTeacher,
+  examController.validateExamIdParam,
+  examController.deleteExam
+);
 
 // @route   GET api/exams/student/upcoming
 // @desc    Get upcoming exams for student
@@ -69,19 +61,40 @@ router.get('/student/upcoming', authMiddleware.isStudent, examController.getUpco
 // @access  Students
 router.get('/student/class', authMiddleware.isStudent, examController.getStudentClassExams);
 
-// @route   PUT api/exams/:id/activate
+// @route   PUT api/exams/:examId/activate
 // @desc    Activate exam (make it active)
 // @access  Teachers
-router.put('/:examId/activate', authMiddleware.isTeacher, examController.activateExam);
+router.put(
+  '/:examId/activate', 
+  authMiddleware.isTeacher,
+  examController.validateExamIdParam,
+  examController.activateExam
+);
 
-// @route   PUT api/exams/:id/complete
+// @route   PUT api/exams/:examId/complete
 // @desc    Complete exam
 // @access  Teachers
-router.put('/:examId/complete', authMiddleware.isTeacher, examController.completeExam);
+router.put(
+  '/:examId/complete', 
+  authMiddleware.isTeacher,
+  examController.validateExamIdParam,
+  examController.completeExam
+);
 
-// @route   PUT api/exams/:id/schedule
+// @route   PUT api/exams/:examId/schedule
 // @desc    Schedule an exam
 // @access  Teachers
-router.put('/:examId/schedule', authMiddleware.isTeacher, examController.scheduleExam);
+router.put(
+  '/:examId/schedule',
+  authMiddleware.isTeacher,
+  examController.validateExamIdParam,
+  examController.validateScheduleExam,
+  examController.scheduleExam
+);
+
+// @route   GET api/exams/classes/teacher
+// @desc    Get classes for logged in teacher
+// @access  Teachers
+router.get('/classes/teacher', authMiddleware.isTeacher, examController.getClassesForTeacher);
 
 module.exports = router;

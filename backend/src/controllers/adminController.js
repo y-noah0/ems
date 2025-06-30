@@ -5,6 +5,8 @@ const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const csv = require('csv-parser');
 const fs = require('fs');
+const { validateEntity, validateEntities } = require('../utils/entityValidator');
+const { toUTC } = require('../utils/dateUtils');
 
 const adminController = {};
 
@@ -79,11 +81,13 @@ adminController.updateClass = async (req, res) => {
     const classId = req.params.id;
 
     // Check if class exists
-    let classToUpdate = await Class.findById(classId);
-    if (!classToUpdate) {
-      return res.status(404).json({
-        success: false,
-        message: 'Class not found'
+    let classToUpdate;
+    try {
+      classToUpdate = await validateEntity(Class, classId, 'Class');
+    } catch (validationError) {
+      return res.status(validationError.statusCode || 400).json({ 
+        success: false, 
+        message: validationError.message 
       });
     }
 

@@ -63,47 +63,47 @@ const ExamSchema = new Schema(
       required: true,
     },
     type: {
-    type: String,
-    enum: ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'],
-    required: true,
-    default: 'quiz'
-  },
-  schedule: {
-    start: {
-      type: Date,
-      required: function() {
-        return this.status !== 'draft';
+      type: String,
+      enum: ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'],
+      required: true,
+      default: 'quiz'
+    },
+    schedule: {
+      start: {
+        type: Date,
+        required: function () {
+          return this.status !== 'draft';
+        }
+      },
+      duration: {
+        type: Number, // in minutes
+        required: function () {
+          return this.status !== 'draft';
+        },
+        min: 5
       }
     },
-    duration: {
-      type: Number, // in minutes
-      required: function() {
-        return this.status !== 'draft';
-      },
-      min: 5
+    questions: [QuestionSchema],
+    totalScore: {
+      type: Number,
+      default: function () {
+        return this.questions.reduce((sum, q) => sum + q.maxScore, 0);
+      }
+    },
+    totalPoints: {
+      type: Number,
+      default: 0
+    },
+    status: {
+      type: String,
+      enum: ['draft', 'scheduled', 'active', 'completed'],
+      default: 'draft'
+    },
+    instructions: {
+      type: String,
+      default: 'Read all questions carefully before answering.'
     }
-  },
-  questions: [QuestionSchema],
-  totalScore: {
-    type: Number,
-    default: function() {
-      return this.questions.reduce((sum, q) => sum + q.maxScore, 0);
-    }
-  },
-  totalPoints: {
-    type: Number,
-    default: 0
-  },
-  status: {
-    type: String,
-    enum: ['draft', 'scheduled', 'active', 'completed'],
-    default: 'draft'
-  },
-  instructions: {
-    type: String,
-    default: 'Read all questions carefully before answering.'
-  }
-}, {
+  }, {
   timestamps: true
 });
 
