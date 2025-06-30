@@ -6,7 +6,7 @@ const Subject = require('../models/Subject');
 const Submission = require('../models/Submission');
 const Class = require('../models/Class');
 const ReportCard = require('../models/report');
-const School = require('../models/School');
+// const School = require('../models/School');
 const Trade = require('../models/trade');
 
 // Function to generate report data for a single student

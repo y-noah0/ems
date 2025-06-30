@@ -1,6 +1,6 @@
 const Enrollment = require('../models/enrollment');
 const ReportCard = require('../models/report');
-const PromotionLog = require('../models/promotionLog');
+// const PromotionLog = require('../models/promotionLog');
 const Class = require('../models/Class');
 const Term = require('../models/term')
 const User = require('../models/User');
