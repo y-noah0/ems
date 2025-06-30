@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import DynamicTable from '../components/class/DynamicTable';
 import adminService from '../services/adminService';
 
 const ClassView = () => {
@@ -53,6 +54,66 @@ const ClassView = () => {
 
   const handleBack = () => {
     navigate(-1);
+  };
+
+  // Table column definitions
+  const studentColumns = [
+    { 
+      key: 'fullName', 
+      title: 'Name',
+      render: (value) => (
+        <div className="text-sm font-medium text-gray-900">
+          {value}
+        </div>
+      )
+    },
+    { 
+      key: 'registrationNumber', 
+      title: 'Registration Number',
+      render: (value) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          {value}
+        </span>
+      )
+    },
+    { key: 'email', title: 'Email' }
+  ];
+
+  const subjectColumns = [
+    { 
+      key: 'name', 
+      title: 'Subject Name',
+      render: (value) => (
+        <div className="text-sm font-medium text-gray-900">
+          {value}
+        </div>
+      )
+    },
+    { 
+      key: 'credits', 
+      title: 'Credits',
+      render: (value) => (
+        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+          {value || '-'} credits
+        </span>
+      )
+    },
+    { 
+      key: 'teacher', 
+      title: 'Teacher',
+      render: (value, item) => (
+        item.teacher ? item.teacher.fullName : 'Not assigned'
+      )
+    }
+  ];
+
+  // Action handlers
+  const handleViewStudentResults = (student) => {
+    console.log('View results for student:', student);
+  };
+
+  const handleManageSubject = (subject) => {
+    console.log('Manage subject:', subject);
   };
 
   return (
@@ -141,46 +202,22 @@ const ClassView = () => {
               {students.length === 0 ? (
                 <p className="text-gray-500">No students found in this class.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Registration Number
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Email
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {students.map((student) => (
-                        <tr key={student._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {student.fullName}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {student.registrationNumber}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {student.email}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <Button variant="secondary" size="sm">
-                              View Results
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DynamicTable
+                  data={students}
+                  columns={studentColumns}
+                  showActions={true}
+                  emptyMessage="No students found in this class"
+                  containerWidth="100%"
+                  containerHeight="auto"
+                  renderCustomActions={(student) => (
+                    <button 
+                      className="text-blue-600 hover:text-blue-900 transition-colors"
+                      onClick={() => handleViewStudentResults(student)}
+                    >
+                      View Results
+                    </button>
+                  )}
+                />
               )}
             </Card>
           )}
@@ -197,38 +234,22 @@ const ClassView = () => {
               {subjects.length === 0 ? (
                 <p className="text-gray-500">No subjects found for this class.</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Subject Name
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Credits
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Teacher
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {subjects.map((subject) => (
-                        <tr key={subject._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {subject.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {subject.credits || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {subject.teacher ? subject.teacher.fullName : 'Not assigned'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DynamicTable
+                  data={subjects}
+                  columns={subjectColumns}
+                  showActions={true}
+                  emptyMessage="No subjects found for this class"
+                  containerWidth="100%"
+                  containerHeight="auto"
+                  renderCustomActions={(subject) => (
+                    <button 
+                      className="text-blue-600 hover:text-blue-900 transition-colors"
+                      onClick={() => handleManageSubject(subject)}
+                    >
+                      Manage
+                    </button>
+                  )}
+                />
               )}
             </Card>
           )}

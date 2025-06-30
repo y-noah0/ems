@@ -71,23 +71,24 @@ const TeacherDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {groupedExams.draft.map(exam => (
-                  <Link to={`/teacher/exams/${exam._id}/edit`} key={exam._id}>
-                    <ExamCard 
-                      title={exam.title}
-                      subject={exam.subject.name}
-                      classCode={
-                        Array.isArray(exam.classes) && exam.classes.length > 0
-                          ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
-                          : 'No class assigned'
-                      }
-                      description={`${exam.type.toUpperCase()} - Draft`}
-                      status="upcoming"
-                      startTime="Not scheduled"
-                      endTime="Not scheduled"
-                      questions={exam.questions?.length || 0}
-                      totalPoints={exam.totalPoints || 0}
-                    />
-                  </Link>
+                  <ExamCard 
+                    key={exam._id}
+                    examId={exam._id}
+                    title={exam.title}
+                    subject={exam.subject.name}
+                    classCode={
+                      Array.isArray(exam.classes) && exam.classes.length > 0
+                        ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
+                        : 'No class assigned'
+                    }
+                    description={`${exam.type.toUpperCase()} - Draft`}
+                    status="upcoming"
+                    startTime="Not scheduled"
+                    endTime="Not scheduled"
+                    questions={exam.questions?.length || 0}
+                    totalPoints={exam.totalPoints || 0}
+                    userRole="teacher"
+                  />
                 ))}
               </div>
             )}
@@ -100,23 +101,24 @@ const TeacherDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {groupedExams.scheduled.map(exam => (
-                  <Link to={`/teacher/exams/${exam._id}`} key={exam._id}>
-                    <ExamCard 
-                      title={exam.title}
-                      subject={exam.subject.name}
-                      classCode={
-                        Array.isArray(exam.classes) && exam.classes.length > 0
-                          ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
-                          : 'No class assigned'
-                      }
-                      description={exam.description || `Scheduled exam: ${exam.title}`}
-                      status="upcoming"
-                      startTime={new Date(exam.schedule.start).toLocaleString()}
-                      endTime={new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString()}
-                      questions={exam.questions?.length || 0}
-                      totalPoints={exam.totalPoints || 0}
-                    />
-                  </Link>
+                  <ExamCard 
+                    key={exam._id}
+                    examId={exam._id}
+                    title={exam.title}
+                    subject={exam.subject.name}
+                    classCode={
+                      Array.isArray(exam.classes) && exam.classes.length > 0
+                        ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
+                        : 'No class assigned'
+                    }
+                    description={exam.description || `Scheduled exam: ${exam.title}`}
+                    status="upcoming"
+                    startTime={new Date(exam.schedule.start).toLocaleString()}
+                    endTime={new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString()}
+                    questions={exam.questions?.length || 0}
+                    totalPoints={exam.totalPoints || 0}
+                    userRole="teacher"
+                  />
                 ))}
               </div>
             )}
@@ -129,24 +131,25 @@ const TeacherDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {groupedExams.active.map(exam => (
-                  <Link to={`/teacher/exams/${exam._id}/results`} key={exam._id}>
-                    <ExamCard 
-                      title={exam.title}
-                      subject={exam.subject.name}
-                      classCode={
-                        Array.isArray(exam.classes) && exam.classes.length > 0
-                          ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
-                          : 'No class assigned'
-                      }
-                      description={exam.description || `Active exam: ${exam.title}`}
-                      status="active"
-                      startTime={new Date(exam.schedule.start).toLocaleString()}
-                      endTime={new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString()}
-                      questions={exam.questions?.length || 0}
-                      totalPoints={exam.totalPoints || 0}
-                      progress={50} // You can calculate a more accurate progress based on time elapsed
-                    />
-                  </Link>
+                  <ExamCard 
+                    key={exam._id}
+                    examId={exam._id}
+                    title={exam.title}
+                    subject={exam.subject.name}
+                    classCode={
+                      Array.isArray(exam.classes) && exam.classes.length > 0
+                        ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
+                        : 'No class assigned'
+                    }
+                    description={exam.description || `Active exam: ${exam.title}`}
+                    status="active"
+                    startTime={new Date(exam.schedule.start).toLocaleString()}
+                    endTime={new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString()}
+                    questions={exam.questions?.length || 0}
+                    totalPoints={exam.totalPoints || 0}
+                    progress={50}
+                    userRole="teacher"
+                  />
                 ))}
               </div>
             )}
@@ -159,25 +162,26 @@ const TeacherDashboard = () => {
             ) : (
               <div className="space-y-4">
                 {groupedExams.completed.slice(0, 5).map(exam => (
-                  <Link to={`/teacher/exams/${exam._id}/results`} key={exam._id}>
-                    <ExamCard 
-                      title={exam.title}
-                      subject={exam.subject.name}
-                      classCode={
-                        Array.isArray(exam.classes) && exam.classes.length > 0
-                          ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
-                          : 'No class assigned'
-                      }
-                      description={exam.description || `Completed on ${new Date(exam.updatedAt).toLocaleDateString()}`}
-                      status="completed"
-                      startTime={exam.schedule?.start ? new Date(exam.schedule.start).toLocaleString() : "N/A"}
-                      endTime={exam.schedule?.start && exam.schedule?.duration ? 
-                        new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString() : "N/A"}
-                      questions={exam.questions?.length || 0}
-                      totalPoints={exam.totalPoints || 0}
-                      progress={100} // Completed exams have 100% progress
-                    />
-                  </Link>
+                  <ExamCard 
+                    key={exam._id}
+                    examId={exam._id}
+                    title={exam.title}
+                    subject={exam.subject.name}
+                    classCode={
+                      Array.isArray(exam.classes) && exam.classes.length > 0
+                        ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
+                        : 'No class assigned'
+                    }
+                    description={exam.description || `Completed on ${new Date(exam.updatedAt).toLocaleDateString()}`}
+                    status="completed"
+                    startTime={exam.schedule?.start ? new Date(exam.schedule.start).toLocaleString() : "N/A"}
+                    endTime={exam.schedule?.start && exam.schedule?.duration ? 
+                      new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString() : "N/A"}
+                    questions={exam.questions?.length || 0}
+                    totalPoints={exam.totalPoints || 0}
+                    progress={100}
+                    userRole="teacher"
+                  />
                 ))}
                 {groupedExams.completed.length > 5 && (
                   <div className="text-center pt-2">

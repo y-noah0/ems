@@ -1,0 +1,273 @@
+{
+  "subjects": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e1",
+      "name": "Mathematics",
+      "code": "MATH101",
+      "description": "Fundamental mathematics including calculus, algebra, and statistics",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi",
+        "email": "robert.kamanzi@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d1",
+      "level": "L3",
+      "trade": "SOD",
+      "credits": 4,
+      "examCount": 2,
+      "averageScore": 71.4,
+      "createdAt": "2024-08-30T05:00:00.000Z",
+      "updatedAt": "2024-08-30T05:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e2",
+      "name": "Programming",
+      "code": "PROG101",
+      "description": "Introduction to programming concepts, algorithms, and data structures",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi",
+        "email": "robert.kamanzi@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d2",
+      "level": "L3",
+      "trade": "NIT",
+      "credits": 5,
+      "examCount": 3,
+      "averageScore": 80.0,
+      "createdAt": "2024-08-30T05:15:00.000Z",
+      "updatedAt": "2024-08-30T05:15:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e3",
+      "name": "Database Systems",
+      "code": "DB201",
+      "description": "Database design, SQL, and database management systems",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cf",
+        "fullName": "Prof. Alice Mukamana",
+        "email": "alice.mukamana@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d3",
+      "level": "L4",
+      "trade": "SOD",
+      "credits": 4,
+      "examCount": 1,
+      "averageScore": 93.3,
+      "createdAt": "2024-08-30T05:30:00.000Z",
+      "updatedAt": "2024-08-30T05:30:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e4",
+      "name": "Network Security",
+      "code": "NET301",
+      "description": "Network security protocols, cryptography, and security management",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cf",
+        "fullName": "Prof. Alice Mukamana",
+        "email": "alice.mukamana@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d4",
+      "level": "L5",
+      "trade": "NIT",
+      "credits": 5,
+      "examCount": 0,
+      "averageScore": 0,
+      "createdAt": "2024-08-30T05:45:00.000Z",
+      "updatedAt": "2024-08-30T05:45:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e5",
+      "name": "Digital Marketing",
+      "code": "MKT201",
+      "description": "Digital marketing strategies, SEO, social media marketing, and analytics",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8d0",
+        "fullName": "Jean Claude Nsengimana",
+        "email": "jc.nsengimana@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d5",
+      "level": "L4",
+      "trade": "MMP",
+      "credits": 3,
+      "examCount": 1,
+      "averageScore": 80.0,
+      "createdAt": "2024-08-30T06:00:00.000Z",
+      "updatedAt": "2024-08-30T06:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e6",
+      "name": "Physics",
+      "code": "PHYS101",
+      "description": "Classical mechanics, thermodynamics, and electromagnetism",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi",
+        "email": "robert.kamanzi@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d1",
+      "level": "L3",
+      "trade": "SOD",
+      "credits": 4,
+      "examCount": 1,
+      "averageScore": 79.6,
+      "createdAt": "2024-08-30T06:15:00.000Z",
+      "updatedAt": "2024-08-30T06:15:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e7",
+      "name": "Computer Networks",
+      "code": "NET101",
+      "description": "Network fundamentals, protocols, and network administration",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi",
+        "email": "robert.kamanzi@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d2",
+      "level": "L3",
+      "trade": "NIT",
+      "credits": 4,
+      "examCount": 0,
+      "averageScore": 0,
+      "createdAt": "2024-08-30T06:30:00.000Z",
+      "updatedAt": "2024-08-30T06:30:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e8",
+      "name": "Software Engineering",
+      "code": "SE201",
+      "description": "Software development methodologies, project management, and quality assurance",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cf",
+        "fullName": "Prof. Alice Mukamana",
+        "email": "alice.mukamana@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d3",
+      "level": "L4",
+      "trade": "SOD",
+      "credits": 5,
+      "examCount": 0,
+      "averageScore": 0,
+      "createdAt": "2024-08-30T06:45:00.000Z",
+      "updatedAt": "2024-08-30T06:45:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8e9",
+      "name": "Advanced Programming",
+      "code": "PROG301",
+      "description": "Advanced programming concepts, design patterns, and frameworks",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cf",
+        "fullName": "Prof. Alice Mukamana",
+        "email": "alice.mukamana@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d4",
+      "level": "L5",
+      "trade": "NIT",
+      "credits": 5,
+      "examCount": 0,
+      "averageScore": 0,
+      "createdAt": "2024-08-30T07:00:00.000Z",
+      "updatedAt": "2024-08-30T07:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8ea",
+      "name": "Business Communication",
+      "code": "COMM201",
+      "description": "Professional communication, presentation skills, and business writing",
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8d0",
+        "fullName": "Jean Claude Nsengimana",
+        "email": "jc.nsengimana@teacher.edu.rw"
+      },
+      "class": "66d1e2a5f8c3d4e5f6a7b8d5",
+      "level": "L4",
+      "trade": "MMP",
+      "credits": 3,
+      "examCount": 0,
+      "averageScore": 0,
+      "createdAt": "2024-08-30T07:15:00.000Z",
+      "updatedAt": "2024-08-30T07:15:00.000Z"
+    }
+  ],
+  "subjectCatalog": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8eb",
+      "name": "Mathematics",
+      "code": "MATH",
+      "category": "Core",
+      "description": "Mathematics subjects including calculus, algebra, statistics, and discrete mathematics",
+      "levels": ["L3", "L4", "L5"],
+      "trades": ["SOD", "NIT", "MMP"]
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8ec",
+      "name": "Programming",
+      "code": "PROG",
+      "category": "Technical",
+      "description": "Programming languages, algorithms, data structures, and software development",
+      "levels": ["L3", "L4", "L5"],
+      "trades": ["SOD", "NIT"]
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8ed",
+      "name": "Database Systems",
+      "code": "DB",
+      "category": "Technical",
+      "description": "Database design, management, and administration",
+      "levels": ["L4", "L5"],
+      "trades": ["SOD", "NIT"]
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8ee",
+      "name": "Network Security",
+      "code": "NET",
+      "category": "Specialized",
+      "description": "Network security, cryptography, and cybersecurity",
+      "levels": ["L5"],
+      "trades": ["NIT"]
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8ef",
+      "name": "Digital Marketing",
+      "code": "MKT",
+      "category": "Business",
+      "description": "Digital marketing, SEO, social media, and analytics",
+      "levels": ["L4", "L5"],
+      "trades": ["MMP"]
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f0",
+      "name": "Physics",
+      "code": "PHYS",
+      "category": "Science",
+      "description": "Classical and modern physics principles",
+      "levels": ["L3", "L4"],
+      "trades": ["SOD", "NIT"]
+    }
+  ],
+  "subjectStatistics": {
+    "totalSubjects": 10,
+    "subjectsByCategory": {
+      "Technical": 4,
+      "Core": 2,
+      "Science": 2,
+      "Business": 2,
+      "Specialized": 1
+    },
+    "subjectsByLevel": {
+      "L3": 4,
+      "L4": 6,
+      "L5": 4
+    },
+    "subjectsByTrade": {
+      "SOD": 4,
+      "NIT": 5,
+      "MMP": 2
+    },
+    "averageCredits": 4.1,
+    "totalExams": 8,
+    "averageScoreAcrossSubjects": 67.8
+  }
+}

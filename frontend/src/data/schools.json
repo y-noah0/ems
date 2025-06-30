@@ -1,23 +1,44 @@
-[
+{
+  "schools": [
     {
-        "school_id": "SCH001",
-        "school_name": "Tumba Polytechnic",
-        "education_system": "TVET",
-        "level_offered": ["L4", "L3", "L5"],
-        "combinations_or_trades": ["MEP", "SOD"],
-        "location": "Gasabo, Remera"
+      "_id": "66d1e2a5f8c3d4e5f6a7b9001",
+      "name": "Rwanda Technical and Vocational Education Training Center",
+      "shortName": "RTVETC",
+      "type": "TVET",
+      "location": {
+        "district": "Gasabo",
+        "sector": "Remera",
+        "province": "Kigali City"
+      },
+      "contact": {
+        "phone": "+250788123456",
+        "email": "info@rtvetc.edu.rw",
+        "website": "https://rtvetc.edu.rw",
+        "address": "KG 15 Ave, Remera, Gasabo, Kigali"
+      },
+      "established": 2010,
+      "capacity": 2000,
+      "currentEnrollment": 1500,
+      "status": "active",
+      "accreditation": {
+        "body": "Rwanda Education Board",
+        "level": "Category A",
+        "validUntil": "2026-12-31"
+      },
+      "trades": ["SOD", "NIT", "MMP"],
+      "levels": ["L3", "L4", "L5"],
+      "stats": {
+        "totalStudents": 1500,
+        "totalTeachers": 85,
+        "totalClasses": 45,
+        "graduationRate": 92.5
+      },
+      "createdAt": "2024-01-15T08:00:00.000Z",
+      "updatedAt": "2024-08-30T08:00:00.000Z"
     },
     {
-        "school_id": "SCH002",
-        "school_name": "Imena GS",
-        "education_system": "REB",
-        "level_offered": ["O-Level", "A-Level"],
-        "combinations_or_trades": ["MEG", "PCM"],
-        "location": "Rwamagana, Gishari"
-    },
-    {
-        "school_id": "SCH003",
-        "school_name": "Tumba College of Technology",
+      "_id": "66d1e2a5f8c3d4e5f6a7b9002",
+      "name": "Kigali Institute of Technology",
         "education_system": "TVET",
         "level_offered": ["L5", "L4"],
         "combinations_or_trades": ["BME", "MEP"],
@@ -400,3 +421,4 @@
         "location": "Rusizi, Kamembe"
     }
 ]
+}

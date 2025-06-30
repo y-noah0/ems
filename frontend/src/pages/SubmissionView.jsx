@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import DynamicTable from '../components/class/DynamicTable';
 import examService from '../services/examService';
 import submissionService from '../services/submissionService';
 import ExamCard from '../components/ui/ExamCard';
@@ -208,6 +209,73 @@ const SubmissionView = () => {
 
     setEditedAnswers(newAnswers); return autoGradedCount;
   };
+
+  // Handle viewing submission
+  const handleViewSubmission = (submissionItem) => {
+    if (submissionItem._id !== submission._id) {
+      navigate(`/teacher/submissions/${submissionItem._id}/view`);
+    }
+  };
+
+  // Submissions table columns
+  const submissionsColumns = [
+    { 
+      key: 'student', 
+      title: 'Student',
+      render: (value) => (
+        <div>
+          <div className="text-sm font-medium text-gray-900">
+            {value?.firstName} {value?.lastName}
+          </div>
+          <div className="text-sm text-gray-500">
+            {value?.registrationNumber}
+          </div>
+        </div>
+      )
+    },
+    { 
+      key: 'submittedAt', 
+      title: 'Submission Time',
+      render: (value) => (
+        <div>
+          <div className="text-sm text-gray-900">
+            {new Date(value).toLocaleDateString()}
+          </div>
+          <div className="text-sm text-gray-500">
+            {new Date(value).toLocaleTimeString()}
+          </div>
+        </div>
+      )
+    },
+    { 
+      key: 'status', 
+      title: 'Status',
+      render: (value) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          value === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {value === 'graded' ? 'Graded' : 'Pending'}
+        </span>
+      )
+    },
+    { 
+      key: 'score', 
+      title: 'Score',
+      render: (value, item) => {
+        return item.status === 'graded' ? (
+          <div className="text-sm text-gray-900">
+            <span className="font-medium">{value || 0}</span>
+            <span className="text-gray-500">/{item.totalPoints || (exam?.totalPoints || 0)}</span>
+            <span className="ml-2 text-xs text-gray-600">
+              ({Math.round(((value || 0) / (item.totalPoints || exam?.totalPoints || 1)) * 100)}%)
+            </span>
+          </div>
+        ) : (
+          <span className="text-sm text-gray-500">Not graded</span>
+        );
+      }
+    }
+  ];
 
   if (loading) {
     return (
@@ -587,74 +655,23 @@ const SubmissionView = () => {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Student
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Submission Time
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Score
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {allSubmissions.map((sub) => (
-                        <tr key={sub._id} className={sub._id === submission._id ? 'bg-blue-50' : ''}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="font-medium text-gray-900">
-                              {sub.student?.firstName} {sub.student?.lastName}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {sub.student?.registrationNumber}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {new Date(sub.submittedAt).toLocaleDateString()}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {new Date(sub.submittedAt).toLocaleTimeString()}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                              ${sub.status === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                              {sub.status === 'graded' ? 'Graded' : 'Pending'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {sub.status === 'graded' ? (
-                              `${sub.score || 0}/${sub.totalPoints || (exam?.totalPoints || 0)} (${Math.round(((sub.score || 0) / (sub.totalPoints || exam?.totalPoints || 1)) * 100)}%)`
-                            ) : (
-                              'Not graded'
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            {sub._id !== submission._id ? (
-                              <a 
-                                href={`/teacher/submissions/${sub._id}/view`}
-                                className="text-blue-600 hover:text-blue-900"
-                              >
-                                View
-                              </a>
-                            ) : (
-                              <span className="text-gray-400">Current</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <DynamicTable
+                    data={allSubmissions}
+                    columns={submissionsColumns}
+                    emptyMessage="No submissions found for this exam"
+                    renderCustomActions={(item) => (
+                      item._id !== submission._id ? (
+                        <button
+                          onClick={() => handleViewSubmission(item)}
+                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                        >
+                          View
+                        </button>
+                      ) : (
+                        <span className="text-gray-400">Current</span>
+                      )
+                    )}
+                  />
                 </div>
               )}
             </div>

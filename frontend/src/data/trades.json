@@ -1,62 +1,471 @@
 {
-  "REB": {
-    "olevel": ["S1", "S2", "S3"],
-    "alevel": {
-      "S4": ["PCM", "PCB", "MPC", "MCB", "MCE", "MEG", "HEG", "HLP", "HGL"],
-      "S5": ["PCM", "PCB", "MPC", "MCB", "MCE", "MEG", "HEG", "HLP", "HGL"],
-      "S6": ["PCM", "PCB", "MPC", "MCB", "MCE", "MEG", "HEG", "HLP", "HGL"]
+    "REB": {
+        "olevel": [
+            { "id": "REB_OL_S1", "name": "S1", "code": "S1" },
+            { "id": "REB_OL_S2", "name": "S2", "code": "S2" },
+            { "id": "REB_OL_S3", "name": "S3", "code": "S3" }
+        ],
+        "alevel": {
+            "S4": [
+                {
+                    "id": "REB_AL_S4_PCM",
+                    "name": "PCM",
+                    "code": "PCM",
+                    "fullName": "Physics, Chemistry, Mathematics"
+                },
+                {
+                    "id": "REB_AL_S4_PCB",
+                    "name": "PCB",
+                    "code": "PCB",
+                    "fullName": "Physics, Chemistry, Biology"
+                },
+                {
+                    "id": "REB_AL_S4_MPC",
+                    "name": "MPC",
+                    "code": "MPC",
+                    "fullName": "Mathematics, Physics, Chemistry"
+                },
+                {
+                    "id": "REB_AL_S4_MCB",
+                    "name": "MCB",
+                    "code": "MCB",
+                    "fullName": "Mathematics, Chemistry, Biology"
+                },
+                {
+                    "id": "REB_AL_S4_MCE",
+                    "name": "MCE",
+                    "code": "MCE",
+                    "fullName": "Mathematics, Chemistry, Economics"
+                },
+                {
+                    "id": "REB_AL_S4_MEG",
+                    "name": "MEG",
+                    "code": "MEG",
+                    "fullName": "Mathematics, Economics, Geography"
+                },
+                {
+                    "id": "REB_AL_S4_HEG",
+                    "name": "HEG",
+                    "code": "HEG",
+                    "fullName": "History, Economics, Geography"
+                },
+                {
+                    "id": "REB_AL_S4_HLP",
+                    "name": "HLP",
+                    "code": "HLP",
+                    "fullName": "History, Literature, Philosophy"
+                },
+                {
+                    "id": "REB_AL_S4_HGL",
+                    "name": "HGL",
+                    "code": "HGL",
+                    "fullName": "History, Geography, Literature"
+                }
+            ],
+            "S5": [
+                {
+                    "id": "REB_AL_S5_PCM",
+                    "name": "PCM",
+                    "code": "PCM",
+                    "fullName": "Physics, Chemistry, Mathematics"
+                },
+                {
+                    "id": "REB_AL_S5_PCB",
+                    "name": "PCB",
+                    "code": "PCB",
+                    "fullName": "Physics, Chemistry, Biology"
+                },
+                {
+                    "id": "REB_AL_S5_MPC",
+                    "name": "MPC",
+                    "code": "MPC",
+                    "fullName": "Mathematics, Physics, Chemistry"
+                },
+                {
+                    "id": "REB_AL_S5_MCB",
+                    "name": "MCB",
+                    "code": "MCB",
+                    "fullName": "Mathematics, Chemistry, Biology"
+                },
+                {
+                    "id": "REB_AL_S5_MCE",
+                    "name": "MCE",
+                    "code": "MCE",
+                    "fullName": "Mathematics, Chemistry, Economics"
+                },
+                {
+                    "id": "REB_AL_S5_MEG",
+                    "name": "MEG",
+                    "code": "MEG",
+                    "fullName": "Mathematics, Economics, Geography"
+                },
+                {
+                    "id": "REB_AL_S5_HEG",
+                    "name": "HEG",
+                    "code": "HEG",
+                    "fullName": "History, Economics, Geography"
+                },
+                {
+                    "id": "REB_AL_S5_HLP",
+                    "name": "HLP",
+                    "code": "HLP",
+                    "fullName": "History, Literature, Philosophy"
+                },
+                {
+                    "id": "REB_AL_S5_HGL",
+                    "name": "HGL",
+                    "code": "HGL",
+                    "fullName": "History, Geography, Literature"
+                }
+            ],
+            "S6": [
+                {
+                    "id": "REB_AL_S6_PCM",
+                    "name": "PCM",
+                    "code": "PCM",
+                    "fullName": "Physics, Chemistry, Mathematics"
+                },
+                {
+                    "id": "REB_AL_S6_PCB",
+                    "name": "PCB",
+                    "code": "PCB",
+                    "fullName": "Physics, Chemistry, Biology"
+                },
+                {
+                    "id": "REB_AL_S6_MPC",
+                    "name": "MPC",
+                    "code": "MPC",
+                    "fullName": "Mathematics, Physics, Chemistry"
+                },
+                {
+                    "id": "REB_AL_S6_MCB",
+                    "name": "MCB",
+                    "code": "MCB",
+                    "fullName": "Mathematics, Chemistry, Biology"
+                },
+                {
+                    "id": "REB_AL_S6_MCE",
+                    "name": "MCE",
+                    "code": "MCE",
+                    "fullName": "Mathematics, Chemistry, Economics"
+                },
+                {
+                    "id": "REB_AL_S6_MEG",
+                    "name": "MEG",
+                    "code": "MEG",
+                    "fullName": "Mathematics, Economics, Geography"
+                },
+                {
+                    "id": "REB_AL_S6_HEG",
+                    "name": "HEG",
+                    "code": "HEG",
+                    "fullName": "History, Economics, Geography"
+                },
+                {
+                    "id": "REB_AL_S6_HLP",
+                    "name": "HLP",
+                    "code": "HLP",
+                    "fullName": "History, Literature, Philosophy"
+                },
+                {
+                    "id": "REB_AL_S6_HGL",
+                    "name": "HGL",
+                    "code": "HGL",
+                    "fullName": "History, Geography, Literature"
+                }
+            ]
+        }
+    },
+    "TVET": {
+        "L1": [
+            {
+                "id": "TVET_L1_001",
+                "name": "TAIL",
+                "code": "TAIL",
+                "fullName": "Tailoring",
+                "category": "Crafts & Textiles"
+            },
+            {
+                "id": "TVET_L1_002",
+                "name": "HAIR",
+                "code": "HAIR",
+                "fullName": "Hairdressing",
+                "category": "Personal Services"
+            },
+            {
+                "id": "TVET_L1_003",
+                "name": "WELD",
+                "code": "WELD",
+                "fullName": "Welding",
+                "category": "Manufacturing & Engineering"
+            },
+            {
+                "id": "TVET_L1_004",
+                "name": "MASN",
+                "code": "MASN",
+                "fullName": "Masonry",
+                "category": "Construction"
+            },
+            {
+                "id": "TVET_L1_005",
+                "name": "PLMB",
+                "code": "PLMB",
+                "fullName": "Plumbing",
+                "category": "Construction"
+            },
+            {
+                "id": "TVET_L1_006",
+                "name": "DRIV",
+                "code": "DRIV",
+                "fullName": "Driving (Motorcycle & Vehicle)",
+                "category": "Transportation"
+            },
+            {
+                "id": "TVET_L1_007",
+                "name": "MINE",
+                "code": "MINE",
+                "fullName": "Small-scale Mining",
+                "category": "Mining & Extraction"
+            },
+            {
+                "id": "TVET_L1_008",
+                "name": "LTHR",
+                "code": "LTHR",
+                "fullName": "Leather Works",
+                "category": "Crafts & Textiles"
+            }
+        ],
+        "L2": [
+            {
+                "id": "TVET_L2_001",
+                "name": "GRPH",
+                "code": "GRPH",
+                "fullName": "Graphic Arts",
+                "category": "Arts & Design"
+            },
+            {
+                "id": "TVET_L2_002",
+                "name": "CERM",
+                "code": "CERM",
+                "fullName": "Ceramics",
+                "category": "Arts & Design"
+            },
+            {
+                "id": "TVET_L2_003",
+                "name": "AUTO",
+                "code": "AUTO",
+                "fullName": "Automobile Technology",
+                "category": "Transportation"
+            },
+            {
+                "id": "TVET_L2_004",
+                "name": "MCYC",
+                "code": "MCYC",
+                "fullName": "Motorcycle Repair",
+                "category": "Transportation"
+            },
+            {
+                "id": "TVET_L2_005",
+                "name": "FRST",
+                "code": "FRST",
+                "fullName": "Forest & Tree Nursery Operations",
+                "category": "Agriculture & Environment"
+            },
+            {
+                "id": "TVET_L2_006",
+                "name": "FLWR",
+                "code": "FLWR",
+                "fullName": "Flower & Nursery Production",
+                "category": "Agriculture & Environment"
+            },
+            {
+                "id": "TVET_L2_007",
+                "name": "CROP",
+                "code": "CROP",
+                "fullName": "Cash Crops & Food Processing",
+                "category": "Agriculture & Food"
+            }
+        ],
+        "L3": [
+            {
+                "id": "TVET_L3_001",
+                "name": "SWDV",
+                "code": "SWDV",
+                "fullName": "Software Development",
+                "category": "Information Technology"
+            },
+            {
+                "id": "TVET_L3_002",
+                "name": "COMP",
+                "code": "COMP",
+                "fullName": "Computer Applications",
+                "category": "Information Technology"
+            },
+            {
+                "id": "TVET_L3_003",
+                "name": "CSYS",
+                "code": "CSYS",
+                "fullName": "Computer Systems & Architecture",
+                "category": "Information Technology"
+            },
+            {
+                "id": "TVET_L3_004",
+                "name": "MMPR",
+                "code": "MMPR",
+                "fullName": "Multimedia Production",
+                "category": "Information Technology"
+            },
+            {
+                "id": "TVET_L3_005",
+                "name": "NTWK",
+                "code": "NTWK",
+                "fullName": "Networking & Internet Technologies",
+                "category": "Information Technology"
+            },
+            {
+                "id": "TVET_L3_006",
+                "name": "BLDG",
+                "code": "BLDG",
+                "fullName": "Building Construction",
+                "category": "Construction"
+            },
+            {
+                "id": "TVET_L3_007",
+                "name": "CIVL",
+                "code": "CIVL",
+                "fullName": "Civil Construction",
+                "category": "Construction"
+            },
+            {
+                "id": "TVET_L3_008",
+                "name": "PLMT",
+                "code": "PLMT",
+                "fullName": "Plumbing Technology",
+                "category": "Construction"
+            },
+            {
+                "id": "TVET_L3_009",
+                "name": "ELEC",
+                "code": "ELEC",
+                "fullName": "Electronics & Telecommunication",
+                "category": "Electronics & Engineering"
+            },
+            {
+                "id": "TVET_L3_010",
+                "name": "FOOD",
+                "code": "FOOD",
+                "fullName": "Food & Beverage Services",
+                "category": "Hospitality & Tourism"
+            },
+            {
+                "id": "TVET_L3_011",
+                "name": "HSKP",
+                "code": "HSKP",
+                "fullName": "Housekeeping",
+                "category": "Hospitality & Tourism"
+            },
+            {
+                "id": "TVET_L3_012",
+                "name": "AGRI",
+                "code": "AGRI",
+                "fullName": "Agriculture",
+                "category": "Agriculture & Environment"
+            }
+        ],
+        "L4": [
+            {
+                "id": "TVET_L4_001",
+                "name": "BIOM",
+                "code": "BIOM",
+                "fullName": "Biomedical Equipment",
+                "category": "Healthcare & Medical"
+            },
+            {
+                "id": "TVET_L4_002",
+                "name": "MECH",
+                "code": "MECH",
+                "fullName": "Mechanical Engineering Production",
+                "category": "Manufacturing & Engineering"
+            },
+            {
+                "id": "TVET_L4_003",
+                "name": "SURV",
+                "code": "SURV",
+                "fullName": "Land Surveying",
+                "category": "Construction & Surveying"
+            },
+            {
+                "id": "TVET_L4_004",
+                "name": "IELC",
+                "code": "IELC",
+                "fullName": "Industrial Electricity",
+                "category": "Electronics & Engineering"
+            },
+            {
+                "id": "TVET_L4_005",
+                "name": "RENW",
+                "code": "RENW",
+                "fullName": "Renewable Energy Systems",
+                "category": "Energy & Environment"
+            },
+            {
+                "id": "TVET_L4_006",
+                "name": "HMCH",
+                "code": "HMCH",
+                "fullName": "Heavy Machinery Operations",
+                "category": "Manufacturing & Engineering"
+            },
+            {
+                "id": "TVET_L4_007",
+                "name": "ABDY",
+                "code": "ABDY",
+                "fullName": "Auto Body Works",
+                "category": "Transportation"
+            }
+        ],
+        "L5": [
+            {
+                "id": "TVET_L5_001",
+                "name": "CIVL",
+                "code": "CIVL",
+                "fullName": "Civil Construction",
+                "category": "Construction"
+            },
+            {
+                "id": "TVET_L5_002",
+                "name": "CONC",
+                "code": "CONC",
+                "fullName": "Concrete Masonry",
+                "category": "Construction"
+            },
+            {
+                "id": "TVET_L5_003",
+                "name": "VREN",
+                "code": "VREN",
+                "fullName": "Visible Renewable Energy",
+                "category": "Energy & Environment"
+            },
+            {
+                "id": "TVET_L5_004",
+                "name": "AMNT",
+                "code": "AMNT",
+                "fullName": "Auto Maintenance & Repair",
+                "category": "Transportation"
+            },
+            {
+                "id": "TVET_L5_005",
+                "name": "SWDV",
+                "code": "SWDV",
+                "fullName": "Software Development",
+                "category": "Information Technology"
+            },
+            {
+                "id": "TVET_L5_006",
+                "name": "SURV",
+                "code": "SURV",
+                "fullName": "Land Surveying",
+                "category": "Construction & Surveying"
+            }
+        ]
     }
-  },
-  "TVET": {
-    "L1": [
-      "Tailoring",
-      "Hairdressing",
-      "Welding",
-      "Masonry",
-      "Plumbing",
-      "Driving (Motorcycle & Vehicle)",
-      "Small-scale Mining",
-      "Leather Works"
-    ],
-    "L2": [
-      "Graphic Arts",
-      "Ceramics",
-      "Automobile Technology",
-      "Motorcycle Repair",
-      "Forest & Tree Nursery Operations",
-      "Flower & Nursery Production",
-      "Cash Crops & Food Processing"
-    ],
-    "L3": [
-      "Software Development",
-      "Computer Applications",
-      "Computer Systems & Architecture",
-      "Multimedia Production",
-      "Networking & Internet Technologies",
-      "Building Construction",
-      "Civil Construction",
-      "Plumbing Technology",
-      "Electronics & Telecommunication",
-      "Food & Beverage Services",
-      "Housekeeping",
-      "Agriculture"
-    ],
-    "L4": [
-      "Biomedical Equipment",
-      "Mechanical Engineering Production",
-      "Land Surveying",
-      "Industrial Electricity",
-      "Renewable Energy Systems",
-      "Heavy Machinery Operations",
-      "Auto Body Works"
-    ],
-    "L5": [
-      "Civil Construction",
-      "Concrete Masonry",
-      "Visible Renewable Energy",
-      "Auto Maintenance & Repair",
-      "Software Development",
-      "Land Surveying"
-    ]
-  }
 }

@@ -11,10 +11,17 @@ import {
     Menu,
     Clock,
     Ticket,
+    Text,
+    ChevronDown,
+    ChevronRight,
 } from "lucide-react";
 
 const Sidebar = ({ userRole = "student" }) => {
     const location = useLocation();
+    const [isOpen, setIsOpen] = React.useState(false);
+    const [isClassManagementOpen, setIsClassManagementOpen] = React.useState(
+        location.pathname.includes("/dean/classes") || location.pathname.includes("/dean/performance")
+    );
 
     const menuItems = [
         {
@@ -39,19 +46,25 @@ const Sidebar = ({ userRole = "student" }) => {
                     location.pathname === "/student/dashboard"),
             roles: ["dean", "student", "teacher", "admin"],
         },
+        // Dean specific collapsible class management
         {
             title: "Class management",
             icon: Building2,
-            path: "/dean/classes",
-            active: location.pathname.includes("/dean/classes"),
+            isCollapsible: true,
+            active: location.pathname.includes("/dean/classes") || location.pathname.includes("/dean/performance"),
             roles: ["dean"],
-        },
-        {
-            title: "Class performance",
-            icon: Building2,
-            path: "/dean/performance",
-            active: location.pathname.includes("/dean/performance"),
-            roles: ["dean"],
+            children: [
+                {
+                    title: "Class List",
+                    path: "/dean/classes",
+                    active: location.pathname.includes("/dean/classes"),
+                },
+                {
+                    title: "Performance",
+                    path: "/dean/performance", 
+                    active: location.pathname.includes("/dean/performance"),
+                }
+            ]
         },
         {
             title: "Exams Management",
@@ -121,6 +134,13 @@ const Sidebar = ({ userRole = "student" }) => {
             roles: ["admin"],
         },
         {
+            title: "Subject Catalog",
+            icon: Text,
+            path: "/admin/subjects",
+            active: location.pathname.includes("/admin/subjects"),
+            roles: ["admin"],
+        },
+        {
             title: "Subscription Management",
             icon: Ticket,
             path: "/admin/subscriptions",
@@ -163,8 +183,6 @@ const Sidebar = ({ userRole = "student" }) => {
     const visibleMenuItems = menuItems.filter((item) =>
         item.roles.includes(userRole)
     );
-
-    const [isOpen, setIsOpen] = React.useState(false);
 
     const handleMenuClick = () => {
         setIsOpen(false); // Close mobile menu
@@ -225,11 +243,11 @@ const Sidebar = ({ userRole = "student" }) => {
                     userRole === "admin") && (
                     <div className="p-6 border-b border-gray-100">
                         <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-sm">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
+                                    width="18"
+                                    height="18"
                                     viewBox="0 0 34 34"
                                     fill="none"
                                 >
@@ -241,7 +259,7 @@ const Sidebar = ({ userRole = "student" }) => {
                                     />
                                 </svg>
                             </div>
-                            <span className="text-xl font-bold text-gray-900">
+                            <span className="text-lg font-bold text-blue-600">
                                 EMS sys
                             </span>
                         </div>
@@ -249,39 +267,88 @@ const Sidebar = ({ userRole = "student" }) => {
                 )}
 
                 {/* Navigation Menu */}
-                <nav
-                    className={`${
-                        userRole === "dean" ||
-                        userRole === "teacher" ||
-                        userRole === "admin"
-                            ? "mt-2"
-                            : "mt-8"
-                    } pb-4`}
-                >
+                <nav className="mt-6 px-3">
                     {visibleMenuItems.map((item, index) => (
-                        <div key={index}>
-                            <Link
-                                to={item.path}
-                                className={`flex items-center px-6 py-3 text-sm font-medium transition-all duration-200 group
-                                ${
-                                    item.active
-                                        ? "bg-blue-50 text-blue-700 border-r-4 border-blue-600"
-                                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-r-4 border-transparent hover:border-gray-200"
-                                }`}
-                                onClick={handleMenuClick}
-                            >
-                                <item.icon
-                                    className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors duration-200 
-                                ${
-                                    item.active
-                                        ? "text-blue-600"
-                                        : "text-gray-400 group-hover:text-gray-600"
-                                }`}
-                                />
-                                <span className="truncate">
-                                    {item.title}
-                                </span>
-                            </Link>
+                        <div key={index} className="mb-1">
+                            {item.isCollapsible ? (
+                                // Collapsible menu item
+                                <>
+                                    <button
+                                        className={`w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group
+                                        ${
+                                            item.active
+                                                ? "bg-blue-50 text-blue-700"
+                                                : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                        }`}
+                                        onClick={() => setIsClassManagementOpen(!isClassManagementOpen)}
+                                    >
+                                        <div className="flex items-center">
+                                            <item.icon
+                                                className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors duration-200 
+                                                ${
+                                                    item.active
+                                                        ? "text-blue-600 "
+                                                        : "text-gray-500 group-hover:text-gray-700"
+                                                }`}
+                                            />
+                                            <span className="truncate">
+                                                {item.title}
+                                            </span>
+                                        </div>
+                                        {isClassManagementOpen ? (
+                                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                                        ) : (
+                                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                                        )}
+                                    </button>
+                                    {/* Submenu items */}
+                                    {isClassManagementOpen && (
+                                        <div className="mt-1 pl-4 ml-4 space-y-1 border-l-2 border-l-main-blue">
+                                            {item.children?.map((child, childIndex) => (
+                                                <Link
+                                                    key={childIndex}
+                                                    to={child.path}
+                                                    className={`flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200
+                                                    ${
+                                                        child.active
+                                                            ? "bg-blue-100 text-blue-700 font-medium"
+                                                            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                                    }`}
+                                                    onClick={handleMenuClick}
+                                                >
+                                                    <span className="truncate">
+                                                        {child.title}
+                                                    </span>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                // Regular menu item
+                                <Link
+                                    to={item.path}
+                                    className={`flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 group
+                                    ${
+                                        item.active
+                                            ? "bg-blue-50 text-blue-700"
+                                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                    }`}
+                                    onClick={handleMenuClick}
+                                >
+                                    <item.icon
+                                        className={`w-5 h-5 mr-3 flex-shrink-0 transition-colors duration-200 
+                                        ${
+                                            item.active
+                                                ? "text-blue-600"
+                                                : "text-gray-500 group-hover:text-gray-700"
+                                        }`}
+                                    />
+                                    <span className="truncate">
+                                        {item.title}
+                                    </span>
+                                </Link>
+                            )}
                         </div>
                     ))}
                 </nav>

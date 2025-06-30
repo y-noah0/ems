@@ -3,11 +3,9 @@ import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Layout from "../../components/layout/Layout";
 import { ToastContext } from "../../context/ToastContext";
-import tradesData from "../../data/mockTrades.json";
-import subjectsData from "../../data/mockSubjects.json";
+import subjects from "../../data/subjects.json";
 
-export default function TradesCatalog() {
-    const [activeCategory, setActiveCategory] = useState("All");
+export default function SubjectCatalog() {
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteConfirmation, setDeleteConfirmation] = useState(null);
     const [undoTimeout, setUndoTimeout] = useState(null);
@@ -15,66 +13,52 @@ export default function TradesCatalog() {
     const { showToast } = useContext(ToastContext);
 
     // Handle search filter
-    const filterTrades = (tradesList) => {
-        if (!searchTerm) return tradesList;
-        return tradesList.filter((trade) =>
-            trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            trade.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            trade.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+    const filterSubjects = (subjectsList) => {
+        if (!searchTerm) return subjectsList;
+        return subjectsList.filter((subject) =>
+            subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            subject.description.toLowerCase().includes(searchTerm.toLowerCase())
         );
     };
 
-    // Get subject count for a trade
-    const getSubjectCount = (tradeCode) => {
-        return subjectsData.subjectCatalog.filter(subject => 
-            subject.trades && subject.trades.includes(tradeCode)
-        ).length;
+    // Get trade count for a subject
+    const getTradeCount = (subject) => {
+        return subject.trades ? subject.trades.length : 0;
     };
 
-    // Get all trades in a flat structure for table display
-    const getAllTrades = () => {
-        let filteredTrades = tradesData.trades;
-        
-        // Filter by category if not "All"
-        if (activeCategory !== "All") {
-            filteredTrades = filteredTrades.filter(trade => trade.type === activeCategory);
-        }
-        
-        return filterTrades(filteredTrades);
-    };
-
-    // Handle trade click to navigate to detail page
-    const handleTradeClick = (trade) => {
-        navigate(`/admin/trades/${trade._id}`);
+    // Handle subject click to navigate to detail page
+    const handleSubjectClick = (subject) => {
+        navigate(`/admin/subjects/${subject._id}`);
     };
 
     // Handle edit
-    const handleEdit = (trade, e) => {
+    const handleEdit = (subject, e) => {
         e.stopPropagation();
-        navigate(`/admin/trades/edit/${trade._id}`);
+        navigate(`/admin/subjects/edit/${subject._id}`);
     };
 
     // Handle delete with confirmation
-    const handleDelete = (trade, e) => {
+    const handleDelete = (subject, e) => {
         e.stopPropagation();
         setDeleteConfirmation({
-            id: trade.id,
-            name: trade.name,
-            action: () => confirmDelete(trade)
+            id: subject._id,
+            name: subject.name,
+            action: () => confirmDelete(subject)
         });
     };
 
     // Confirm delete
-    const confirmDelete = (trade) => {
-        // Here you would typically make an API call to delete the trade
-        console.log("Deleting trade:", trade.id);
+    const confirmDelete = (subject) => {
+        // Here you would typically make an API call to delete the subject
+        console.log("Deleting subject:", subject.id);
         
-        showToast(`${trade.name} deleted successfully`, 'success');
+        showToast(`${subject.name} deleted successfully`, 'success');
         
         // Show undo option
         const timeout = setTimeout(() => {
             // Final deletion after timeout
-            console.log("Trade permanently deleted:", trade.id);
+            console.log("Subject permanently deleted:", subject.id);
         }, 5000);
         
         setUndoTimeout(timeout);
@@ -90,47 +74,22 @@ export default function TradesCatalog() {
         }
     };
 
+    const filteredSubjects = filterSubjects(subjects.subjectCatalog || []);
+
     return (
         <Layout>
             <div className="px-6 py-4">
-                <div className="flex justify-between items-center mb-6">
-                    {/* Category tabs */}
-                    <div className="flex space-x-4">
-                        <Button
-                            size="sm"
-                            variant={activeCategory === "All" ? "primary" : "outline"}
-                            onClick={() => setActiveCategory("All")}
-                        >
-                            All Trades
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant={activeCategory === "Technical" ? "primary" : "outline"}
-                            onClick={() => setActiveCategory("Technical")}
-                        >
-                            Technical
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant={activeCategory === "Business" ? "primary" : "outline"}
-                            onClick={() => setActiveCategory("Business")}
-                        >
-                            Business
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant={activeCategory === "Creative" ? "primary" : "outline"}
-                            onClick={() => setActiveCategory("Creative")}
-                        >
-                            Creative
-                        </Button>
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Subject Catalog</h1>
+
                     </div>
                     
                     {/* Search */}
                     <div className="relative w-64">
                         <input
                             type="text"
-                            placeholder="Search trades..."
+                            placeholder="Search subjects..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
@@ -146,16 +105,16 @@ export default function TradesCatalog() {
                         </div>
                     </div>
                     
-                    <Button to="/admin/trades/add" size="sm">
-                        Add Trade
+                    <Button to="/admin/subjects/add" size="sm">
+                        Add Subject
                     </Button>
                 </div>
 
-                {/* Trades Table */}
+                {/* Subjects Table */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div className="px-6 py-4 border-b border-gray-200">
                         <h2 className="text-lg font-semibold text-gray-900">
-                            TVET Trades Catalog
+                            All Subjects ({filteredSubjects.length})
                         </h2>
                     </div>
                     
@@ -164,16 +123,16 @@ export default function TradesCatalog() {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Trade/Combination
+                                        Subject
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Level
+                                        Code
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Type
+                                        Description
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Subjects
+                                        Trades
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Actions
@@ -181,44 +140,43 @@ export default function TradesCatalog() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {getAllTrades().map((trade) => (
+                                {filteredSubjects.map((subject) => (
                                     <tr
-                                        key={trade._id}
+                                        key={subject._id}
                                         className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                        onClick={() => handleTradeClick(trade)}
+                                        onClick={() => handleSubjectClick(subject)}
                                     >
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex flex-col">
                                                 <div className="text-sm font-medium text-gray-900">
-                                                    {trade.name}
-                                                </div>
-                                                <div className="text-xs text-gray-400 mt-1">
-                                                    {trade.code} - {trade.fullName}
+                                                    {subject.name}
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {trade.level}
-                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {trade.type}
+                                                {subject.code}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm text-gray-900 max-w-xs truncate">
+                                                {subject.description}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                                                {getSubjectCount(trade.code)} subjects
+                                                {getTradeCount(subject)} trades
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
-                                                onClick={(e) => handleEdit(trade, e)}
+                                                onClick={(e) => handleEdit(subject, e)}
                                                 className="text-blue-600 hover:text-blue-900 mr-3 transition-colors"
                                             >
                                                 Edit
                                             </button>
                                             <button
-                                                onClick={(e) => handleDelete(trade, e)}
+                                                onClick={(e) => handleDelete(subject, e)}
                                                 className="text-red-600 hover:text-red-900 transition-colors"
                                             >
                                                 Delete
@@ -229,10 +187,10 @@ export default function TradesCatalog() {
                             </tbody>
                         </table>
                         
-                        {getAllTrades().length === 0 && (
+                        {filteredSubjects.length === 0 && (
                             <div className="text-center py-12">
                                 <div className="text-gray-500">
-                                    {searchTerm ? "No trades found matching your search." : "No trades available."}
+                                    {searchTerm ? "No subjects found matching your search." : "No subjects available."}
                                 </div>
                             </div>
                         )}
@@ -250,7 +208,7 @@ export default function TradesCatalog() {
                                     </svg>
                                 </div>
                                 <div className="ml-4">
-                                    <h3 className="text-lg font-medium text-gray-900">Delete Trade</h3>
+                                    <h3 className="text-lg font-medium text-gray-900">Delete Subject</h3>
                                     <p className="text-sm text-gray-500">
                                         Are you sure you want to delete "{deleteConfirmation.name}"? This action cannot be undone.
                                     </p>
@@ -278,7 +236,7 @@ export default function TradesCatalog() {
                 {/* Undo Toast */}
                 {undoTimeout && (
                     <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg flex items-center space-x-3 z-50">
-                        <span>Trade deleted successfully</span>
+                        <span>Subject deleted successfully</span>
                         <Button
                             size="sm"
                             onClick={handleUndo}

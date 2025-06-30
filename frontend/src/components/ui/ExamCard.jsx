@@ -1,6 +1,9 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const ExamCard = ({
+    examId,
     title,
     subject,
     classCode,
@@ -12,6 +15,11 @@ const ExamCard = ({
     totalPoints,
     progress = 0,
 }) => {
+    const user = useAuth()
+    const userRole = user.currentUser.role
+    
+    const navigate = useNavigate();
+
     const getStatusColor = () => {
         switch (status) {
             case "active":
@@ -21,6 +29,26 @@ const ExamCard = ({
             case "upcoming":
             default:
                 return { bg: "#fff4e6", text: "#ff9933" };
+        }
+    };
+
+    const handleViewClick = () => {
+        console.log('ExamCard: handleViewClick called');
+        console.log('ExamCard: userRole:', userRole);
+        console.log('ExamCard: examId:', examId);
+        
+        if (userRole === 'teacher') {
+            // Navigate to teacher exam view with tabs for exam details and submissions
+            console.log('ExamCard: Navigating to teacher route:', `/teacher/exams/${examId}`);
+            navigate(`/teacher/exams/${examId}`);
+        } else if (userRole === 'dean') {
+            // Navigate to dean exam view
+            console.log('ExamCard: Navigating to dean route:', `/dean/exams/${examId}`);
+            navigate(`/dean/exams/${examId}`);
+        } else {
+            // Navigate to student exam view
+            console.log('ExamCard: Navigating to student route:', `/student/exams/${examId}`);
+            navigate(`/student/exams/${examId}`);
         }
     };
 
@@ -166,13 +194,14 @@ const ExamCard = ({
             </div>
 
             <button
+                onClick={handleViewClick}
                 style={{
                     backgroundColor: "#0066ff",
                     color: "white",
                     border: "none",
                     borderRadius: "10px",
                     padding: "4px 24px",
-                    fontSize: "12x",
+                    fontSize: "12px",
                     fontWeight: 600,
                     cursor: "pointer",
                     alignSelf: "flex-start",

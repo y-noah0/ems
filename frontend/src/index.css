@@ -11,12 +11,22 @@
     --color-main-green: #016630;
     --color-main-gray: #65666A;
 }
-@layer components{
-    .title{
+
+@layer components {
+    .title {
         @apply text-xl font-bold text-text;
     }
-    .titlebar{
+
+    .titlebar {
         @apply flex items-center justify-between p-2 border-b border-black/10;
     }
 
+    .container {
+        @apply bg-white rounded-[10px] p-5 shadow-[0px_4px_10px_rgba(0, 0, 0, 0.05)] border border-black/10;
+    }
+
+}
+
+* {
+    font-family: 'Satoshi', sans-serif;
 }

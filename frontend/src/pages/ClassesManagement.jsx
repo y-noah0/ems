@@ -3,6 +3,7 @@ import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import DynamicTable from '../components/class/DynamicTable';
 import adminService from '../services/adminService';
 
 const ClassesManagement = () => {
@@ -75,31 +76,76 @@ const ClassesManagement = () => {
     }
   };
 
-  const handleEdit = (classObj) => {
+  // Class table columns
+  const classColumns = [
+    { 
+      key: 'name', 
+      title: 'Class',
+      render: (value, item) => (
+        <div className="text-sm font-medium text-gray-900">
+          {item.level}{item.trade}
+        </div>
+      )
+    },
+    { 
+      key: 'year', 
+      title: 'Year',
+      render: (value) => (
+        <span className="text-sm text-gray-900">
+          {value}
+        </span>
+      )
+    },
+    { 
+      key: 'term', 
+      title: 'Term',
+      render: (value) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          Term {value}
+        </span>
+      )
+    },
+    { 
+      key: 'students', 
+      title: 'Students',
+      render: (value, item) => (
+        <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
+          {item.studentCount || '--'} students
+        </span>
+      )
+    }
+  ];
+
+  // Action handlers  
+  const handleEdit = (classItem) => {
+    setEditingClass(classItem);
     setFormData({
-      level: classObj.level,
-      trade: classObj.trade,
-      year: classObj.year,
-      term: classObj.term
+      level: classItem.level,
+      trade: classItem.trade,
+      year: classItem.year,
+      term: classItem.term
     });
-    setEditingClass(classObj);
     setShowForm(true);
-    setFormError('');
-    setFormSuccess('');
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this class? This action cannot be undone.')) {
-      return;
-    }
+  const handleDelete = async (classItem) => {
+    if (!window.confirm(`Are you sure you want to delete ${classItem.level}${classItem.trade}?`)) return;
     
     try {
-      await adminService.deleteClass(id);
-      fetchClasses();
+      await adminService.deleteClass(classItem._id);
+      await fetchClasses();
+      setFormSuccess('Class deleted successfully!');
+      setTimeout(() => setFormSuccess(''), 3000);
     } catch (error) {
       console.error('Error deleting class:', error);
-      setError(error.message || 'Failed to delete class');
+      setFormError('Failed to delete class');
+      setTimeout(() => setFormError(''), 3000);
     }
+  };
+
+  const handleView = (classItem) => {
+    // Navigate to class view or implement view logic
+    console.log('View class:', classItem);
   };
 
   const handleCancel = () => {
@@ -233,60 +279,17 @@ const ClassesManagement = () => {
         ) : classes.length === 0 ? (
           <p className="text-gray-500">No classes available. Create your first class!</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Class
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Year
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Term
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Students
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {classes.map((cls) => (
-                  <tr key={cls._id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {cls.level}{cls.trade}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {cls.year}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {cls.term}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {/* This will be filled when the API for counting students is added */}
-                      --
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-2">
-                      <Button variant="secondary" size="sm" onClick={() => handleEdit(cls)}>
-                        Edit
-                      </Button>
-                      <Button 
-                        variant="danger" 
-                        size="sm"
-                        onClick={() => handleDelete(cls._id)}
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DynamicTable
+            data={classes}
+            columns={classColumns}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+            showActions={true}
+            emptyMessage="No classes available. Create your first class!"
+            containerWidth="100%"
+            containerHeight="auto"
+          />
         )}
       </Card>
     </Layout>

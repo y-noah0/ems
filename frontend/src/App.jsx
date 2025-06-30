@@ -18,16 +18,15 @@ import UsersManagement from "./pages/UsersManagement";
 import ImportStudents from "./pages/ImportStudents";
 import StudentProfile from "./pages/StudentProfile";
 import StudentResults from "./pages/StudentResults";
-import ExamManagement from "./pages/ExamManagement";
+
 
 // Teacher Pages
 import TeacherDashboard from "./pages/TeacherDashboard";
 import ExamCreator from "./pages/ExamCreator";
 import ExamEditor from "./pages/ExamEditor";
 import ExamResults from "./pages/ExamResults";
-import ExamView from "./pages/ExamView";
 import ExamSchedule from "./pages/ExamSchedule";
-import ExamsListPage from "./pages/ExamsListPage";
+import ExamsListPage from "./pages/ExamManagement";
 import SubmissionsListPage from "./pages/SubmissionsListPage";
 import SubmissionView from "./pages/SubmissionView";
 
@@ -42,12 +41,18 @@ import PerformancePage from "./components/class/PerfomancePage";
 import TeacherPage from "./components/class/TeacherPage";
 import StudentPage from "./components/class/StudentPage";
 
-import ExamDetails from "./pages/Dean/ExamDetails";
+import ExamDetails from "./pages/ExamDetails";
+import DeanExamDetails from "./pages/Dean/ExamDetails";
 import ReportingPage from "./pages/Dean/Reporting/ReportingPage";
 import ClassReports from "./pages/Dean/Reporting/ClassReports";
 import SchoolManagement from "./pages/admin/SchoolManagement";
 import AddSchool from "./pages/admin/AddSchool";
 import TradesCatalog from "./pages/admin/TradesCatalog";
+import TradeDetail from "./pages/admin/TradeDetail";
+import SubjectCatalog from "./pages/admin/SubjectCatalog";
+import SubjectDetail from "./pages/admin/SubjectDetail";
+import AddTrades from "./pages/admin/AddTrades";
+import ExamManagement from "./pages/ExamManagement";
 
 // Role-Based Redirect Component
 const RoleBasedRedirect = () => {
@@ -260,7 +265,7 @@ function App() {
                                 path="/teacher/exams/:examId"
                                 element={
                                     <ProtectedRoute allowedRoles={["teacher"]}>
-                                        <ExamView />
+                                        <ExamDetails />
                                     </ProtectedRoute>
                                 }
                             />
@@ -379,10 +384,10 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/dean/exams/:id"
+                                path="/dean/exams/:examId"
                                 element={
                                     <ProtectedRoute allowedRoles={["dean"]}>
-                                        <ExamDetails />
+                                        <DeanExamDetails />
                                     </ProtectedRoute>
                                 }
                             />
@@ -426,14 +431,6 @@ function App() {
                                     </ProtectedRoute>
                                 }
                             />
-                            <Route
-                                path="/dean/exams"
-                                element={
-                                    <ProtectedRoute allowedRoles={["dean"]}>
-                                        <ExamManagement />
-                                    </ProtectedRoute>
-                                }
-                            />
 
                             {/* Admin Routes */}
                             <Route
@@ -468,7 +465,43 @@ function App() {
                                     </ProtectedRoute>
                                 }
                             />
+                            
+                            <Route
+                                path="/admin/trades/:id"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <TradeDetail />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            
+                            <Route
+                                path="/admin/trades/add"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <AddTrades />
+                                    </ProtectedRoute>
+                                }
+                            />
 
+                            <Route
+                                path="/admin/subjects"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <SubjectCatalog />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            
+                            <Route
+                                path="/admin/subjects/:id"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <SubjectDetail />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            
                             <Route
                                 path="/admin/settings"
                                 element={

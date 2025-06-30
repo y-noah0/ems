@@ -1,0 +1,111 @@
+{
+  "students": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8c9",
+      "role": "student",
+      "fullName": "Jean Baptiste Uwimana",
+      "email": "jean.uwimana@student.edu.rw",
+      "registrationNumber": "STU2024001",
+      "class": "66d1e2a5f8c3d4e5f6a7b8d1",
+      "createdAt": "2024-08-30T08:00:00.000Z",
+      "updatedAt": "2024-08-30T08:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8ca",
+      "role": "student",
+      "fullName": "Marie Claire Mukamana",
+      "email": "marie.mukamana@student.edu.rw",
+      "registrationNumber": "STU2024002",
+      "class": "66d1e2a5f8c3d4e5f6a7b8d1",
+      "createdAt": "2024-08-30T08:15:00.000Z",
+      "updatedAt": "2024-08-30T08:15:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8cb",
+      "role": "student",
+      "fullName": "Patrick Niyonsenga",
+      "email": "patrick.niyonsenga@student.edu.rw",
+      "registrationNumber": "STU2024003",
+      "class": "66d1e2a5f8c3d4e5f6a7b8d2",
+      "createdAt": "2024-08-30T08:30:00.000Z",
+      "updatedAt": "2024-08-30T08:30:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8cc",
+      "role": "student",
+      "fullName": "Aline Uwimana",
+      "email": "aline.uwimana@student.edu.rw",
+      "registrationNumber": "STU2024004",
+      "class": "66d1e2a5f8c3d4e5f6a7b8d2",
+      "createdAt": "2024-08-30T08:45:00.000Z",
+      "updatedAt": "2024-08-30T08:45:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8cd",
+      "role": "student",
+      "fullName": "Emmanuel Habimana",
+      "email": "emmanuel.habimana@student.edu.rw",
+      "registrationNumber": "STU2024005",
+      "class": "66d1e2a5f8c3d4e5f6a7b8d3",
+      "createdAt": "2024-08-30T09:00:00.000Z",
+      "updatedAt": "2024-08-30T09:00:00.000Z"
+    }
+  ],
+  "teachers": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+      "role": "teacher",
+      "fullName": "Dr. Robert Kamanzi",
+      "email": "robert.kamanzi@teacher.edu.rw",
+      "subjects": ["66d1e2a5f8c3d4e5f6a7b8e1", "66d1e2a5f8c3d4e5f6a7b8e2"],
+      "createdAt": "2024-08-30T07:00:00.000Z",
+      "updatedAt": "2024-08-30T07:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8cf",
+      "role": "teacher",
+      "fullName": "Prof. Alice Mukamana",
+      "email": "alice.mukamana@teacher.edu.rw",
+      "subjects": ["66d1e2a5f8c3d4e5f6a7b8e3", "66d1e2a5f8c3d4e5f6a7b8e4"],
+      "createdAt": "2024-08-30T07:15:00.000Z",
+      "updatedAt": "2024-08-30T07:15:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d0",
+      "role": "teacher",
+      "fullName": "Jean Claude Nsengimana",
+      "email": "jc.nsengimana@teacher.edu.rw",
+      "subjects": ["66d1e2a5f8c3d4e5f6a7b8e5"],
+      "createdAt": "2024-08-30T07:30:00.000Z",
+      "updatedAt": "2024-08-30T07:30:00.000Z"
+    }
+  ],
+  "deans": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d5",
+      "role": "dean",
+      "fullName": "Dr. Francine Uwimana",
+      "email": "francine.uwimana@dean.edu.rw",
+      "createdAt": "2024-08-30T06:00:00.000Z",
+      "updatedAt": "2024-08-30T06:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d6",
+      "role": "dean",
+      "fullName": "Prof. Samuel Nkurunziza",
+      "email": "samuel.nkurunziza@dean.edu.rw",
+      "createdAt": "2024-08-30T06:15:00.000Z",
+      "updatedAt": "2024-08-30T06:15:00.000Z"
+    }
+  ],
+  "admins": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d7",
+      "role": "admin",
+      "fullName": "System Administrator",
+      "email": "admin@system.edu.rw",
+      "createdAt": "2024-08-30T05:00:00.000Z",
+      "updatedAt": "2024-08-30T05:00:00.000Z"
+    }
+  ]
+}

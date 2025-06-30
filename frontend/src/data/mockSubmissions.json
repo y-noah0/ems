@@ -1,0 +1,404 @@
+{
+  "submissions": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c001",
+      "exam": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b901",
+        "title": "Mathematics Mid-Term Assessment",
+        "type": "assessment1",
+        "totalPoints": 35,
+        "subject": {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8e1",
+          "name": "Mathematics"
+        }
+      },
+      "student": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8c9",
+        "fullName": "Jean Baptiste Uwimana",
+        "registrationNumber": "STU2024001",
+        "email": "jean.uwimana@student.edu.rw"
+      },
+      "answers": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c002",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b902",
+          "answer": "2x",
+          "score": 5,
+          "graded": true,
+          "feedback": "Correct!"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c003",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b903",
+          "answer": "x² + C",
+          "score": 5,
+          "graded": true,
+          "feedback": "Perfect!"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c004",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b904",
+          "answer": "x = 4",
+          "score": 10,
+          "graded": true,
+          "feedback": "Excellent work showing all steps!"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c005",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b905",
+          "answer": "Limits represent the value that a function approaches as the input approaches some value. For example, the limit of (x²-1)/(x-1) as x approaches 1 is 2. Another example is the limit of sin(x)/x as x approaches 0 is 1.",
+          "score": 13,
+          "graded": true,
+          "feedback": "Good explanation with relevant examples. Minor points deducted for brevity."
+        }
+      ],
+      "totalScore": 33,
+      "startedAt": "2024-09-15T09:05:00.000Z",
+      "submittedAt": "2024-09-15T10:45:00.000Z",
+      "status": "graded",
+      "violations": 1,
+      "violationLogs": [
+        {
+          "type": "tab-switch",
+          "timestamp": "2024-09-15T09:30:00.000Z",
+          "details": "Student switched to another tab briefly"
+        }
+      ],
+      "gradedBy": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi"
+      },
+      "gradedAt": "2024-09-15T16:00:00.000Z",
+      "score": 33,
+      "totalPoints": 35,
+      "createdAt": "2024-09-15T09:05:00.000Z",
+      "updatedAt": "2024-09-15T16:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c006",
+      "exam": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b901",
+        "title": "Mathematics Mid-Term Assessment",
+        "type": "assessment1",
+        "totalPoints": 35,
+        "subject": {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8e1",
+          "name": "Mathematics"
+        }
+      },
+      "student": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ca",
+        "fullName": "Marie Claire Mukamana",
+        "registrationNumber": "STU2024002",
+        "email": "marie.mukamana@student.edu.rw"
+      },
+      "answers": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c007",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b902",
+          "answer": "x²",
+          "score": 0,
+          "graded": true,
+          "feedback": "Incorrect. The derivative of x² is 2x."
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c008",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b903",
+          "answer": "2x² + C",
+          "score": 0,
+          "graded": true,
+          "feedback": "Incorrect. The integral of 2x is x² + C."
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c009",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b904",
+          "answer": "x = 4",
+          "score": 10,
+          "graded": true,
+          "feedback": "Correct answer!"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c010",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b905",
+          "answer": "Limits are important in calculus. They help us understand functions.",
+          "score": 7,
+          "graded": true,
+          "feedback": "Basic understanding shown but needs more detail and examples."
+        }
+      ],
+      "totalScore": 17,
+      "startedAt": "2024-09-15T09:10:00.000Z",
+      "submittedAt": "2024-09-15T10:50:00.000Z",
+      "status": "graded",
+      "violations": 0,
+      "violationLogs": [],
+      "gradedBy": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi"
+      },
+      "gradedAt": "2024-09-15T16:30:00.000Z",
+      "score": 17,
+      "totalPoints": 35,
+      "createdAt": "2024-09-15T09:10:00.000Z",
+      "updatedAt": "2024-09-15T16:30:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c011",
+      "exam": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b906",
+        "title": "Programming Fundamentals Quiz",
+        "type": "quiz",
+        "totalPoints": 10,
+        "subject": {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8e2",
+          "name": "Programming"
+        }
+      },
+      "student": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cb",
+        "fullName": "Patrick Niyonsenga",
+        "registrationNumber": "STU2024003",
+        "email": "patrick.niyonsenga@student.edu.rw"
+      },
+      "answers": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c012",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b907",
+          "answer": "HTML",
+          "score": 3,
+          "graded": true,
+          "feedback": "Correct! HTML is a markup language, not a programming language."
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c013",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b908",
+          "answer": "true",
+          "score": 2,
+          "graded": true,
+          "feedback": "Correct!"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c014",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b909",
+          "answer": "Object Oriented Programming",
+          "score": 5,
+          "graded": true,
+          "feedback": "Perfect!"
+        }
+      ],
+      "totalScore": 10,
+      "startedAt": "2024-09-20T14:05:00.000Z",
+      "submittedAt": "2024-09-20T14:45:00.000Z",
+      "status": "graded",
+      "violations": 0,
+      "violationLogs": [],
+      "gradedBy": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi"
+      },
+      "gradedAt": "2024-09-20T17:00:00.000Z",
+      "score": 10,
+      "totalPoints": 10,
+      "createdAt": "2024-09-20T14:05:00.000Z",
+      "updatedAt": "2024-09-20T17:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c015",
+      "exam": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b910",
+        "title": "Database Design Final Exam",
+        "type": "exam",
+        "totalPoints": 45,
+        "subject": {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8e3",
+          "name": "Database Systems"
+        }
+      },
+      "student": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cd",
+        "fullName": "Emmanuel Habimana",
+        "registrationNumber": "STU2024005",
+        "email": "emmanuel.habimana@student.edu.rw"
+      },
+      "answers": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c016",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b911",
+          "answer": "Structured Query Language",
+          "score": 5,
+          "graded": true,
+          "feedback": "Correct!"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c017",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b912",
+          "answer": "SQL databases are relational and use structured data with predefined schemas. Examples include MySQL, PostgreSQL. They are good for complex queries and transactions. NoSQL databases are non-relational and flexible. Examples include MongoDB, Cassandra. They are good for big data and rapid development.",
+          "score": 22,
+          "graded": true,
+          "feedback": "Excellent explanation covering key differences and use cases."
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c018",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b913",
+          "answer": "SELECT * FROM students WHERE grade > 80;",
+          "score": 15,
+          "graded": true,
+          "feedback": "Perfect SQL query!"
+        }
+      ],
+      "totalScore": 42,
+      "startedAt": "2024-09-25T08:05:00.000Z",
+      "submittedAt": "2024-09-25T10:45:00.000Z",
+      "status": "graded",
+      "violations": 0,
+      "violationLogs": [],
+      "gradedBy": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cf",
+        "fullName": "Prof. Alice Mukamana"
+      },
+      "gradedAt": "2024-09-25T15:00:00.000Z",
+      "score": 42,
+      "totalPoints": 45,
+      "createdAt": "2024-09-25T08:05:00.000Z",
+      "updatedAt": "2024-09-25T15:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c019",
+      "exam": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b906",
+        "title": "Programming Fundamentals Quiz",
+        "type": "quiz",
+        "totalPoints": 10,
+        "subject": {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8e2",
+          "name": "Programming"
+        }
+      },
+      "student": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cc",
+        "fullName": "Aline Uwimana",
+        "registrationNumber": "STU2024004",
+        "email": "aline.uwimana@student.edu.rw"
+      },
+      "answers": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c020",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b907",
+          "answer": "Python",
+          "score": 0,
+          "graded": false,
+          "feedback": ""
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c021",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b908",
+          "answer": "true",
+          "score": 0,
+          "graded": false,
+          "feedback": ""
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7c022",
+          "questionId": "66d1e2a5f8c3d4e5f6a7b909",
+          "answer": "",
+          "score": 0,
+          "graded": false,
+          "feedback": ""
+        }
+      ],
+      "totalScore": 0,
+      "startedAt": "2024-09-20T14:10:00.000Z",
+      "submittedAt": "2024-09-20T14:55:00.000Z",
+      "status": "submitted",
+      "violations": 2,
+      "violationLogs": [
+        {
+          "type": "tab-switch",
+          "timestamp": "2024-09-20T14:25:00.000Z",
+          "details": "Student switched away from exam tab"
+        },
+        {
+          "type": "copy-attempt",
+          "timestamp": "2024-09-20T14:35:00.000Z",
+          "details": "Copy action detected"
+        }
+      ],
+      "gradedBy": null,
+      "gradedAt": null,
+      "score": 0,
+      "totalPoints": 10,
+      "createdAt": "2024-09-20T14:10:00.000Z",
+      "updatedAt": "2024-09-20T14:55:00.000Z"
+    }
+  ],
+  "recentSubmissions": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c023",
+      "exam": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b917",
+        "title": "Digital Marketing Strategy Quiz",
+        "type": "quiz",
+        "subject": {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8e5",
+          "name": "Digital Marketing"
+        }
+      },
+      "student": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8c9",
+        "fullName": "Jean Baptiste Uwimana",
+        "registrationNumber": "STU2024001"
+      },
+      "totalScore": 8,
+      "totalPoints": 10,
+      "status": "graded",
+      "submittedAt": "2024-09-18T16:10:00.000Z",
+      "gradedAt": "2024-09-18T18:00:00.000Z",
+      "score": 8,
+      "violations": 0
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c024",
+      "exam": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b906",
+        "title": "Programming Fundamentals Quiz",
+        "type": "quiz",
+        "subject": {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8e2",
+          "name": "Programming"
+        }
+      },
+      "student": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ca",
+        "fullName": "Marie Claire Mukamana",
+        "registrationNumber": "STU2024002"
+      },
+      "totalScore": 6,
+      "totalPoints": 10,
+      "status": "graded",
+      "submittedAt": "2024-09-20T14:50:00.000Z",
+      "gradedAt": "2024-09-20T17:30:00.000Z",
+      "score": 6,
+      "violations": 1
+    }
+  ],
+  "submissionStatistics": {
+    "totalSubmissions": 7,
+    "gradedSubmissions": 5,
+    "pendingGrading": 2,
+    "averageScore": 69.2,
+    "violationsCount": 4,
+    "submissionsByStatus": {
+      "graded": 5,
+      "submitted": 2,
+      "in-progress": 0,
+      "auto-submitted": 0
+    },
+    "submissionsByExamType": {
+      "quiz": 4,
+      "assessment1": 2,
+      "exam": 1,
+      "assessment2": 0,
+      "homework": 0
+    }
+  }
+}

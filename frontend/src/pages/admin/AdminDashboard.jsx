@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import Layout from "../../components/layout/Layout";
 import StatsCards from "../../components/dashboard/StatsCards";
+import DynamicTable from "../../components/class/DynamicTable";
 import Button from "../../components/ui/Button1";
 
 const AdminDashboard = () => {
@@ -67,6 +68,53 @@ const AdminDashboard = () => {
             status: "suspended"
         },
     ];
+
+    // Top Schools table columns
+    const topSchoolsColumns = [
+        { 
+            key: 'name', 
+            title: 'School',
+            render: (value) => (
+                <span className="text-sm font-medium text-gray-900">{value}</span>
+            )
+        },
+        { 
+            key: 'students', 
+            title: 'Students',
+            render: (value) => (
+                <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                    {value}
+                </span>
+            )
+        }
+    ];
+
+    // Payments table columns
+    const paymentsColumns = [
+        { 
+            key: 'name', 
+            title: 'School',
+            render: (value) => (
+                <span className="text-sm font-medium text-gray-900">{value}</span>
+            )
+        },
+        { 
+            key: 'status', 
+            title: 'Status',
+            render: (value) => (
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    value === "active" 
+                        ? "bg-green-100 text-green-800" 
+                        : value === "pending"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                }`}>
+                    {value}
+                </span>
+            )
+        }
+    ];
+
     return (
         <Layout>
             <div className="px-10 py-6">
@@ -74,51 +122,35 @@ const AdminDashboard = () => {
                     <StatsCards stats={stats} />
                 </div>
                 <div className="flex justify-between gap-6">
-                    <div className="w-1/2 border rounded-lg border-black/10 px-6 py-4">
-                        <div className="flex justify-between mb-4 border-b border-b-black/10">
-                            <h1 className="title mb-4">Top schools</h1>
-                            <Button to={"/admin/schools"} size="sm" className="h-8">
+                    <div className="w-1/2 bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-lg font-semibold text-gray-900">Top Schools</h2>
+                            <Button to={"/admin/schools"} size="sm">
                                 Manage
                             </Button>
                         </div>
-                        <table className="w-full bg-black/1">
-                            <tr className="flex justify-between border-b-black/10 border-b bg-main-blue/10 px-4 py-2 rounded-t-lg">
-                                <td className="">School</td>
-                                <td className="">Students</td>
-                            </tr>
-                            {topSchools.map((school) => (
-                                <tr
-                                    key={school.id}
-                                    className="flex justify-between border-b-black/10 border-b  px-4 py-2"
-                                >
-                                    <td className="">{school.name}</td>
-                                    <td className="">{school.students}</td>
-                                </tr>
-                            ))}
-                        </table>
+                        <div className="overflow-x-auto">
+                            <DynamicTable
+                                data={topSchools}
+                                columns={topSchoolsColumns}
+                                emptyMessage="No schools available"
+                            />
+                        </div>
                     </div>
-                    <div className="w-1/2 border rounded-lg border-black/10 px-6 py-4">
-                        <div className="flex justify-between mb-4 border-b border-b-black/10">
-                            <h1 className="title mb-4">Payment Statuses</h1>
-                            <Button to={"/admin/schools"} size="sm" className="h-8">
+                    <div className="w-1/2 bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-lg font-semibold text-gray-900">Payment Statuses</h2>
+                            <Button to={"/admin/schools"} size="sm">
                                 Manage
                             </Button>
                         </div>
-                        <table className="w-full bg-black/1">
-                            <tr className="flex justify-between border-b-black/10 border-b bg-main-blue/10 px-4 py-2 rounded-t-lg">
-                                <td className="">School</td>
-                                <td className="">Status</td>
-                            </tr>
-                            {payments.map((school) => (
-                                <tr
-                                    key={school.id}
-                                    className="flex justify-between border-b-black/10 border-b  px-4 py-2"
-                                >
-                                    <td className="">{school.name}</td>
-                                    <td className={school.status=="active"? 'bg-main-green/10':school.status=="pending"?'bg-yellow-400/10':'bg-main-red/10'}>{school.status}</td>
-                                </tr>
-                            ))}
-                        </table>
+                        <div className="overflow-x-auto">
+                            <DynamicTable
+                                data={payments}
+                                columns={paymentsColumns}
+                                emptyMessage="No payment data available"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

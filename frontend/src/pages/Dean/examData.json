@@ -1,162 +1,382 @@
 {
   "exams": [
     {
-      "id": "123456",
-      "title": "Statistics and logarithms",
-      "subject": "Mathematics",
-      "classCode": "L4SOD",
-      "status": "active",
-      "description": "An exam on logarithms and statistics",
-      "startTime": "20:20",
-      "endTime": "20:55",
-      "duration": 35,
-      "totalPoints": 50,
-      "questions": [
+      "_id": "66d1e2a5f8c3d4e5f6a7b901",
+      "title": "Mathematics Mid-Term Assessment",
+      "classes": [
         {
-          "id": "q1",
-          "text": "What is the logarithm of 100 to base 10?",
-          "type": "multiple_choice",
-          "points": 2.5,
-          "options": [
-            {"id": "a", "text": "1"},
-            {"id": "b", "text": "2"},
-            {"id": "c", "text": "10"},
-            {"id": "d", "text": "100"}
-          ],
-          "correctAnswer": "b"
-        },
-        {
-          "id": "q2",
-          "text": "Calculate the mean of the data set: 5, 8, 12, 15, 20",
-          "type": "numerical",
-          "points": 2.5,
-          "correctAnswer": "12"
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d1",
+          "level": "L3",
+          "trade": "SOD",
+          "year": 2024,
+          "term": 1,
+          "name": "L3SOD"
         }
-      ]
-    },
-    {
-      "id": "789012",
-      "title": "Advanced Calculus",
-      "subject": "Mathematics",
-      "classCode": "M3CAL",
-      "status": "draft",
-      "description": "Exam covering derivatives and integrals",
-      "startTime": null,
-      "endTime": null,
-      "duration": 60,
-      "totalPoints": 75,
+      ],
+      "subject": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8e1",
+        "name": "Mathematics"
+      },
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi",
+        "email": "robert.kamanzi@teacher.edu.rw"
+      },
+      "type": "assessment1",
+      "schedule": {
+        "start": "2024-09-15T09:00:00.000Z",
+        "duration": 120
+      },
       "questions": [
         {
-          "id": "q1",
-          "text": "Find the derivative of f(x) = x³ + 2x² - 5x + 3",
-          "type": "open_ended",
-          "points": 5,
-          "correctAnswer": "3x² + 4x - 5"
-        },
-        {
-          "id": "q2",
-          "text": "Evaluate ∫(2x + 3)dx from x=0 to x=4",
-          "type": "numerical",
-          "points": 5,
-          "correctAnswer": "28"
-        }
-      ]
-    },
-    {
-      "id": "345678",
-      "title": "Programming Fundamentals",
-      "subject": "Computer Science",
-      "classCode": "CS101",
-      "status": "scheduled",
-      "description": "Basic programming concepts and algorithms",
-      "startTime": "14:00",
-      "endTime": "16:00",
-      "duration": 120,
-      "totalPoints": 100,
-      "questions": [
-        {
-          "id": "q1",
-          "text": "What is the time complexity of a binary search algorithm?",
-          "type": "multiple_choice",
-          "points": 5,
+          "_id": "66d1e2a5f8c3d4e5f6a7b902",
+          "type": "multiple-choice",
+          "text": "What is the derivative of x²?",
           "options": [
-            {"id": "a", "text": "O(1)"},
-            {"id": "b", "text": "O(log n)"},
-            {"id": "c", "text": "O(n)"},
-            {"id": "d", "text": "O(n²)"}
+            { "text": "2x", "isCorrect": true },
+            { "text": "x²", "isCorrect": false },
+            { "text": "2x²", "isCorrect": false },
+            { "text": "x", "isCorrect": false }
           ],
-          "correctAnswer": "b"
+          "correctAnswer": "2x",
+          "maxScore": 5
         },
         {
-          "id": "q2",
-          "text": "Write a function to reverse a string without using built-in reverse functions.",
-          "type": "coding",
-          "points": 10,
-          "correctAnswer": "function reverseString(str) {\n  return str.split('').reverse().join('');\n}"
-        }
-      ]
-    },
-    {
-      "id": "901234",
-      "title": "World History",
-      "subject": "History",
-      "classCode": "H2WST",
-      "status": "completed",
-      "description": "Examination on major world events from 1900-2000",
-      "startTime": "10:00",
-      "endTime": "11:30",
-      "duration": 90,
-      "totalPoints": 80,
-      "questions": [
-        {
-          "id": "q1",
-          "text": "In what year did World War II end?",
-          "type": "multiple_choice",
-          "points": 4,
+          "_id": "66d1e2a5f8c3d4e5f6a7b903",
+          "type": "multiple-choice",
+          "text": "What is the integral of 2x?",
           "options": [
-            {"id": "a", "text": "1943"},
-            {"id": "b", "text": "1945"},
-            {"id": "c", "text": "1947"},
-            {"id": "d", "text": "1950"}
+            { "text": "x² + C", "isCorrect": true },
+            { "text": "2x² + C", "isCorrect": false },
+            { "text": "x + C", "isCorrect": false },
+            { "text": "2", "isCorrect": false }
           ],
-          "correctAnswer": "b"
+          "correctAnswer": "x² + C",
+          "maxScore": 5
         },
         {
-          "id": "q2",
-          "text": "Describe the impact of the Cold War on international relations.",
+          "_id": "66d1e2a5f8c3d4e5f6a7b904",
+          "type": "short-answer",
+          "text": "Solve the equation: 2x + 3 = 11",
+          "maxScore": 10
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b905",
           "type": "essay",
-          "points": 15,
-          "correctAnswer": null
+          "text": "Explain the concept of limits in calculus and provide two examples.",
+          "maxScore": 15
         }
-      ]
+      ],
+      "totalScore": 35,
+      "totalPoints": 35,
+      "status": "scheduled",
+      "instructions": "Read all questions carefully. Show your work for partial credit. No calculators allowed.",
+      "createdAt": "2024-08-30T10:00:00.000Z",
+      "updatedAt": "2024-08-30T10:00:00.000Z"
     },
     {
-      "id": "567890",
-      "title": "Organic Chemistry",
-      "subject": "Chemistry",
-      "classCode": "CH302",
-      "status": "scheduled",
-      "description": "Final examination on organic compounds and reactions",
-      "startTime": "09:00",
-      "endTime": "11:00",
-      "duration": 120,
-      "totalPoints": 90,
+      "_id": "66d1e2a5f8c3d4e5f6a7b906",
+      "title": "Programming Fundamentals Quiz",
+      "classes": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d2",
+          "level": "L3",
+          "trade": "NIT",
+          "year": 2024,
+          "term": 1,
+          "name": "L3NIT"
+        }
+      ],
+      "subject": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8e2",
+        "name": "Programming"
+      },
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi",
+        "email": "robert.kamanzi@teacher.edu.rw"
+      },
+      "type": "quiz",
+      "schedule": {
+        "start": "2024-09-20T14:00:00.000Z",
+        "duration": 60
+      },
       "questions": [
         {
-          "id": "q1",
-          "text": "Draw the structure of benzene and explain its resonance.",
-          "type": "open_ended",
-          "points": 8,
-          "correctAnswer": null
+          "_id": "66d1e2a5f8c3d4e5f6a7b907",
+          "type": "multiple-choice",
+          "text": "Which of the following is NOT a programming language?",
+          "options": [
+            { "text": "Python", "isCorrect": false },
+            { "text": "JavaScript", "isCorrect": false },
+            { "text": "HTML", "isCorrect": true },
+            { "text": "C++", "isCorrect": false }
+          ],
+          "correctAnswer": "HTML",
+          "maxScore": 3
         },
         {
-          "id": "q2",
-          "text": "What is the IUPAC name for CH₃-CH₂-CH(CH₃)-CH₂-CH₃?",
-          "type": "short_answer",
-          "points": 5,
-          "correctAnswer": "3-methylpentane"
+          "_id": "66d1e2a5f8c3d4e5f6a7b908",
+          "type": "true-false",
+          "text": "Python is an interpreted language.",
+          "correctAnswer": "true",
+          "maxScore": 2
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b909",
+          "type": "short-answer",
+          "text": "What does OOP stand for in programming?",
+          "maxScore": 5
         }
-      ]
+      ],
+      "totalScore": 10,
+      "totalPoints": 10,
+      "status": "active",
+      "instructions": "Answer all questions. Time limit: 60 minutes.",
+      "createdAt": "2024-08-30T11:00:00.000Z",
+      "updatedAt": "2024-08-30T11:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b910",
+      "title": "Database Design Final Exam",
+      "classes": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d3",
+          "level": "L4",
+          "trade": "SOD",
+          "year": 2024,
+          "term": 1,
+          "name": "L4SOD"
+        }
+      ],
+      "subject": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8e3",
+        "name": "Database Systems"
+      },
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cf",
+        "fullName": "Prof. Alice Mukamana",
+        "email": "alice.mukamana@teacher.edu.rw"
+      },
+      "type": "exam",
+      "schedule": {
+        "start": "2024-09-25T08:00:00.000Z",
+        "duration": 180
+      },
+      "questions": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b911",
+          "type": "multiple-choice",
+          "text": "What does SQL stand for?",
+          "options": [
+            { "text": "Structured Query Language", "isCorrect": true },
+            { "text": "Simple Query Language", "isCorrect": false },
+            { "text": "Standard Query Language", "isCorrect": false },
+            { "text": "System Query Language", "isCorrect": false }
+          ],
+          "correctAnswer": "Structured Query Language",
+          "maxScore": 5
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b912",
+          "type": "essay",
+          "text": "Explain the differences between SQL and NoSQL databases. Provide examples and use cases for each.",
+          "maxScore": 25
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b913",
+          "type": "short-answer",
+          "text": "Write a SQL query to select all students with grades above 80.",
+          "maxScore": 15
+        }
+      ],
+      "totalScore": 45,
+      "totalPoints": 45,
+      "status": "completed",
+      "instructions": "This is a comprehensive exam covering all database concepts. Show your work and explain your reasoning.",
+      "createdAt": "2024-08-30T12:00:00.000Z",
+      "updatedAt": "2024-08-30T12:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b914",
+      "title": "Network Security Assessment",
+      "classes": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d4",
+          "level": "L5",
+          "trade": "NIT",
+          "year": 2024,
+          "term": 1,
+          "name": "L5NIT"
+        }
+      ],
+      "subject": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8e4",
+        "name": "Network Security"
+      },
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8cf",
+        "fullName": "Prof. Alice Mukamana",
+        "email": "alice.mukamana@teacher.edu.rw"
+      },
+      "type": "assessment2",
+      "schedule": {
+        "start": "2024-10-01T10:00:00.000Z",
+        "duration": 90
+      },
+      "questions": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b915",
+          "type": "multiple-choice",
+          "text": "Which of the following is a symmetric encryption algorithm?",
+          "options": [
+            { "text": "RSA", "isCorrect": false },
+            { "text": "AES", "isCorrect": true },
+            { "text": "DSA", "isCorrect": false },
+            { "text": "ECC", "isCorrect": false }
+          ],
+          "correctAnswer": "AES",
+          "maxScore": 4
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b916",
+          "type": "essay",
+          "text": "Describe the OSI model and explain how security can be implemented at each layer.",
+          "maxScore": 20
+        }
+      ],
+      "totalScore": 24,
+      "totalPoints": 24,
+      "status": "draft",
+      "instructions": "Focus on practical security implementations and provide real-world examples.",
+      "createdAt": "2024-08-30T13:00:00.000Z",
+      "updatedAt": "2024-08-30T13:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b917",
+      "title": "Digital Marketing Strategy Quiz",
+      "classes": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d5",
+          "level": "L4",
+          "trade": "MMP",
+          "year": 2024,
+          "term": 1,
+          "name": "L4MMP"
+        }
+      ],
+      "subject": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8e5",
+        "name": "Digital Marketing"
+      },
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8d0",
+        "fullName": "Jean Claude Nsengimana",
+        "email": "jc.nsengimana@teacher.edu.rw"
+      },
+      "type": "quiz",
+      "schedule": {
+        "start": "2024-09-18T15:30:00.000Z",
+        "duration": 45
+      },
+      "questions": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b918",
+          "type": "multiple-choice",
+          "text": "What does SEO stand for?",
+          "options": [
+            { "text": "Search Engine Optimization", "isCorrect": true },
+            { "text": "Social Engine Optimization", "isCorrect": false },
+            { "text": "Search Engine Operation", "isCorrect": false },
+            { "text": "System Engine Optimization", "isCorrect": false }
+          ],
+          "correctAnswer": "Search Engine Optimization",
+          "maxScore": 3
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b919",
+          "type": "short-answer",
+          "text": "List three key performance indicators (KPIs) for measuring digital marketing success.",
+          "maxScore": 7
+        }
+      ],
+      "totalScore": 10,
+      "totalPoints": 10,
+      "status": "scheduled",
+      "instructions": "Quick quiz on digital marketing fundamentals.",
+      "createdAt": "2024-08-30T14:00:00.000Z",
+      "updatedAt": "2024-08-30T14:00:00.000Z"
+    }
+  ],
+  "drafts": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b920",
+      "title": "Advanced Mathematics Draft",
+      "classes": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d1",
+          "level": "L3",
+          "trade": "SOD",
+          "year": 2024,
+          "term": 1,
+          "name": "L3SOD"
+        }
+      ],
+      "subject": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8e1",
+        "name": "Mathematics"
+      },
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi",
+        "email": "robert.kamanzi@teacher.edu.rw"
+      },
+      "type": "homework",
+      "questions": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b921",
+          "type": "essay",
+          "text": "Explain the concept of differential equations and their applications in real-world scenarios.",
+          "maxScore": 20
+        }
+      ],
+      "totalScore": 20,
+      "totalPoints": 20,
+      "status": "draft",
+      "instructions": "Work in progress - Advanced mathematical concepts.",
+      "createdAt": "2024-08-30T15:00:00.000Z",
+      "updatedAt": "2024-08-30T15:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b922",
+      "title": "Web Development Practice Test",
+      "classes": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d2",
+          "level": "L3",
+          "trade": "NIT",
+          "year": 2024,
+          "term": 1,
+          "name": "L3NIT"
+        }
+      ],
+      "subject": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8e2",
+        "name": "Programming"
+      },
+      "teacher": {
+        "_id": "66d1e2a5f8c3d4e5f6a7b8ce",
+        "fullName": "Dr. Robert Kamanzi",
+        "email": "robert.kamanzi@teacher.edu.rw"
+      },
+      "type": "practice",
+      "questions": [],
+      "totalScore": 0,
+      "totalPoints": 0,
+      "status": "draft",
+      "instructions": "Practice test for web development concepts - Under construction.",
+      "createdAt": "2024-08-30T16:00:00.000Z",
+      "updatedAt": "2024-08-30T16:00:00.000Z"
     }
   ]
 }

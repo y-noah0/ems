@@ -1,27 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import Layout from '../../components/layout/Layout';
-import ExamContent from '../../components/exam/ExamContent';
-import ExamSidebar from '../../components/exam/ExamSidebar';
-import BackButton from '../../components/exam/BackButton';
-import examService from '../../services/examService';
+import { useParams, useNavigate } from 'react-router-dom';
+import Layout from '../components/layout/Layout';
+import ExamContent from '../components/exam/ExamContent';
+import ExamSidebar from '../components/exam/ExamSidebar';
+import BackButton from '../components/exam/BackButton';
+import examService from '../services/examService';
 
-const DeanExamDetails = () => {
-  console.log('DeanExamDetails component is rendering');
+const StudentTakeExam = () => {
   const { examId } = useParams();
-  console.log('DeanExamDetails: useParams examId:', examId);
-  
-  const [approvalStatus, setApprovalStatus] = useState('pending');
+  const navigate = useNavigate();
   const [examData, setExamData] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [currentProgress, setCurrentProgress] = useState(0);
 
   useEffect(() => {
-    console.log('DeanExamDetails: examId from params:', examId);
-    
     const fetchExamData = async () => {
       try {
         const exam = await examService.getExamById(examId);
-        console.log('DeanExamDetails: Found target exam:', exam ? exam.title : 'NOT FOUND');
         
         // Transform the exam data to match what ExamSidebar expects
         const transformedExamData = {
@@ -32,38 +27,41 @@ const DeanExamDetails = () => {
             new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'TBD',
           totalQuestions: exam.questions?.length || 0,
           totalMarks: exam.questions?.reduce((sum, q) => sum + (q.maxScore || 0), 0) || exam.totalScore || 0,
-          progress: 0, // Dean doesn't see progress
+          progress: currentProgress,
           courseCode: exam.classes?.[0]?.name || exam.subject?.name || 'N/A',
-          status: exam.status || 'draft'
+          status: exam.status || 'active'
         };
         
-        console.log('DeanExamDetails: Transformed exam data:', transformedExamData);
         setExamData(transformedExamData);
         setQuestions(exam.questions || []);
       } catch (error) {
-        console.error('DeanExamDetails: Error fetching exam data:', error);
+        console.error('Error fetching exam data:', error);
+        // Handle error appropriately
       }
     };
 
     if (examId) {
       fetchExamData();
     }
-  }, [examId]);
+  }, [examId, currentProgress]);
 
-  const handleApprove = () => {
-    setApprovalStatus('approved');
+  const handleSubmitExam = () => {
+    // Student exam submission logic
+    const confirmed = window.confirm('Are you sure you want to submit your exam? This action cannot be undone.');
+    if (confirmed) {
+      console.log('Submitting exam...');
+      // You can add actual submission logic here
+      alert('Exam submitted successfully!');
+      navigate('/student/exams');
+    }
   };
 
-  const handleReject = () => {
-    setApprovalStatus('rejected');
-  };
-
-  const handleRevokeApproval = () => {
-    setApprovalStatus('pending');
-  };
-
-  const handleResetStatus = () => {
-    setApprovalStatus('pending');
+  const handleSaveProgress = () => {
+    // Student progress saving logic
+    console.log('Saving progress...');
+    // Simulate progress update
+    setCurrentProgress(prev => Math.min(prev + 10, 100));
+    alert('Progress saved successfully!');
   };
 
   if (!examData) {
@@ -84,27 +82,24 @@ const DeanExamDetails = () => {
           {/* Header with Back Button */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-semibold text-gray-900">Exam Review</h1>
+              <h1 className="text-xl font-semibold text-gray-900">Take Exam</h1>
             </div>
             <BackButton />
           </div>
 
-          {/* Content Area - Dean only sees exam overview, no answers */}
+          {/* Content Area - Student can interact with exam */}
           <div className="flex-1 min-h-0">
-            <ExamContent questions={questions} userRole="dean" />
+            <ExamContent questions={questions} userRole="student" />
           </div>
         </div>
 
-        {/* Sidebar - Dean can approve/reject */}
+        {/* Sidebar - Student can save progress and submit */}
         <div className="lg:flex-shrink-0 order-first lg:order-last">
           <ExamSidebar
             examData={examData}
-            approvalStatus={approvalStatus}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            onRevokeApproval={handleRevokeApproval}
-            onResetStatus={handleResetStatus}
-            userRole="dean"
+            userRole="student"
+            onSubmitExam={handleSubmitExam}
+            onSaveProgress={handleSaveProgress}
           />
         </div>
       </div>
@@ -112,4 +107,4 @@ const DeanExamDetails = () => {
   );
 };
 
-export default DeanExamDetails;
+export default StudentTakeExam;
