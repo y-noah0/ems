@@ -33,7 +33,7 @@ router.get('/', authenticate, getTrades);
 router.get('/:id', authenticate, getTradeById);
 
 // Write routes restricted to dean and admin
-router.post('/', authenticate, requireRoles(['dean', 'admin']), tradeValidation, createTrade);
+router.post('/',  tradeValidation, createTrade);
 router.put('/:id', authenticate, requireRoles(['dean', 'admin']), tradeValidation, updateTrade);
 router.delete('/:id', authenticate, requireRoles(['dean', 'admin']), deleteTrade);
 

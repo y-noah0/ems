@@ -10,7 +10,7 @@ const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
 const http = require('http');
-const routes = require('./routes');
+const routes = require('./routes/trade');
 
 
 
