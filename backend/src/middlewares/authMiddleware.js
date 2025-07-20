@@ -58,8 +58,8 @@ const requireRoles = (roles) => (req, res, next) => {
 };
 
 // Specific roles
-const isAdmin = requireRoles(['admin']);
-const isDean = requireRoles(['dean', 'admin']);
+const isAdmin = requireRoles(['admin', 'headmaster']); // allow headmaster to manage users
+const isDean = requireRoles(['dean', 'admin', 'headmaster']); // allow headmaster to access dean routes
 const isTeacher = requireRoles(['teacher', 'dean', 'admin']);
 const isStudent = requireRoles(['student']);
 const isStudentOrTeacher = requireRoles(['student', 'teacher']);
@@ -76,8 +76,8 @@ const loginValidation = [
 const registerValidation = [
   check('fullName').notEmpty().withMessage('Full name is required'),
   check('password')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(.*[@$!%*?&])?[A-Za-z\d@$!%*?&]{8,}$/)
-    .withMessage('Password must be at least 8 characters with uppercase, lowercase, and number'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long'),
   check('role').isIn(['student', 'teacher', 'dean', 'admin', 'headmaster']).withMessage('Invalid role'),
   check('schoolId').isMongoId().withMessage('Invalid school ID'),
   check('email').optional().isEmail().withMessage('Invalid email'),

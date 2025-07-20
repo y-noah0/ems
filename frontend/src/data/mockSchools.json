@@ -163,7 +163,7 @@
       "established": 2014,
       "capacity": 750,
       "currentEnrollment": 600,
-      "status": "pending_approval",
+      "status": "expired",
       "accreditation": {
         "body": "Rwanda Education Board",
         "level": "Category C",

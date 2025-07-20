@@ -65,7 +65,8 @@ const {
   requestPasswordReset,
   resetPassword,
   enable2FA,
-  updateProfile
+  updateProfile,
+  getCurrentUser
 } = require('../controllers/authController');
 
 const {
@@ -125,6 +126,11 @@ router.put('/profile', authenticate, [
   check('preferences.notifications.sms').optional().isBoolean(),
   check('preferences.theme').optional().isIn(['light', 'dark']).withMessage('Invalid theme')
 ], updateProfile);
+
+// @route   GET /auth/me
+// @desc    Get current authenticated user
+// @access  Private
+router.get('/me', authenticate, getCurrentUser);
 
 
 module.exports = router;

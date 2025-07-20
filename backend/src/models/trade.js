@@ -14,7 +14,47 @@ const TradeSchema = new Schema({
         required: true,
         trim: true
     },
+    fullName: {
+        type: String,
+        trim: true
+    },
+    category: {
+        type: String,
+        trim: true
+    },
+    level: {
+        type: String,
+        trim: true
+    },
+    type: {
+        type: String,
+        trim: true
+    },
     description: {
+        type: String,
+        trim: true
+    },
+    duration: {
+        type: String,
+        trim: true
+    },
+    subjects: {
+        type: [String],
+        default: []
+    },
+    requirements: {
+        entry: { type: String, trim: true },
+        minimumGrade: { type: String, trim: true }
+    },
+    careerPaths: {
+        type: [String],
+        default: []
+    },
+    certification: {
+        type: String,
+        trim: true
+    },
+    accreditation: {
         type: String,
         trim: true
     },
@@ -26,4 +66,4 @@ const TradeSchema = new Schema({
 
 TradeSchema.index({ code: 1 });
 
-module.exports = mongoose.model('Trade', TradeSchema);
+module.exports = mongoose.models.Trade || mongoose.model('Trade', TradeSchema);

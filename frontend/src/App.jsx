@@ -53,6 +53,12 @@ import SubjectCatalog from "./pages/admin/SubjectCatalog";
 import SubjectDetail from "./pages/admin/SubjectDetail";
 import AddTrades from "./pages/admin/AddTrades";
 import ExamManagement from "./pages/ExamManagement";
+import SubscriptionManagement from "./pages/admin/SubscriptionManagement";
+import HeadmasterDashboard from "./pages/Headmaster/HeadmasterDashboard";
+import ClassesManagement from "./pages/ClassesManagement";
+import UserManagement from "./pages/Headmaster/UserManagement";
+import TradesOffered from "./pages/Headmaster/TradesOffered";
+import HeadmasterSubjectCatalog from "./pages/Headmaster/SubjectCatalog";
 
 // Role-Based Redirect Component
 const RoleBasedRedirect = () => {
@@ -66,7 +72,10 @@ const RoleBasedRedirect = () => {
         return <Navigate to="/dean/dashboard" replace />;
     } else if (currentUser?.role === "admin") {
         return <Navigate to="/admin/dashboard" replace />;
-    } else {
+    } else if (currentUser?.role === "headmaster"){
+        return <Navigate to="/headmaster/dashboard" replace/>;
+    }
+    else {
         return <Navigate to="/login" replace />;
     }
 };
@@ -182,6 +191,56 @@ function App() {
                                 element={
                                     <ProtectedRoute>
                                         <RoleBasedRedirect />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            {/* Headmaster Routes */}
+                            <Route
+                                path="/headmaster/dashboard"
+                                element={
+                                    <ProtectedRoute allowedRoles={["headmaster"]}>
+                                        <HeadmasterDashboard />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/headmaster/classes"
+                                element={
+                                    <ProtectedRoute allowedRoles={["headmaster"]}>
+                                        <ClassesManagement />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/headmaster/trades-offered"
+                                element={
+                                    <ProtectedRoute allowedRoles={["headmaster"]}>
+                                        <TradesOffered />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/headmaster/users"
+                                element={
+                                    <ProtectedRoute allowedRoles={["headmaster"]}>
+                                        <UserManagement />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="/headmaster/classes/performance"
+                                element={
+                                    <ProtectedRoute allowedRoles={["headmaster"]}>
+                                        <ClassesManagement />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/headmaster/subjects"
+                                element={
+                                    <ProtectedRoute allowedRoles={["headmaster"]}>
+                                        <HeadmasterSubjectCatalog />
                                     </ProtectedRoute>
                                 }
                             />
@@ -322,7 +381,15 @@ function App() {
                             <Route
                                 path="/dean/classes"
                                 element={
-                                    <ProtectedRoute allowedRoles={["dean"]}>
+                                    <ProtectedRoute allowedRoles={["dean", "headmaster"]}>
+                                        <ClassesPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/headmaster/classes"
+                                element={
+                                    <ProtectedRoute allowedRoles={["dean", "headmaster"]}>
                                         <ClassesPage />
                                     </ProtectedRoute>
                                 }
@@ -330,7 +397,15 @@ function App() {
                             <Route
                                 path="/dean/performance"
                                 element={
-                                    <ProtectedRoute allowedRoles={["dean"]}>
+                                    <ProtectedRoute allowedRoles={["dean", "headmaster"]}>
+                                        <PerformancePage />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/headmaster/performance"
+                                element={
+                                    <ProtectedRoute allowedRoles={["dean", "headmaster"]}>
                                         <PerformancePage />
                                     </ProtectedRoute>
                                 }
@@ -346,7 +421,15 @@ function App() {
                             <Route
                                 path="/dean/reports"
                                 element={
-                                    <ProtectedRoute allowedRoles={["dean"]}>
+                                    <ProtectedRoute allowedRoles={["dean", "headmaster"]}>
+                                        <ReportingPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/headmaster/reports"
+                                element={
+                                    <ProtectedRoute allowedRoles={["dean", "headmaster"]}>
                                         <ReportingPage />
                                     </ProtectedRoute>
                                 }
@@ -458,6 +541,14 @@ function App() {
                                 }
                             />
                             <Route
+                                path="/admin/subscriptions"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <SubscriptionManagement />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
                                 path="/admin/trades"
                                 element={
                                     <ProtectedRoute allowedRoles={["admin"]}>
@@ -487,7 +578,7 @@ function App() {
                             <Route
                                 path="/admin/subjects"
                                 element={
-                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                    <ProtectedRoute allowedRoles={["admin", "headmaster"]}>
                                         <SubjectCatalog />
                                     </ProtectedRoute>
                                 }
@@ -496,7 +587,7 @@ function App() {
                             <Route
                                 path="/admin/subjects/:id"
                                 element={
-                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                    <ProtectedRoute allowedRoles={["admin", "headmaster"]}>
                                         <SubjectDetail />
                                     </ProtectedRoute>
                                 }

@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const { authenticate, isDean } = require('../middlewares/authMiddleware');
+// Protect all subject routes: only Dean, Admin, Headmaster
+router.use(authenticate, isDean);
 const { body, param } = require('express-validator');
 const subjectController = require('../controllers/subjectController');
 

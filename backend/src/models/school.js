@@ -58,4 +58,4 @@ SchoolSchema.pre('save', async function (next) {
     next();
 });
 
-module.exports = mongoose.model('School', SchoolSchema);
+module.exports = mongoose.models.School || mongoose.model('School', SchoolSchema);

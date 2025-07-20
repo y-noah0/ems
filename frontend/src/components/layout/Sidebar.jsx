@@ -20,7 +20,8 @@ const Sidebar = ({ userRole = "student" }) => {
     const location = useLocation();
     const [isOpen, setIsOpen] = React.useState(false);
     const [isClassManagementOpen, setIsClassManagementOpen] = React.useState(
-        location.pathname.includes("/dean/classes") || location.pathname.includes("/dean/performance")
+        location.pathname.includes("/dean/classes") ||
+            location.pathname.includes("/dean/performance")
     );
 
     const menuItems = [
@@ -34,6 +35,8 @@ const Sidebar = ({ userRole = "student" }) => {
                     ? "/teacher/dashboard"
                     : userRole === "admin"
                     ? "/admin/dashboard"
+                    : userRole === "headmaster"
+                    ? "/headmaster/dashboard"
                     : "/student/dashboard",
             active:
                 (userRole === "dean" &&
@@ -42,16 +45,20 @@ const Sidebar = ({ userRole = "student" }) => {
                     location.pathname === "/teacher/dashboard") ||
                 (userRole === "admin" &&
                     location.pathname === "/admin/dashboard") ||
+                (userRole === "headmaster" &&
+                    location.pathname === "/headmaster/dashboard") ||
                 (userRole === "student" &&
                     location.pathname === "/student/dashboard"),
-            roles: ["dean", "student", "teacher", "admin"],
+            roles: ["dean", "student", "teacher", "admin", "headmaster"],
         },
         // Dean specific collapsible class management
         {
             title: "Class management",
             icon: Building2,
             isCollapsible: true,
-            active: location.pathname.includes("/dean/classes") || location.pathname.includes("/dean/performance"),
+            active:
+                location.pathname.includes("/dean/classes") ||
+                location.pathname.includes("/dean/performance"),
             roles: ["dean"],
             children: [
                 {
@@ -61,10 +68,10 @@ const Sidebar = ({ userRole = "student" }) => {
                 },
                 {
                     title: "Performance",
-                    path: "/dean/performance", 
+                    path: "/dean/performance",
                     active: location.pathname.includes("/dean/performance"),
-                }
-            ]
+                },
+            ],
         },
         {
             title: "Exams Management",
@@ -103,6 +110,50 @@ const Sidebar = ({ userRole = "student" }) => {
             active: location.pathname.includes("/dean/term-summary"),
             roles: ["dean"],
         },
+        //Headmaster specifics
+        
+        {
+            title: "Class management",
+            icon: Building2,
+            isCollapsible: true,
+            active:
+                location.pathname.includes("/headmaster/classes") ||
+                location.pathname.includes("/headmaster/create-class"),
+            roles: ["headmaster"],
+            children: [
+                {
+                    title: "Class List",
+                    path: "/headmaster/classes",
+                    active: location.pathname.includes("/headmaster/classes"),
+                },
+                {
+                    title: "Class Performance",
+                    path: "/headmaster/classes/performance",
+                    active: location.pathname.includes("/headmaster/classes/performance"),
+                },
+            ],
+        },
+        {
+            title: "Trades Management",
+            icon: Building2,
+            path: "/headmaster/trades-offered",
+            active: location.pathname.includes("/headmaster/trades-offered"),
+            roles: ["headmaster"],
+        },
+        {
+            title: "User Management",
+            icon: Users,
+            path: "/headmaster/users",
+            active: location.pathname.includes("/headmaster/users"),
+            roles: ["headmaster"],
+        },
+        {
+            title: "Reporting",
+            icon: BarChart3,
+            path: "/headmaster/reports",
+            active: location.pathname.includes("/headmaster/reports"),
+            roles: ["headmaster"],
+        },
         // Teacher specific items
         {
             title: "Submissions",
@@ -112,11 +163,11 @@ const Sidebar = ({ userRole = "student" }) => {
             roles: ["teacher"],
         },
         {
-          title: 'Drafts',
-          icon: FileText,
-          path: "/teacher/drafts",
-          active: location.pathname.includes("/teacher/drafts"),
-          roles: ["teacher"],
+            title: "Drafts",
+            icon: FileText,
+            path: "/teacher/drafts",
+            active: location.pathname.includes("/teacher/drafts"),
+            roles: ["teacher"],
         },
         // Admin specific items
         {
@@ -138,7 +189,7 @@ const Sidebar = ({ userRole = "student" }) => {
             icon: Text,
             path: "/admin/subjects",
             active: location.pathname.includes("/admin/subjects"),
-            roles: ["admin"],
+            roles: ["admin", "headmaster"],
         },
         {
             title: "Subscription Management",
@@ -147,13 +198,20 @@ const Sidebar = ({ userRole = "student" }) => {
             active: location.pathname.includes("/admin/subscriptions"),
             roles: ["admin"],
         },
+            {title: "Trades Management",
+            icon: Building2,
+            path: "/headmaster/trades-offered",
+            active: location.pathname.includes("/headmaster/trades-offered"),
+            roles: ["headmaster"],},
         {
-            title: "System Logs",
-            icon: FileBarChart,
-            path: "/admin/logs",
-            active: location.pathname.includes("/admin/logs"),
-            roles: ["admin"],
+            title: "Trades Management",
+            icon: Building2,
+            path: "/headmaster/trades-offered",
+            active: location.pathname.includes("/headmaster/trades-offered"),
+            roles: ["headmaster"],
         },
+        
+        
         //student specific items
         {
             title: "Exams Management",
@@ -171,12 +229,12 @@ const Sidebar = ({ userRole = "student" }) => {
             roles: ["student"],
         },
         {
-          title: 'Recent Exams',
-          icon: Clock,
-          path: "/student/submissions",
-          active: location.pathname.includes("/student/recent-exams"),
-          roles: ["student"],
-        }
+            title: "Recent Exams",
+            icon: Clock,
+            path: "/student/submissions",
+            active: location.pathname.includes("/student/recent-exams"),
+            roles: ["student"],
+        },
     ];
 
     // Filter menu items based on user role
@@ -240,6 +298,7 @@ const Sidebar = ({ userRole = "student" }) => {
                 {(userRole === "dean" ||
                     userRole === "student" ||
                     userRole === "teacher" ||
+                    userRole === "headmaster" ||
                     userRole === "admin") && (
                     <div className="p-6 border-b border-gray-100">
                         <div className="flex items-center space-x-3">
@@ -280,7 +339,11 @@ const Sidebar = ({ userRole = "student" }) => {
                                                 ? "bg-blue-50 text-blue-700"
                                                 : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                                         }`}
-                                        onClick={() => setIsClassManagementOpen(!isClassManagementOpen)}
+                                        onClick={() =>
+                                            setIsClassManagementOpen(
+                                                !isClassManagementOpen
+                                            )
+                                        }
                                     >
                                         <div className="flex items-center">
                                             <item.icon
@@ -304,23 +367,27 @@ const Sidebar = ({ userRole = "student" }) => {
                                     {/* Submenu items */}
                                     {isClassManagementOpen && (
                                         <div className="mt-1 pl-4 ml-4 space-y-1 border-l-2 border-l-main-blue">
-                                            {item.children?.map((child, childIndex) => (
-                                                <Link
-                                                    key={childIndex}
-                                                    to={child.path}
-                                                    className={`flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200
+                                            {item.children?.map(
+                                                (child, childIndex) => (
+                                                    <Link
+                                                        key={childIndex}
+                                                        to={child.path}
+                                                        className={`flex items-center px-3 py-2 text-sm rounded-md transition-all duration-200
                                                     ${
                                                         child.active
                                                             ? "bg-blue-100 text-blue-700 font-medium"
                                                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                                                     }`}
-                                                    onClick={handleMenuClick}
-                                                >
-                                                    <span className="truncate">
-                                                        {child.title}
-                                                    </span>
-                                                </Link>
-                                            ))}
+                                                        onClick={
+                                                            handleMenuClick
+                                                        }
+                                                    >
+                                                        <span className="truncate">
+                                                            {child.title}
+                                                        </span>
+                                                    </Link>
+                                                )
+                                            )}
                                         </div>
                                     )}
                                 </>
@@ -378,6 +445,5 @@ const Sidebar = ({ userRole = "student" }) => {
         </>
     );
 };
-
 
 export default Sidebar;

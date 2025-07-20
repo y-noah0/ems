@@ -1,18 +1,35 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Layout from "../../components/layout/Layout";
 import { ToastContext } from "../../context/ToastContext";
-import tradesData from "../../data/mockTrades.json";
-import subjectsData from "../../data/mockSubjects.json";
+import tradeService from "../../services/tradeService";
+import subjectService from "../../services/subjectService";
 
 export default function TradesCatalog() {
     const [activeCategory, setActiveCategory] = useState("All");
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteConfirmation, setDeleteConfirmation] = useState(null);
     const [undoTimeout, setUndoTimeout] = useState(null);
+    const [trades, setTrades] = useState([]);
+    const [subjects, setSubjects] = useState([]);
     const navigate = useNavigate();
     const { showToast } = useContext(ToastContext);
+
+    // Fetch trades and subjects from backend
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const tradesRes = await tradeService.getAllTrades();
+                setTrades(tradesRes);
+                const subjectsRes = await subjectService.getAllSubjects();
+                setSubjects(subjectsRes);
+            } catch (error) {
+                showToast("Failed to load data", "error");
+            }
+        };
+        fetchData();
+    }, []);
 
     // Handle search filter
     const filterTrades = (tradesList) => {
@@ -25,15 +42,15 @@ export default function TradesCatalog() {
     };
 
     // Get subject count for a trade
-    const getSubjectCount = (tradeCode) => {
-        return subjectsData.subjectCatalog.filter(subject => 
-            subject.trades && subject.trades.includes(tradeCode)
+    const getSubjectCount = (tradeId) => {
+        return subjects.filter(subject => 
+            subject.trades && subject.trades.map(t => t.toString()).includes(tradeId)
         ).length;
     };
 
     // Get all trades in a flat structure for table display
     const getAllTrades = () => {
-        let filteredTrades = tradesData.trades;
+        let filteredTrades = trades;
         
         // Filter by category if not "All"
         if (activeCategory !== "All") {
@@ -207,7 +224,7 @@ export default function TradesCatalog() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                                                {getSubjectCount(trade.code)} subjects
+                                                {getSubjectCount(trade._id)} subjects
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

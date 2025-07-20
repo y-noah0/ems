@@ -1,7 +1,7 @@
 const Subject = require('../models/Subject');
 const School = require('../models/School');
 const Class = require('../models/Class');
-const Trade = require('../models/Trade');
+const Trade = require('../models/trade');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
@@ -89,12 +89,11 @@ const getSubjectById = async (req, res) => {
             .populate('teacher', 'fullName email');
 
         res.json({ success: true, subject });
-    } catch (validationError) {
-        return res.status(validationError.statusCode || 400).json({
-            success: false,
-            message: validationError.message
-        });
     } catch (error) {
+        // Handle validation errors thrown by validateEntity
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
         logger.error('Error in getSubjectById', { error: error.message, ip: req.ip });
         res.status(500).json({ success: false, message: 'Server Error' });
     }

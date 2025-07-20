@@ -39,9 +39,9 @@ const UserSchema = new Schema({
     required: true,
     validate: {
       validator: function (v) {
-        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(.*[@$!%*?&])?[A-Za-z\d@$!%*?&]{8,}$/.test(v);
+        return v.length >= 8;
       },
-      message: 'Password must be at least 8 characters long and include one uppercase letter, one lowercase letter, and one number'
+      message: 'Password must be at least 8 characters long'
     }
   },
   phoneNumber: {
@@ -132,13 +132,6 @@ UserSchema.pre('save', async function (next) {
     }
   }
 
-  if (this.role === 'headmaster') {
-    const School = mongoose.model('School');
-    const school = await School.findOne({ headmaster: this._id });
-    if (!school || school._id.toString() !== this.school.toString()) {
-      return next(new Error('Headmaster must be assigned to the specified school'));
-    }
-  }
 
   next();
 });

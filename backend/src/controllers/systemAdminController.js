@@ -7,8 +7,11 @@ const systemAdminController = {};
 // Get all staff members (teachers and deans)
 systemAdminController.getAllStaff = async (req, res) => {
   try {
-    const staffMembers = await User.find({ 
-      role: { $in: ['teacher', 'dean', 'admin'] } 
+    // Only include teachers and dean belonging to the same school as the requester
+    const schoolId = req.user.school;
+    const staffMembers = await User.find({
+      role: { $in: ['teacher', 'dean'] },
+      school: schoolId
     }).select('-passwordHash').sort({ role: 1, fullName: 1 });
 
     res.json({

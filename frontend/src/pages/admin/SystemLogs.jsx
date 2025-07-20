@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import AdminLayout from '../../components/layout/AdminLayout';
+import Layout from '../../components/layout/Layout';
 
 const SystemLogs = () => {
   const { currentUser } = useAuth();
@@ -157,7 +158,7 @@ const SystemLogs = () => {
   }
   
   return (
-    <AdminLayout>
+    <Layout>
       <div className="container mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold mb-6">System Activity Logs</h1>
         
@@ -338,7 +339,7 @@ const SystemLogs = () => {
           </>
         )}
       </div>
-    </AdminLayout>
+    </Layout>
   );
 };
 

@@ -1,21 +1,34 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Layout from "../../components/layout/Layout";
 import { ToastContext } from "../../context/ToastContext";
-import subjects from "../../data/subjects.json";
+import subjectService from "../../services/subjectService";
 
 export default function SubjectCatalog() {
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteConfirmation, setDeleteConfirmation] = useState(null);
     const [undoTimeout, setUndoTimeout] = useState(null);
+    const [subjectsList, setSubjectsList] = useState([]);
     const navigate = useNavigate();
     const { showToast } = useContext(ToastContext);
 
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const subjectsRes = await subjectService.getAllSubjects();
+                setSubjectsList(subjectsRes);
+            } catch (error) {
+                showToast("Failed to load subjects", "error");
+            }
+        };
+        fetchData();
+    }, [showToast]);
+
     // Handle search filter
-    const filterSubjects = (subjectsList) => {
-        if (!searchTerm) return subjectsList;
-        return subjectsList.filter((subject) =>
+    const filterSubjects = (list) => {
+        if (!searchTerm) return list;
+        return list.filter((subject) =>
             subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
             subject.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -74,7 +87,7 @@ export default function SubjectCatalog() {
         }
     };
 
-    const filteredSubjects = filterSubjects(subjects.subjectCatalog || []);
+    const filteredSubjects = filterSubjects(subjectsList);
 
     return (
         <Layout>

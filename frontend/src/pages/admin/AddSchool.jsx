@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "../../components/layout/Layout";
-import tradesData from '../../data/mockTrades.json';
+import tradesData from '../../data/trades.json'; // use full trades data
 import Button from "../../components/ui/Button";
 
 export default function AddSchool() {
@@ -18,15 +18,36 @@ export default function AddSchool() {
         contact: {
             phone: '',
             email: '',
-            website: ''
+            website: '',
+            headmasterName: '',
+            headmasterEmail: '',
+            headmasterPhone: ''
         },
         accreditation: 'WDA Accredited',
         establishedYear: new Date().getFullYear(),
         description: ''
     });
     
-    // Get available trades
-    const availableTrades = tradesData.trades;
+    useEffect(() => {
+        setSelectedTrades([]);
+    }, [formData.type]);
+
+    // helper to get trades by school type
+    const getTradesByType = () => {
+        if (formData.type === 'TVET') {
+            return Object.values(tradesData.TVET).flat();
+        } else if (formData.type === 'Secondary') {
+            const { olevel, alevel } = tradesData.REB;
+            return [...olevel, ...Object.values(alevel).flat()];
+        } else if (formData.type === 'Primary') {
+            // Return primary grade options
+            return tradesData.primary;
+        }
+        return [];
+    };
+
+    // Get available trades based on type
+    const availableTrades = getTradesByType();
     const filteredTrades = availableTrades.filter(trade =>
         trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         trade.code.toLowerCase().includes(searchTerm.toLowerCase())
@@ -157,19 +178,7 @@ export default function AddSchool() {
                                     />
                                 </div>
                             </div>
-                            <div className="mt-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Description
-                                </label>
-                                <textarea
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleInputChange}
-                                    rows={3}
-                                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Brief description of the school"
-                                />
-                            </div>
+                            
                         </div>
 
                         {/* Location Information */}
@@ -223,7 +232,7 @@ export default function AddSchool() {
                         {/* Contact Information */}
                         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                             <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Phone Number
@@ -261,6 +270,45 @@ export default function AddSchool() {
                                         onChange={handleInputChange}
                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                         placeholder="https://www.school.edu.rw"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Headmaster Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact.headmasterName"
+                                        value={formData.contact.headmasterName}
+                                        onChange={handleInputChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Headmaster Full Name"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Headmaster Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="contact.headmasterEmail"
+                                        value={formData.contact.headmasterEmail}
+                                        onChange={handleInputChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Headmaster Email"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Headmaster Phone
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contact.headmasterPhone"
+                                        value={formData.contact.headmasterPhone}
+                                        onChange={handleInputChange}
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Headmaster Phone"
                                     />
                                 </div>
                             </div>

@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import Select from "../components/ui/Select";
 import examService from "../services/examService";
 import ExamCard from "../components/ui/ExamCard";
+import { useAuth } from "../context/AuthContext";
 
 const ExamManagement = () => {
     const navigate = useNavigate();
@@ -19,8 +20,11 @@ const ExamManagement = () => {
     const [selectedClass, setSelectedClass] = useState(null);
 
     // Determine user role for ExamCard - default to teacher for this page
+    const userRole = useAuth().currentUser?.role 
+    
     const getUserRole = () => {
-        return 'teacher'; // This is the teacher's exam management page
+        
+        return userRole // This is the teacher's exam management page
     };
 
     const subjectOptions = [
@@ -53,7 +57,7 @@ const ExamManagement = () => {
             const examsData = await examService.getTeacherExams();
             setExams(examsData);
         } catch (error) {
-            console.error('Error fetching exams:', error);
+            console.error("Error fetching exams:", error);
             setError("Failed to load exams");
         } finally {
             setLoading(false);
@@ -165,11 +169,15 @@ const ExamManagement = () => {
                             <p className="text-gray-600 mb-4">
                                 {searchTerm || filterStatus !== "all"
                                     ? "Try changing your search criteria"
-                                    : "Create your first exam to get started"}
+                                    : "Exams will appear here once created."}
                             </p>
-                            <Button as={Link} to="/teacher/exams/create">
-                                Create New Exam
-                            </Button>
+                            {getUserRole() === "teacher" ? (
+                                <Button as={Link} to="/teacher/exams/create">
+                                    Create New Exam
+                                </Button>
+                            ) : (
+                                ""
+                            )}
                         </div>
                     </Card>
                 ) : (

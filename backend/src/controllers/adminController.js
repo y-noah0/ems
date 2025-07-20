@@ -1,4 +1,6 @@
 const Class = require('../models/Class');
+// Register Trade model for populate
+require('../models/trade');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
@@ -13,7 +15,11 @@ const adminController = {};
 // Get all classes
 adminController.getAllClasses = async (req, res) => {
   try {
-    const classes = await Class.find().sort({ year: -1, term: 1, level: 1, trade: 1 });
+    // Populate trade details to display trade name
+    // Only fetch classes for the user's school
+    const classes = await Class.find({ school: req.user.school })
+      .sort({ year: -1, term: 1, level: 1, trade: 1 })
+      .populate('trade', 'name code');
     res.json({
       success: true,
       classes

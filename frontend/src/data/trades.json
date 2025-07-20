@@ -1,4 +1,12 @@
 {
+    "primary": [
+        { "id": "REB_P1", "name": "p1", "code": "P1", "fullName": "Primary 1" },
+        { "id": "REB_P2", "name": "p2", "code": "P2", "fullName": "Primary 2" },
+        { "id": "REB_P3", "name": "p3", "code": "P3", "fullName": "Primary 3" },
+        { "id": "REB_P4", "name": "p4", "code": "P4", "fullName": "Primary 4" },
+        { "id": "REB_P5", "name": "p5", "code": "P5", "fullName": "Primary 5" },
+        { "id": "REB_P6", "name": "p6", "code": "P6", "fullName": "Primary 6" }
+    ],
     "REB": {
         "olevel": [
             { "id": "REB_OL_S1", "name": "S1", "code": "S1" },

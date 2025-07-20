@@ -3,14 +3,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Layout from "../../components/layout/Layout";
 import { ToastContext } from "../../context/ToastContext";
-import tradesData from "../../data/mockTrades.json";
-import subjectsData from "../../data/mockSubjects.json";
+import tradeService from "../../services/tradeService";
+import subjectService from "../../services/subjectService";
 
 export default function TradeDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { showToast } = useContext(ToastContext);
     const [trade, setTrade] = useState(null);
+    const [allSubjects, setAllSubjects] = useState([]);
     const [tradeSubjects, setTradeSubjects] = useState([]);
     const [availableSubjects, setAvailableSubjects] = useState([]);
     const [showAddSubject, setShowAddSubject] = useState(false);
@@ -18,27 +19,29 @@ export default function TradeDetail() {
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
-        // Find the trade by ID
-        const foundTrade = tradesData.trades.find(t => t._id === id);
-        
-        if (foundTrade) {
-            setTrade(foundTrade);
-            
-            // Get subjects for this trade
-            const subjectsForTrade = subjectsData.subjects.filter(subject => 
-                subject.trade === foundTrade.code
-            );
-            setTradeSubjects(subjectsForTrade);
-            
-            // Get available subjects from catalog that aren't yet assigned to specific subjects
-            const availableSubjectsForTrade = subjectsData.subjectCatalog.filter(subject =>
-                subject.trades && subject.trades.includes(foundTrade.code)
-            );
-            setAvailableSubjects(availableSubjectsForTrade);
-        } else {
-            showToast("Trade not found", "error");
-            navigate("/admin/trades");
-        }
+        const fetchData = async () => {
+            try {
+                const tradeData = await tradeService.getTradeById(id);
+                setTrade(tradeData);
+                const subjectsList = await subjectService.getAllSubjects();
+                setAllSubjects(subjectsList);
+                // Assigned subjects
+                const assigned = subjectsList.filter(s =>
+                    Array.isArray(s.trades) && s.trades.map(t => t.toString()).includes(tradeData._id)
+                );
+                setTradeSubjects(assigned);
+                // Available subjects
+                const available = subjectsList.filter(s =>
+                    !Array.isArray(s.trades) || !s.trades.map(t => t.toString()).includes(tradeData._id)
+                );
+                setAvailableSubjects(available);
+            } catch (error) {
+                console.error(error);
+                showToast("Trade not found", "error");
+                navigate("/admin/trades");
+            }
+        };
+        fetchData();
     }, [id, navigate, showToast]);
 
     // Filter available subjects based on search
@@ -53,15 +56,9 @@ export default function TradeDetail() {
             return;
         }
 
-        const subject = subjectsData.subjectCatalog.find(s => s._id === selectedSubject);
+        const subject = allSubjects.find(s => s._id === selectedSubject);
         if (subject) {
-            // Add trade to subject's trades array (this would be an API call in real app)
-            const _updatedSubject = {
-                ...subject,
-                trades: [...(subject.trades || []), trade.code]
-            };
-            
-            // Update local state
+            // TODO: API call to update subject trades array
             setTradeSubjects([...tradeSubjects, subject]);
             setAvailableSubjects(availableSubjects.filter(s => s._id !== selectedSubject));
             setSelectedSubject("");
@@ -72,15 +69,9 @@ export default function TradeDetail() {
     };
 
     const handleRemoveSubject = (subjectId) => {
-        const subject = subjectsData.subjectCatalog.find(s => s._id === subjectId);
+        const subject = allSubjects.find(s => s._id === subjectId);
         if (subject) {
-            // Remove trade from subject's trades array (this would be an API call in real app)
-            const _updatedSubject = {
-                ...subject,
-                trades: (subject.trades || []).filter(tradeCode => tradeCode !== trade.code)
-            };
-            
-            // Update local state
+            // TODO: API call to update subject trades array
             setTradeSubjects(tradeSubjects.filter(s => s._id !== subjectId));
             setAvailableSubjects([...availableSubjects, subject]);
             

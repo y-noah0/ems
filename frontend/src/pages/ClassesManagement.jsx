@@ -83,7 +83,7 @@ const ClassesManagement = () => {
       title: 'Class',
       render: (value, item) => (
         <div className="text-sm font-medium text-gray-900">
-          {item.level}{item.trade}
+          {item.level} {item.trade?.name || item.trade}
         </div>
       )
     },
@@ -166,8 +166,8 @@ const ClassesManagement = () => {
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Manage Classes</h1>
         {!showForm && (
-          <Button onClick={() => setShowForm(true)} variant="primary">
-            Add New Class
+          <Button onClick={() => setShowForm(true)} variant="outline" size='sm'>
+            Add Class
           </Button>
         )}
       </div>

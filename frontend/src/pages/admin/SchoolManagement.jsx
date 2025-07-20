@@ -3,7 +3,7 @@ import Layout from "../../components/layout/Layout";
 import Button from "../../components/ui/Button1";
 import DynamicTable from "../../components/class/DynamicTable";
 import { Navigate, useNavigate } from "react-router-dom";
-import data from "../../data/schools.json";
+import data from "../../data/mockSchools.json";
 
 export default function SchoolManagement() {
     const [schools, setSchools] = useState([]);

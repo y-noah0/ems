@@ -42,7 +42,7 @@ const register = async (req, res) => {
       termId
     } = req.body;
 
-    const School = require('../models/School');
+    const School = require('../models/school');
     const school = await School.findById(schoolId);
     if (!school) {
       logger.warn('Invalid school ID', { schoolId, ip: req.ip });
@@ -67,20 +67,31 @@ const register = async (req, res) => {
     if (role === 'student' && subjects?.length) {
       return res.status(400).json({ success: false, message: 'Students cannot have subjects' });
     }
-    if (role === 'teacher' && !subjects?.length) {
-      return res.status(400).json({ success: false, message: 'Teachers require subjects' });
+    if (role === 'teacher') {
+      if (!subjects?.length) {
+        return res.status(400).json({ success: false, message: 'Teachers require subjects' });
+      }
+      // Validate that all subjects belong to the specified school
+      const SubjectModel = require('../models/Subject');
+      const count = await SubjectModel.countDocuments({ _id: { $in: subjects }, school: schoolId });
+      if (count !== subjects.length) {
+        logger.warn('Subject-school mismatch during registration', { subjects, schoolId, ip: req.ip });
+        return res.status(400).json({ success: false, message: 'All subjects must belong to the user’s school' });
+      }
     }
     if (['dean', 'admin', 'headmaster'].includes(role) && (subjects?.length || registrationNumber)) {
       return res.status(400).json({ success: false, message: 'Invalid fields for this role' });
     }
 
-    // Hash password before saving
-    const passwordHash = await bcrypt.hash(password, 12);
+    // Simple password validation - just 8 characters minimum
+    if (!password || password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
+    }
 
     const verificationToken = speakeasy.generateSecret({ length: 20 }).base32;
     user = new User({
       fullName,
-      passwordHash,
+      passwordHash: password, // The User model will hash this automatically
       role: role || 'student',
       school: schoolId,
       registrationNumber: role === 'student' ? registrationNumber : undefined,
@@ -98,6 +109,12 @@ const register = async (req, res) => {
     }
 
     await user.save();
+
+    // Assign headmaster to school record
+    if (role === 'headmaster') {
+      const SchoolModel = require('../models/School');
+      await SchoolModel.findByIdAndUpdate(schoolId, { headmaster: user._id });
+    }
 
     // AUTOMATIC ENROLLMENT CREATION for students
     if (role === 'student') {
@@ -149,13 +166,22 @@ const register = async (req, res) => {
     }
 
     if (role !== 'student' && email) {
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'Verify Your Email',
-        html: `<p>Please verify your email by clicking <a href="${process.env.APP_URL}/verify-email?token=${verificationToken}">here</a>.</p>`
-      });
-      req.io.to(user.id).emit('notification', { message: 'Verification email sent' });
+      // Attempt to send verification email if SMTP credentials are configured
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        try {
+          await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Verify Your Email',
+            html: `<p>Please verify your email by clicking <a href="${process.env.APP_URL}/verify-email?token=${verificationToken}">here</a>.</p>`
+          });
+          req.io.to(user.id).emit('notification', { message: 'Verification email sent' });
+        } catch (emailErr) {
+          logger.error('Failed to send verification email', { error: emailErr.message, userId: user.id, ip: req.ip });
+        }
+      } else {
+        logger.warn('Email credentials not configured, skipping verification email', { ip: req.ip });
+      }
     }
 
     logger.info('User registered', { userId: user.id, email, registrationNumber });
@@ -408,6 +434,12 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Get current authenticated user
+const getCurrentUser = async (req, res) => {
+  // req.user is set by authenticate middleware
+  res.json({ success: true, user: req.user });
+};
+
 module.exports = {
   register,
   verifyEmail,
@@ -417,5 +449,6 @@ module.exports = {
   requestPasswordReset,
   resetPassword,
   enable2FA,
-  updateProfile
+  updateProfile,
+  getCurrentUser
 };

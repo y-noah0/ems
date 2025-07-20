@@ -1,14 +1,14 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
+const bcrypt  = require('bcrypt')
 const dotenv = require('dotenv');
 const Class = require('./models/Class');
 const User = require('./models/User');
 const Subject = require('./models/Subject');
 const Exam = require('./models/Exam');
 const Submission = require('./models/Submission');
-const School = require('./models/school');
-const Trade = require('./models/trade');
-const Term = require('./models/term');
+const School = require('./models/School');
+const Trade = require('./models/Trade');
+const Term = require('./models/Term');
 
 dotenv.config();
 
@@ -29,9 +29,11 @@ const connectDB = async () => {
 
 const createUserWithoutHook = async (userData) => {
   const collection = mongoose.connection.collection('users');
+  // Accept either password or passwordHash field
+  const rawPassword = userData.password || userData.passwordHash;
   const userWithHashedPassword = {
     ...userData,
-    passwordHash: bcrypt.hashSync(userData.passwordHash, 10),
+    passwordHash: bcrypt.hashSync(rawPassword, 10),
     emailVerified: userData.email ? true : false, // Set emailVerified to true if user has email
     createdAt: new Date(),
     updatedAt: new Date()
@@ -123,7 +125,7 @@ const seedDatabase = async () => {
     const dean1 = await createUserWithoutHook({
       fullName: 'Robert Brown',
       email: 'dean@btc.ac.bw',
-      passwordHash: 'dean123',
+      password: 'dean123',
       role: 'dean',
       school: schools[0]._id,
       phoneNumber: '+26771234570'
@@ -132,7 +134,7 @@ const seedDatabase = async () => {
     const dean2 = await createUserWithoutHook({
       fullName: 'Sarah Mothibi',
       email: 'dean@ftc.ac.bw',
-      passwordHash: 'dean123',
+      password: 'dean123',
       role: 'dean',
       school: schools[1]._id,
       phoneNumber: '+26771234571'
@@ -293,6 +295,49 @@ const seedDatabase = async () => {
         credits: 3
       }
     ]);
+  console.log('Subjects created for first school');
+  // Also seed core subjects for second school (FTC)
+  const ftcSubjects = await Subject.insertMany([
+    {
+      name: 'Introduction to Programming (FTC)',
+      description: 'Fundamentals of programming concepts',
+      school: schools[1]._id,
+      classes: [classes[3]._id],
+      trades: [trades[0]._id],
+      teacher: teachers[3]._id,
+      credits: 3
+    },
+    {
+      name: 'Web Development (FTC)',
+      description: 'HTML, CSS and JavaScript basics',
+      school: schools[1]._id,
+      classes: [classes[3]._id],
+      trades: [trades[0]._id],
+      teacher: teachers[3]._id,
+      credits: 4
+    },
+    {
+      name: 'Database Management (FTC)',
+      description: 'SQL and database design principles',
+      school: schools[1]._id,
+      classes: [classes[4]._id],
+      trades: [trades[1]._id],
+      teacher: teachers[3]._id,
+      credits: 3
+    },
+    {
+      name: 'Network Security (FTC)',
+      description: 'Cybersecurity and network protection',
+      school: schools[1]._id,
+      classes: [classes[4]._id],
+      trades: [trades[1]._id],
+      teacher: teachers[3]._id,
+      credits: 4
+    }
+  ]);
+  console.log('Additional FTC subjects created');
+  // Update second-school teacher with FTC subjects
+  await User.findByIdAndUpdate(teachers[3]._id, { subjects: ftcSubjects.map(s => s._id) });
     console.log('Subjects created');
 
     // Update teachers with their subjects
