@@ -93,9 +93,6 @@ const registerValidation = [
     .if((value, { req }) => req.body.role === 'student')
     .notEmpty().withMessage('Registration number is required for students'),
   check('subjects')
-    .if((value, { req }) => req.body.role === 'teacher')
-    .isArray({ min: 1 }).withMessage('Teachers require at least one subject'),
-  check('subjects')
     .if((value, { req }) => req.body.role !== 'teacher')
     .optional({ nullable: true, checkFalsy: true })
     .custom((value) => {

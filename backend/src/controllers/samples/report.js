@@ -9,7 +9,7 @@ const ReportCard = require('../models/report');
 const School = require('../models/school');
 const Trade = require('../models/trade');
 
-// Helper function to generate student report data
+// Helper function to generate report data for a single student
 async function generateStudentReportData(studentId, academicYear, termId, schoolId) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -113,7 +113,7 @@ async function generateStudentReportData(studentId, academicYear, termId, school
                     total: { $add: ['$assessment1', '$assessment2', '$test', '$exam'] },
                     percentage: {
                         $cond: [
-                            { $gt: [{ $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }, 0] },
+                            { $gt: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, 0] },
                             { $round: [{ $multiply: [{ $divide: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, { $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }] }, 100] }, 2] },
                             0,
                         ],
@@ -158,7 +158,7 @@ async function generateStudentReportData(studentId, academicYear, termId, school
     }
 }
 
-// Helper function to generate class report data
+// Helper function to generate report data for all students in a class
 async function generateClassReportData(classId, academicYear, termId, schoolId) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -220,23 +220,12 @@ async function generateClassReportData(classId, academicYear, termId, schoolId) 
                 },
             },
             {
-                $lookup: {
-                    from: 'users',
-                    localField: 'student',
-                    foreignField: '_id',
-                    as: 'studentDetails',
-                },
-            },
-            {
-                $unwind: '$studentDetails',
-            },
-            {
                 $group: {
                     _id: {
                         student: '$student',
                         subject: '$subjectDetails._id',
                     },
-                    studentName: { $first: '$studentDetails.fullName' },
+                    studentName: { $first: { $arrayElemAt: ['$enrollmentDetails.student.fullName', 0] } },
                     subjectName: { $first: '$subjectDetails.name' },
                     assessment1: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment1'] }, '$totalScore', 0] } },
                     assessment2: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment2'] }, '$totalScore', 0] } },
@@ -269,7 +258,7 @@ async function generateClassReportData(classId, academicYear, termId, schoolId) 
                     total: { $add: ['$assessment1', '$assessment2', '$test', '$exam'] },
                     percentage: {
                         $cond: [
-                            { $gt: [{ $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }, 0] },
+                            { $gt: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, 0] },
                             { $round: [{ $multiply: [{ $divide: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, { $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }] }, 100] }, 2] },
                             0,
                         ],
@@ -314,7 +303,7 @@ async function generateClassReportData(classId, academicYear, termId, schoolId) 
     }
 }
 
-// Helper function to generate term report data
+// Helper function to generate report data for all students in a term
 async function generateTermReportData(academicYear, termId, schoolId) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -340,7 +329,7 @@ async function generateTermReportData(academicYear, termId, schoolId) {
             {
                 $match: {
                     'enrollmentDetails.academicYear': Number(academicYear),
-                    'enrollmentDetails.term': new mongoose.Types.ObjectId(termId),
+                    'enrollmentDetails.term': new mongoose.Types.ObjectId(term greenId),
                     'enrollmentDetails.school': new mongoose.Types.ObjectId(schoolId),
                     'enrollmentDetails.isActive': true,
                     'enrollmentDetails.isDeleted': false,
@@ -372,18 +361,8 @@ async function generateTermReportData(academicYear, termId, schoolId) {
             {
                 $match: {
                     'examDetails.school': new mongoose.Types.ObjectId(schoolId),
+                    share
                 },
-            },
-            {
-                $lookup: {
-                    from: 'users',
-                    localField: 'student',
-                    foreignField: '_id',
-                    as: 'studentDetails',
-                },
-            },
-            {
-                $unwind: '$studentDetails',
             },
             {
                 $group: {
@@ -391,7 +370,7 @@ async function generateTermReportData(academicYear, termId, schoolId) {
                         student: '$student',
                         subject: '$subjectDetails._id',
                     },
-                    studentName: { $first: '$studentDetails.fullName' },
+                    studentName: { $first: { $arrayElemAt: ['$enrollmentDetails.student.fullName', 0] } },
                     subjectName: { $first: '$subjectDetails.name' },
                     assessment1: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment1'] }, '$totalScore', 0] } },
                     assessment2: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment2'] }, '$totalScore', 0] } },
@@ -424,7 +403,7 @@ async function generateTermReportData(academicYear, termId, schoolId) {
                     total: { $add: ['$assessment1', '$assessment2', '$test', '$exam'] },
                     percentage: {
                         $cond: [
-                            { $gt: [{ $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }, 0] },
+                            { $gt: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, 0] },
                             { $round: [{ $multiply: [{ $divide: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, { $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }] }, 100] }, 2] },
                             0,
                         ],
@@ -469,7 +448,7 @@ async function generateTermReportData(academicYear, termId, schoolId) {
     }
 }
 
-// Helper function to generate school report data
+// Helper function to generate report data for all students in a school
 async function generateSchoolReportData(schoolId, academicYear) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -529,23 +508,12 @@ async function generateSchoolReportData(schoolId, academicYear) {
                 },
             },
             {
-                $lookup: {
-                    from: 'users',
-                    localField: 'student',
-                    foreignField: '_id',
-                    as: 'studentDetails',
-                },
-            },
-            {
-                $unwind: '$studentDetails',
-            },
-            {
                 $group: {
                     _id: {
                         student: '$student',
                         subject: '$subjectDetails._id',
                     },
-                    studentName: { $first: '$studentDetails.fullName' },
+                    studentName: { $first: { $arrayElemAt: ['$enrollmentDetails.student.fullName', 0] } },
                     subjectName: { $first: '$subjectDetails.name' },
                     assessment1: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment1'] }, '$totalScore', 0] } },
                     assessment2: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment2'] }, '$totalScore', 0] } },
@@ -578,7 +546,7 @@ async function generateSchoolReportData(schoolId, academicYear) {
                     total: { $add: ['$assessment1', '$assessment2', '$test', '$exam'] },
                     percentage: {
                         $cond: [
-                            { $gt: [{ $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }, 0] },
+                            { $gt: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, 0] },
                             { $round: [{ $multiply: [{ $divide: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, { $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }] }, 100] }, 2] },
                             0,
                         ],
@@ -623,7 +591,7 @@ async function generateSchoolReportData(schoolId, academicYear) {
     }
 }
 
-// Helper function to generate subject report data
+// Helper function to generate report data for all students in a subject
 async function generateSubjectReportData(subjectId, academicYear, termId, schoolId) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -685,23 +653,12 @@ async function generateSubjectReportData(subjectId, academicYear, termId, school
                 $unwind: '$subjectDetails',
             },
             {
-                $lookup: {
-                    from: 'users',
-                    localField: 'student',
-                    foreignField: '_id',
-                    as: 'studentDetails',
-                },
-            },
-            {
-                $unwind: '$studentDetails',
-            },
-            {
                 $group: {
                     _id: {
                         student: '$student',
                         subject: '$subjectDetails._id',
                     },
-                    studentName: { $first: '$studentDetails.fullName' },
+                    studentName: { $first: { $arrayElemAt: ['$enrollmentDetails.student.fullName', 0] } },
                     subjectName: { $first: '$subjectDetails.name' },
                     assessment1: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment1'] }, '$totalScore', 0] } },
                     assessment2: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment2'] }, '$totalScore', 0] } },
@@ -734,7 +691,7 @@ async function generateSubjectReportData(subjectId, academicYear, termId, school
                     total: { $add: ['$assessment1', '$assessment2', '$test', '$exam'] },
                     percentage: {
                         $cond: [
-                            { $gt: [{ $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }, 0] },
+                            { $gt: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, 0] },
                             { $round: [{ $multiply: [{ $divide: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, { $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }] }, 100] }, 2] },
                             0,
                         ],
@@ -779,7 +736,7 @@ async function generateSubjectReportData(subjectId, academicYear, termId, school
     }
 }
 
-// Helper function to generate trade report data
+// Helper function to generate report data for all students in a trade
 async function generateTradeReportData(tradeId, academicYear, termId, schoolId) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -853,23 +810,12 @@ async function generateTradeReportData(tradeId, academicYear, termId, schoolId) 
                 },
             },
             {
-                $lookup: {
-                    from: 'users',
-                    localField: 'student',
-                    foreignField: '_id',
-                    as: 'studentDetails',
-                },
-            },
-            {
-                $unwind: '$studentDetails',
-            },
-            {
                 $group: {
                     _id: {
                         student: '$student',
                         subject: '$subjectDetails._id',
                     },
-                    studentName: { $first: '$studentDetails.fullName' },
+                    studentName: { $first: { $arrayElemAt: ['$enrollmentDetails.student.fullName', 0] } },
                     subjectName: { $first: '$subjectDetails.name' },
                     assessment1: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment1'] }, '$totalScore', 0] } },
                     assessment2: { $max: { $cond: [{ $eq: ['$examDetails.type', 'assessment2'] }, '$totalScore', 0] } },
@@ -902,7 +848,7 @@ async function generateTradeReportData(tradeId, academicYear, termId, schoolId) 
                     total: { $add: ['$assessment1', '$assessment2', '$test', '$exam'] },
                     percentage: {
                         $cond: [
-                            { $gt: [{ $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }, 0] },
+                            { $gt: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, 0] },
                             { $round: [{ $multiply: [{ $divide: [{ $add: ['$assessment1', '$assessment2', '$test', '$exam'] }, { $add: ['$maxAssessment1', '$maxAssessment2', '$maxTest', '$maxExam'] }] }, 100] }, 2] },
                             0,
                         ],
@@ -947,151 +893,7 @@ async function generateTradeReportData(tradeId, academicYear, termId, schoolId) 
     }
 }
 
-// Helper function to generate assessment report data
-async function generateAssessmentReportData(classId, academicYear, termId, schoolId, assessmentType) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-        if (!['assessment1', 'assessment2'].includes(assessmentType)) {
-            throw new Error('Invalid assessment type. Must be "assessment1" or "assessment2".');
-        }
-
-        const pipeline = [
-            {
-                $match: {
-                    status: 'graded',
-                    isDeleted: false,
-                },
-            },
-            {
-                $lookup: {
-                    from: 'enrollments',
-                    localField: 'enrollment',
-                    foreignField: '_id',
-                    as: 'enrollmentDetails',
-                },
-            },
-            {
-                $unwind: '$enrollmentDetails',
-            },
-            {
-                $match: {
-                    'enrollmentDetails.class': new mongoose.Types.ObjectId(classId),
-                    'enrollmentDetails.academicYear': Number(academicYear),
-                    'enrollmentDetails.term': new mongoose.Types.ObjectId(termId),
-                    'enrollmentDetails.school': new mongoose.Types.ObjectId(schoolId),
-                    'enrollmentDetails.isActive': true,
-                    'enrollmentDetails.isDeleted': false,
-                },
-            },
-            {
-                $lookup: {
-                    from: 'exams',
-                    localField: 'exam',
-                    foreignField: '_id',
-                    as: 'examDetails',
-                    pipeline: [{ $project: { maxScore: 1, type: 1, subject: 1, school: 1 } }],
-                },
-            },
-            {
-                $unwind: '$examDetails',
-            },
-            {
-                $match: {
-                    'examDetails.type': assessmentType,
-                    'examDetails.school': new mongoose.Types.ObjectId(schoolId),
-                },
-            },
-            {
-                $lookup: {
-                    from: 'subjects',
-                    localField: 'examDetails.subject',
-                    foreignField: '_id',
-                    as: 'subjectDetails',
-                },
-            },
-            {
-                $unwind: '$subjectDetails',
-            },
-            {
-                $lookup: {
-                    from: 'users',
-                    localField: 'student',
-                    foreignField: '_id',
-                    as: 'studentDetails',
-                },
-            },
-            {
-                $unwind: '$studentDetails',
-            },
-            {
-                $group: {
-                    _id: {
-                        student: '$student',
-                        subject: '$subjectDetails._id',
-                    },
-                    studentName: { $first: '$studentDetails.fullName' },
-                    subjectName: { $first: '$subjectDetails.name' },
-                    score: { $max: '$totalScore' },
-                    maxScore: { $max: '$examDetails.maxScore' },
-                },
-            },
-            {
-                $project: {
-                    student: '$_id.student',
-                    studentName: 1,
-                    subject: '$_id.subject',
-                    subjectName: 1,
-                    score: 1,
-                    maxScore: 1,
-                    percentage: {
-                        $cond: [
-                            { $gt: ['$maxScore', 0] },
-                            { $round: [{ $multiply: [{ $divide: ['$score', '$maxScore'] }, 100] }, 2] },
-                            0,
-                        ],
-                    },
-                    decision: {
-                        $cond: [
-                            { $gte: [{ $round: [{ $multiply: [{ $divide: ['$score', '$maxScore'] }, 100] }, 2] }, 70] },
-                            'Competent',
-                            'Not Yet Competent',
-                        ],
-                    },
-                },
-            },
-            {
-                $group: {
-                    _id: '$student',
-                    studentName: { $first: '$studentName' },
-                    results: { $push: { subject: '$subject', subjectName: '$subjectName', score: '$score', maxScore: '$maxScore', percentage: '$percentage', decision: '$decision' } },
-                    totalScore: { $sum: '$score' },
-                },
-            },
-            {
-                $project: {
-                    _id: 0,
-                    student: '$_id',
-                    studentName: 1,
-                    results: 1,
-                    totalScore: 1,
-                    average: { $cond: [{ $eq: [{ $size: '$results' }, 0] }, 0, { $round: [{ $divide: ['$totalScore', { $size: '$results' }] }, 2] }] },
-                },
-            },
-        ];
-
-        const result = await Submission.aggregate(pipeline).session(session).exec();
-        await session.commitTransaction();
-        return result;
-    } catch (error) {
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
-    }
-}
-
-// Helper function to generate promotion eligibility report data
+// Helper function to generate promotion eligibility report
 async function generatePromotionEligibilityReport(schoolId, academicYear) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1101,10 +903,7 @@ async function generatePromotionEligibilityReport(schoolId, academicYear) {
             academicYear: Number(academicYear),
             isActive: true,
             isDeleted: false,
-        })
-            .populate('student', 'fullName')
-            .populate('class', 'className')
-            .session(session);
+        }).populate('student', 'fullName class').session(session);
 
         const report = await Promise.all(enrollments.map(async (enrollment) => {
             const reportCard = await ReportCard.findOne({
@@ -1196,23 +995,9 @@ async function generateTeacherPerformanceReport(schoolId, academicYear, termId) 
                 },
             },
             {
-                $lookup: {
-                    from: 'users',
-                    localField: 'subjectDetails.teacher',
-                    foreignField: '_id',
-                    as: 'teacherDetails',
-                },
-            },
-            {
-                $unwind: {
-                    path: '$teacherDetails',
-                    preserveNullAndEmptyArrays: true,
-                },
-            },
-            {
                 $group: {
                     _id: { $ifNull: ['$subjectDetails.teacher', new mongoose.Types.ObjectId()] },
-                    teacherName: { $first: { $ifNull: ['$teacherDetails.fullName', 'Unassigned'] } },
+                    teacherName: { $first: { $ifNull: [{ $arrayElemAt: ['$subjectDetails.teacher.fullName', 0] }, 'Unassigned'] } },
                     totalStudents: { $sum: 1 },
                     averageScore: { $avg: '$totalScore' },
                     competentCount: {
@@ -1233,13 +1018,7 @@ async function generateTeacherPerformanceReport(schoolId, academicYear, termId) 
                     teacherName: 1,
                     totalStudents: 1,
                     averageScore: { $round: ['$averageScore', 2] },
-                    competencyRate: {
-                        $cond: [
-                            { $gt: ['$totalStudents', 0] },
-                            { $round: [{ $multiply: [{ $divide: ['$competentCount', '$totalStudents'] }, 100] }, 2] },
-                            0,
-                        ],
-                    },
+                    competencyRate: { $multiply: [{ $divide: ['$competentCount', '$totalStudents'] }, 100] },
                 },
             },
         ];
@@ -1255,247 +1034,40 @@ async function generateTeacherPerformanceReport(schoolId, academicYear, termId) 
     }
 }
 
-// Helper function to generate class performance report data
-async function generateClassPerformanceReportData(schoolId, academicYear, termId) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-        const pipeline = [
-            {
-                $match: {
-                    status: 'graded',
-                    isDeleted: false,
-                },
-            },
-            {
-                $lookup: {
-                    from: 'enrollments',
-                    localField: 'enrollment',
-                    foreignField: '_id',
-                    as: 'enrollmentDetails',
-                },
-            },
-            {
-                $unwind: '$enrollmentDetails',
-            },
-            {
-                $match: {
-                    'enrollmentDetails.school': new mongoose.Types.ObjectId(schoolId),
-                    'enrollmentDetails.academicYear': Number(academicYear),
-                    'enrollmentDetails.term': new mongoose.Types.ObjectId(termId),
-                    'enrollmentDetails.isActive': true,
-                    'enrollmentDetails.isDeleted': false,
-                },
-            },
-            {
-                $lookup: {
-                    from: 'classes',
-                    localField: 'enrollmentDetails.class',
-                    foreignField: '_id',
-                    as: 'classDetails',
-                },
-            },
-            {
-                $unwind: '$classDetails',
-            },
-            {
-                $lookup: {
-                    from: 'exams',
-                    localField: 'exam',
-                    foreignField: '_id',
-                    as: 'examDetails',
-                    pipeline: [{ $project: { maxScore: 1, type: 1, subject: 1, school: 1 } }],
-                },
-            },
-            {
-                $unwind: '$examDetails',
-            },
-            {
-                $lookup: {
-                    from: 'subjects',
-                    localField: 'examDetails.subject',
-                    foreignField: '_id',
-                    as: 'subjectDetails',
-                },
-            },
-            {
-                $unwind: '$subjectDetails',
-            },
-            {
-                $match: {
-                    'examDetails.school': new mongoose.Types.ObjectId(schoolId),
-                },
-            },
-            {
-                $group: {
-                    _id: '$classDetails._id',
-                    className: { $first: '$classDetails.className' },
-                    totalScore: { $sum: '$totalScore' },
-                    studentCount: { $addToSet: '$student' },
-                },
-            },
-            {
-                $project: {
-                    _id: 0,
-                    class: '$_id',
-                    className: 1,
-                    totalScore: 1,
-                    studentCount: { $size: '$studentCount' },
-                    averageScore: {
-                        $cond: [
-                            { $gt: [{ $size: '$studentCount' }, 0] },
-                            { $round: [{ $divide: ['$totalScore', { $size: '$studentCount' }] }, 2] },
-                            0,
-                        ],
-                    },
-                },
-            },
-        ];
-
-        const result = await Submission.aggregate(pipeline).session(session).exec();
-        await session.commitTransaction();
-        return result;
-    } catch (error) {
-        await session.abortTransaction();
-        throw error;
-    } finally {
-        session.endSession();
-    }
-}
-
-// Helper function to rank students, teachers, or classes
+// Helper function to rank students or teachers
 async function rankItems(items, scopeField) {
     try {
-        // Filter out items with invalid scores
-        const validItems = items.filter(item => {
-            const score = item.totalScore ?? item.averageScore ?? item.average;
-            return score !== undefined && score !== null;
-        });
-
-        if (validItems.length === 0) {
-            validItems.forEach(item => {
-                item.rank = 0;
-                if (item.save) return item.save();
-            });
-            return validItems;
-        }
-
-        // Sort items by score in descending order (higher score = lower rank number)
+        const validItems = items.filter(item => (item.totalScore !== undefined || item.averageScore !== undefined) && (item.totalScore !== null || item.averageScore !== null));
         validItems.sort((a, b) => {
-            const aScore = a.totalScore ?? a.averageScore ?? a.average;
-            const bScore = b.totalScore ?? b.averageScore ?? b.average;
+            const aScore = a.totalScore !== undefined ? a.totalScore : a.averageScore;
+            const bScore = b.totalScore !== undefined ? b.totalScore : b.averageScore;
             return bScore - aScore;
         });
 
-        if (scopeField === 'student') {
-            // Rank students within a class
-            const classId = validItems[0]?.class?._id ?? validItems[0]?.class;
-            if (!classId) {
-                validItems.forEach(item => {
-                    item.rank = 0;
-                    if (item.save) return item.save();
-                });
-                return validItems;
-            }
+        let currentRank = 0;
+        let lastScore = null;
+        let sameRankCount = 0;
 
-            const totalInClass = await ReportCard.countDocuments({
-                class: classId,
-                isDeleted: false,
-            }).exec();
-
-            if (totalInClass > 0) {
-                await Promise.all(validItems.map(async (item, index) => {
-                    const position = index + 1; // 1-based position
-                    item.rank = Number((position / totalInClass).toFixed(4)); // Fractional rank
-                    if (item.save) await item.save();
-                }));
+        for (let i = 0; i < validItems.length; i++) {
+            const item = validItems[i];
+            const score = item.totalScore !== undefined ? item.totalScore : item.averageScore;
+            if (score !== lastScore) {
+                currentRank = i + 1;
+                lastScore = score;
+                sameRankCount = 1;
             } else {
-                await Promise.all(validItems.map(async item => {
-                    item.rank = 0;
-                    if (item.save) await item.save();
-                }));
+                sameRankCount++;
             }
-        } else if (scopeField === 'teacher') {
-            // Rank teachers within a school
-            const schoolId = validItems[0]?.school?._id ?? validItems[0]?.school;
-            if (!schoolId) {
-                validItems.forEach(item => {
-                    item.rank = 0;
-                    if (item.save) return item.save();
-                });
-                return validItems;
-            }
-
-            const totalTeachers = await User.countDocuments({
-                school: schoolId,
-                role: 'teacher',
-                isDeleted: false,
-            }).exec();
-
-            if (totalTeachers > 0) {
-                await Promise.all(validItems.map(async (item, index) => {
-                    const position = index + 1; // 1-based position
-                    item.rank = Number((position / totalTeachers).toFixed(4)); // Fractional rank
-                    if (item.save) await item.save();
-                }));
-            } else {
-                await Promise.all(validItems.map(async item => {
-                    item.rank = 0;
-                    if (item.save) await item.save();
-                }));
-            }
-        } else if (scopeField === 'class') {
-            // Rank classes within a school
-            const schoolId = validItems[0]?.school?._id ?? validItems[0]?.school;
-            if (!schoolId) {
-                validItems.forEach(item => {
-                    item.rank = 0;
-                });
-                return validItems;
-            }
-
-            const totalClasses = await Class.countDocuments({
-                school: schoolId,
-                isDeleted: false,
-            }).exec();
-
-            if (totalClasses > 0) {
-                validItems.forEach((item, index) => {
-                    const position = index + 1; // 1-based position
-                    item.rank = Number((position / totalClasses).toFixed(4)); // Fractional rank
-                });
-            } else {
-                validItems.forEach(item => {
-                    item.rank = 0;
-                });
-            }
-        } else {
-            // Default ranking for other scopes (e.g., term, school, trade, subject)
-            let currentRank = 0;
-            let lastScore = null;
-            let sameRankCount = 0;
-
-            await Promise.all(validItems.map(async (item, index) => {
-                const score = item.totalScore ?? item.averageScore ?? item.average;
-                if (score !== lastScore) {
-                    currentRank = index + 1;
-                    lastScore = score;
-                    sameRankCount = 1;
-                } else {
-                    sameRankCount++;
-                }
-                item.rank = currentRank;
-                if (item.save) await item.save();
-            }));
+            item.rank = currentRank;
+            await item.save();
         }
-        return validItems;
     } catch (error) {
         console.error(`Error ranking ${scopeField}:`, error);
         throw error;
     }
 }
 
-// Function to generate single student report
+// Main function to generate report for a single student
 async function generateSingleStudentReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1516,7 +1088,7 @@ async function generateSingleStudentReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-21T16:35:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -1565,15 +1137,15 @@ async function generateSingleStudentReport(req, res) {
             reportCard = await existingReportCard.save({ session });
         } else {
             reportCard = await ReportCard.create([reportCardData], { session });
-            reportCard = reportCard[0];
+            reportCard = reportCard[0]; // Get the first (and only) created document
         }
 
         await rankItems([reportCard], 'student');
 
         const finalReportCard = await ReportCard.findById(reportCard._id)
-            .populate('class', 'className')
-            .populate('term', 'termNumber')
-            .populate('results.subject', 'name')
+            .populate('class')
+            .populate('term')
+            .populate('results.subject')
             .populate('student', 'fullName')
             .session(session);
 
@@ -1591,7 +1163,7 @@ async function generateSingleStudentReport(req, res) {
     }
 }
 
-// Function to generate class report
+// Main function to generate report for all students in a class
 async function generateClassReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1603,7 +1175,7 @@ async function generateClassReport(req, res) {
             return res.status(400).json({ message: 'Invalid school.' });
         }
 
-        const classDoc = await Class.findOne({ _id: classId, school: schoolId }).select('school className').session(session);
+        const classDoc = await Class.findOne({ _id: classId, school: schoolId }).select('school').session(session);
         if (!classDoc) {
             return res.status(400).json({ message: 'Invalid class or not associated with the school.' });
         }
@@ -1612,7 +1184,7 @@ async function generateClassReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-21T16:35:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -1658,17 +1230,7 @@ async function generateClassReport(req, res) {
             isDeleted: false,
         }).session(session);
 
-        const rankedReportCards = await rankItems(reportCards, 'student');
-
-        // Generate class performance data for ranking classes within the school
-        const classPerformanceData = await generateClassPerformanceReportData(schoolId, academicYear, termId);
-        const rankedClasses = await rankItems(classPerformanceData.map(cls => ({
-            ...cls,
-            school: schoolId,
-        })), 'class');
-
-        // Find the rank of the requested class
-        const currentClassRank = rankedClasses.find(cls => cls.class.toString() === classId.toString())?.rank || 0;
+        await rankItems(reportCards, 'class');
 
         const finalReportCards = await ReportCard.find({
             class: classId,
@@ -1677,9 +1239,9 @@ async function generateClassReport(req, res) {
             school: schoolId,
             isDeleted: false,
         })
-            .populate('class', 'className')
-            .populate('term', 'termNumber')
-            .populate('results.subject', 'name')
+            .populate('class')
+            .populate('term')
+            .populate('results.subject')
             .populate('student', 'fullName')
             .session(session);
 
@@ -1687,12 +1249,6 @@ async function generateClassReport(req, res) {
         return res.status(200).json({
             message: 'Class report cards generated successfully.',
             reportCards: finalReportCards,
-            classRank: {
-                classId,
-                className: classDoc.className,
-                rank: currentClassRank,
-                totalClasses: rankedClasses.length,
-            },
         });
     } catch (error) {
         await session.abortTransaction();
@@ -1703,7 +1259,7 @@ async function generateClassReport(req, res) {
     }
 }
 
-// Function to generate term report
+// Main function to generate report for all students in a term
 async function generateTermReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1719,7 +1275,7 @@ async function generateTermReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-21T16:35:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -1737,40 +1293,37 @@ async function generateTermReport(req, res) {
                 isDeleted: false,
             }).populate('class').session(session);
 
-            if (!enrollment) continue;
-
-            const reportCardData = {
-                student: studentReport.student,
-                class: enrollment.class._id,
-                academicYear: Number(academicYear),
-                term: termId,
-                school: schoolId,
-                results: studentReport.results,
-                totalScore: studentReport.totalScore,
-                average: studentReport.average,
-                remarks: 'Generated for term report.',
-                isDeleted: false,
-            };
-
-            bulkOps.push({
-                updateOne: {
-                    filter: {
-                        student: studentReport.student,
-                        class: enrollment.class._id,
-                        academicYear: Number(academicYear),
-                        term: termId,
-                        school: schoolId,
-                        isDeleted: false,
+            if (enrollment) {
+                const reportCardData = {
+                    student: studentReport.student,
+                    class: enrollment.class._id,
+                    academicYear: Number(academicYear),
+                    term: termId,
+                    school: schoolId,
+                    results: studentReport.results,
+                    totalScore: studentReport.totalScore,
+                    average: studentReport.average,
+                    remarks: 'Generated for term report.',
+                    isDeleted: false,
+                };
+                bulkOps.push({
+                    updateOne: {
+                        filter: {
+                            student: studentReport.student,
+                            class: enrollment.class._id,
+                            academicYear: Number(academicYear),
+                            term: termId,
+                            school: schoolId,
+                            isDeleted: false,
+                        },
+                        update: { $set: reportCardData },
+                        upsert: true,
                     },
-                    update: { $set: reportCardData },
-                    upsert: true,
-                },
-            });
+                });
+            }
         }
 
-        if (bulkOps.length > 0) {
-            await ReportCard.bulkWrite(bulkOps, { session });
-        }
+        await ReportCard.bulkWrite(bulkOps, { session });
 
         const reportCards = await ReportCard.find({
             academicYear: Number(academicYear),
@@ -1787,9 +1340,9 @@ async function generateTermReport(req, res) {
             school: schoolId,
             isDeleted: false,
         })
-            .populate('class', 'className')
-            .populate('term', 'termNumber')
-            .populate('results.subject', 'name')
+            .populate('class')
+            .populate('term')
+            .populate('results.subject')
             .populate('student', 'fullName')
             .session(session);
 
@@ -1807,12 +1360,12 @@ async function generateTermReport(req, res) {
     }
 }
 
-// Function to generate school report
+// Main function to generate report for all students in a school
 async function generateSchoolReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { academicYear, schoolId } = req.body;
+        const { schoolId, academicYear } = req.body;
 
         const school = await School.findById(schoolId).select('name').session(session);
         if (!school) {
@@ -1829,59 +1382,56 @@ async function generateSchoolReport(req, res) {
                 school: schoolId,
                 isActive: true,
                 isDeleted: false,
-            }).populate('class').session(session);
+            }).populate('class term').session(session);
 
-            if (!enrollment) continue;
-
-            const reportCardData = {
-                student: studentReport.student,
-                class: enrollment.class._id,
-                academicYear: Number(academicYear),
-                term: enrollment.term,
-                school: schoolId,
-                results: studentReport.results,
-                totalScore: studentReport.totalScore,
-                average: studentReport.average,
-                remarks: 'Generated for school report.',
-                isDeleted: false,
-            };
-
-            bulkOps.push({
-                updateOne: {
-                    filter: {
-                        student: studentReport.student,
-                        class: enrollment.class._id,
-                        academicYear: Number(academicYear),
-                        term: enrollment.term,
-                        school: schoolId,
-                        isDeleted: false,
+            if (enrollment) {
+                const reportCardData = {
+                    student: studentReport.student,
+                    class: enrollment.class._id,
+                    academicYear: Number(academicYear),
+                    term: enrollment.term._id,
+                    school: schoolId,
+                    results: studentReport.results,
+                    totalScore: studentReport.totalScore,
+                    average: studentReport.average,
+                    remarks: 'Generated for school report.',
+                    isDeleted: false,
+                };
+                bulkOps.push({
+                    updateOne: {
+                        filter: {
+                            student: studentReport.student,
+                            class: enrollment.class._id,
+                            academicYear: Number(academicYear),
+                            term: enrollment.term._id,
+                            school: schoolId,
+                            isDeleted: false,
+                        },
+                        update: { $set: reportCardData },
+                        upsert: true,
                     },
-                    update: { $set: reportCardData },
-                    upsert: true,
-                },
-            });
+                });
+            }
         }
 
-        if (bulkOps.length > 0) {
-            await ReportCard.bulkWrite(bulkOps, { session });
-        }
+        await ReportCard.bulkWrite(bulkOps, { session });
 
         const reportCards = await ReportCard.find({
-            academicYear: Number(academicYear),
             school: schoolId,
+            academicYear: Number(academicYear),
             isDeleted: false,
         }).session(session);
 
         await rankItems(reportCards, 'school');
 
         const finalReportCards = await ReportCard.find({
-            academicYear: Number(academicYear),
             school: schoolId,
+            academicYear: Number(academicYear),
             isDeleted: false,
         })
-            .populate('class', 'className')
-            .populate('term', 'termNumber')
-            .populate('results.subject', 'name')
+            .populate('class')
+            .populate('term')
+            .populate('results.subject')
             .populate('student', 'fullName')
             .session(session);
 
@@ -1899,7 +1449,7 @@ async function generateSchoolReport(req, res) {
     }
 }
 
-// Function to generate subject report
+// Main function to generate report for all students in a subject
 async function generateSubjectReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1911,18 +1461,14 @@ async function generateSubjectReport(req, res) {
             return res.status(400).json({ message: 'Invalid school.' });
         }
 
-        const subject = await Subject.findOne({ _id: subjectId, school: schoolId }).session(session);
+        const subject = await Subject.findOne({ _id: subjectId, school: schoolId }).select('name').session(session);
         if (!subject) {
             return res.status(400).json({ message: 'Invalid subject or not associated with the school.' });
         }
 
         const term = await Term.findOne({ _id: termId, school: schoolId }).select('termNumber academicYear startDate endDate').session(session);
-        if (!term) {
-            return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
-        }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
-        if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
-            return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
+        if (!term || Number(academicYear) !== term.academicYear || new Date('2025-07-21T16:35:00Z') < term.startDate || new Date('2025-07-21T16:35:00Z') > term.endDate) {
+            return res.status(400).json({ message: 'Invalid term or mismatch with academic year.' });
         }
 
         const reportData = await generateSubjectReportData(subjectId, academicYear, termId, schoolId);
@@ -1938,61 +1484,58 @@ async function generateSubjectReport(req, res) {
                 isDeleted: false,
             }).populate('class').session(session);
 
-            if (!enrollment) continue;
-
-            const reportCardData = {
-                student: studentReport.student,
-                class: enrollment.class._id,
-                academicYear: Number(academicYear),
-                term: termId,
-                school: schoolId,
-                results: studentReport.results,
-                totalScore: studentReport.totalScore,
-                average: studentReport.average,
-                remarks: 'Generated for subject report.',
-                isDeleted: false,
-            };
-
-            bulkOps.push({
-                updateOne: {
-                    filter: {
-                        student: studentReport.student,
-                        class: enrollment.class._id,
-                        academicYear: Number(academicYear),
-                        term: termId,
-                        school: schoolId,
-                        isDeleted: false,
+            if (enrollment) {
+                const reportCardData = {
+                    student: studentReport.student,
+                    class: enrollment.class._id,
+                    academicYear: Number(academicYear),
+                    term: termId,
+                    school: schoolId,
+                    results: studentReport.results,
+                    totalScore: studentReport.totalScore,
+                    average: studentReport.average,
+                    remarks: 'Generated for subject report.',
+                    isDeleted: false,
+                };
+                bulkOps.push({
+                    updateOne: {
+                        filter: {
+                            student: studentReport.student,
+                            class: enrollment.class._id,
+                            academicYear: Number(academicYear),
+                            term: termId,
+                            school: schoolId,
+                            isDeleted: false,
+                        },
+                        update: { $set: reportCardData },
+                        upsert: true,
                     },
-                    update: { $set: reportCardData },
-                    upsert: true,
-                },
-            });
+                });
+            }
         }
 
-        if (bulkOps.length > 0) {
-            await ReportCard.bulkWrite(bulkOps, { session });
-        }
+        await ReportCard.bulkWrite(bulkOps, { session });
 
         const reportCards = await ReportCard.find({
+            'results.subject': subjectId,
             academicYear: Number(academicYear),
             term: termId,
             school: schoolId,
             isDeleted: false,
-            'results.subject': subjectId,
         }).session(session);
 
         await rankItems(reportCards, 'subject');
 
         const finalReportCards = await ReportCard.find({
+            'results.subject': subjectId,
             academicYear: Number(academicYear),
             term: termId,
             school: schoolId,
             isDeleted: false,
-            'results.subject': subjectId,
         })
-            .populate('class', 'className')
-            .populate('term', 'termNumber')
-            .populate('results.subject', 'name')
+            .populate('class')
+            .populate('term')
+            .populate('results.subject')
             .populate('student', 'fullName')
             .session(session);
 
@@ -2010,7 +1553,7 @@ async function generateSubjectReport(req, res) {
     }
 }
 
-// Function to generate trade report
+// Main function to generate report for all students in a trade
 async function generateTradeReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -2022,18 +1565,14 @@ async function generateTradeReport(req, res) {
             return res.status(400).json({ message: 'Invalid school.' });
         }
 
-        const trade = await Trade.findOne({ _id: tradeId, school: schoolId }).session(session);
+        const trade = await Trade.findOne({ _id: tradeId, school: schoolId }).select('name').session(session);
         if (!trade) {
             return res.status(400).json({ message: 'Invalid trade or not associated with the school.' });
         }
 
         const term = await Term.findOne({ _id: termId, school: schoolId }).select('termNumber academicYear startDate endDate').session(session);
-        if (!term) {
-            return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
-        }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
-        if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
-            return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
+        if (!term || Number(academicYear) !== term.academicYear || new Date('2025-07-21T16:35:00Z') < term.startDate || new Date('2025-07-21T16:35:00Z') > term.endDate) {
+            return res.status(400).json({ message: 'Invalid term or mismatch with academic year.' });
         }
 
         const reportData = await generateTradeReportData(tradeId, academicYear, termId, schoolId);
@@ -2049,76 +1588,65 @@ async function generateTradeReport(req, res) {
                 isDeleted: false,
             }).populate('class').session(session);
 
-            if (!enrollment) continue;
-
-            const reportCardData = {
-                student: studentReport.student,
-                class: enrollment.class._id,
-                academicYear: Number(academicYear),
-                term: termId,
-                school: schoolId,
-                results: studentReport.results,
-                totalScore: studentReport.totalScore,
-                average: studentReport.average,
-                remarks: 'Generated for trade report.',
-                isDeleted: false,
-            };
-
-            bulkOps.push({
-                updateOne: {
-                    filter: {
-                        student: studentReport.student,
-                        class: enrollment.class._id,
-                        academicYear: Number(academicYear),
-                        term: termId,
-                        school: schoolId,
-                        isDeleted: false,
+            if (enrollment) {
+                const reportCardData = {
+                    student: studentReport.student,
+                    class: enrollment.class._id,
+                    academicYear: Number(academicYear),
+                    term: termId,
+                    school: schoolId,
+                    results: studentReport.results,
+                    totalScore: studentReport.totalScore,
+                    average: studentReport.average,
+                    remarks: 'Generated for trade report.',
+                    isDeleted: false,
+                };
+                bulkOps.push({
+                    updateOne: {
+                        filter: {
+                            student: studentReport.student,
+                            class: enrollment.class._id,
+                            academicYear: Number(academicYear),
+                            term: termId,
+                            school: schoolId,
+                            isDeleted: false,
+                        },
+                        update: { $set: reportCardData },
+                        upsert: true,
                     },
-                    update: { $set: reportCardData },
-                    upsert: true,
-                },
-            });
+                });
+            }
         }
 
-        if (bulkOps.length > 0) {
-            await ReportCard.bulkWrite(bulkOps, { session });
-        }
+        await ReportCard.bulkWrite(bulkOps, { session });
 
         const reportCards = await ReportCard.find({
+            class: { $in: await Class.find({ trade: tradeId, school: schoolId }).distinct('_id').session(session) },
             academicYear: Number(academicYear),
             term: termId,
             school: schoolId,
             isDeleted: false,
-        }).populate('class').session(session);
+        }).session(session);
 
-        const filteredReportCards = reportCards.filter(report => {
-            return report.class.trade && report.class.trade.toString() === tradeId;
-        });
-
-        await rankItems(filteredReportCards, 'trade');
+        await rankItems(reportCards, 'trade');
 
         const finalReportCards = await ReportCard.find({
+            class: { $in: await Class.find({ trade: tradeId, school: schoolId }).distinct('_id').session(session) },
             academicYear: Number(academicYear),
             term: termId,
             school: schoolId,
             isDeleted: false,
         })
-            .populate({
-                path: 'class',
-                match: { trade: tradeId },
-                select: 'className',
-            })
-            .populate('term', 'termNumber')
-            .populate('results.subject', 'name')
+            .populate('class')
+            .populate('term')
+            .populate('results.subject')
             .populate('student', 'fullName')
             .session(session);
-
-        const validReportCards = finalReportCards.filter(report => report.class !== null);
 
         await session.commitTransaction();
         return res.status(200).json({
             message: 'Trade report cards generated successfully.',
-            reportCards: validReportCards,
+            reportCards: finalReportCards,
         });
     } catch (error) {
         await session.abortTransaction();
@@ -2129,118 +1657,7 @@ async function generateTradeReport(req, res) {
     }
 }
 
-// Function to generate assessment report
-async function generateAssessmentReport(req, res) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-        const { classId, academicYear, termId, schoolId, assessmentType } = req.body;
-
-        if (!['assessment1', 'assessment2'].includes(assessmentType)) {
-            return res.status(400).json({ message: 'Invalid assessment type. Must be "assessment1" or "assessment2".' });
-        }
-
-        const school = await School.findById(schoolId).select('name').session(session);
-        if (!school) {
-            return res.status(400).json({ message: 'Invalid school.' });
-        }
-
-        const classDoc = await Class.findOne({ _id: classId, school: schoolId }).select('school className').session(session);
-        if (!classDoc) {
-            return res.status(400).json({ message: 'Invalid class or not associated with the school.' });
-        }
-
-        const term = await Term.findOne({ _id: termId, school: schoolId }).select('termNumber academicYear startDate endDate').session(session);
-        if (!term) {
-            return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
-        }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
-        if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
-            return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
-        }
-
-        const reportData = await generateAssessmentReportData(classId, academicYear, termId, schoolId, assessmentType);
-
-        const bulkOps = reportData.map(studentReport => {
-            const reportCardData = {
-                student: studentReport.student,
-                class: classId,
-                academicYear: Number(academicYear),
-                term: termId,
-                school: schoolId,
-                results: studentReport.results.map(result => ({
-                    subject: result.subject,
-                    subjectName: result.subjectName,
-                    scores: { [assessmentType]: result.score },
-                    total: result.score,
-                    percentage: result.percentage,
-                    decision: result.decision,
-                })),
-                totalScore: studentReport.totalScore,
-                average: studentReport.average,
-                remarks: `Generated for ${assessmentType} report.`,
-                isDeleted: false,
-                assessmentType: assessmentType,
-            };
-            return {
-                updateOne: {
-                    filter: {
-                        student: studentReport.student,
-                        class: classId,
-                        academicYear: Number(academicYear),
-                        term: termId,
-                        school: schoolId,
-                        isDeleted: false,
-                        assessmentType: assessmentType,
-                    },
-                    update: { $set: reportCardData },
-                    upsert: true,
-                },
-            };
-        });
-
-        await ReportCard.bulkWrite(bulkOps, { session });
-
-        const reportCards = await ReportCard.find({
-            class: classId,
-            academicYear: Number(academicYear),
-            term: termId,
-            school: schoolId,
-            isDeleted: false,
-            assessmentType: assessmentType,
-        }).session(session);
-
-        await rankItems(reportCards, 'class');
-
-        const finalReportCards = await ReportCard.find({
-            class: classId,
-            academicYear: Number(academicYear),
-            term: termId,
-            school: schoolId,
-            isDeleted: false,
-            assessmentType: assessmentType,
-        })
-            .populate('class', 'className')
-            .populate('term', 'termNumber')
-            .populate('results.subject', 'name')
-            .populate('student', 'fullName')
-            .session(session);
-
-        await session.commitTransaction();
-        return res.status(200).json({
-            message: `${assessmentType} report cards generated successfully.`,
-            reportCards: finalReportCards,
-        });
-    } catch (error) {
-        await session.abortTransaction();
-        console.error(`Error generating ${assessmentType} report:`, error);
-        return res.status(500).json({ message: 'Internal server error' });
-    } finally {
-        session.endSession();
-    }
-}
-
-// Function to generate promotion eligibility report
+// Main function to generate promotion eligibility report
 async function generatePromotionReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -2252,12 +1669,12 @@ async function generatePromotionReport(req, res) {
             return res.status(400).json({ message: 'Invalid school.' });
         }
 
-        const report = await generatePromotionEligibilityReport(schoolId, academicYear);
+        const reportData = await generatePromotionEligibilityReport(schoolId, academicYear);
 
         await session.commitTransaction();
         return res.status(200).json({
             message: 'Promotion eligibility report generated successfully.',
-            report,
+            report: reportData,
         });
     } catch (error) {
         await session.abortTransaction();
@@ -2268,7 +1685,7 @@ async function generatePromotionReport(req, res) {
     }
 }
 
-// Function to generate teacher performance report
+// Main function to generate teacher performance report
 async function generateTeacherReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -2281,22 +1698,55 @@ async function generateTeacherReport(req, res) {
         }
 
         const term = await Term.findOne({ _id: termId, school: schoolId }).select('termNumber academicYear startDate endDate').session(session);
-        if (!term) {
-            return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
-        }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
-        if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
-            return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
+        if (!term || Number(academicYear) !== term.academicYear || new Date('2025-07-21T16:35:00Z') < term.startDate || new Date('2025-07-21T16:35:00Z') > term.endDate) {
+            return res.status(400).json({ message: 'Invalid term or mismatch with academic year.' });
         }
 
         const reportData = await generateTeacherPerformanceReport(schoolId, academicYear, termId);
 
-        await rankItems(reportData, 'teacher');
+        const bulkOps = reportData.map(teacherReport => {
+            return {
+                updateOne: {
+                    filter: {
+                        _id: teacherReport.teacher,
+                        school: schoolId,
+                        role: 'teacher',
+                        isDeleted: false,
+                    },
+                    update: {
+                        $set: {
+                            averageScore: teacherReport.averageScore,
+                            competencyRate: teacherReport.competencyRate,
+                            totalStudents: teacherReport.totalStudents,
+                            remarks: 'Generated for teacher performance.',
+                            isDeleted: false,
+                        },
+                    },
+                    upsert: true,
+                },
+            };
+        });
+
+        await User.bulkWrite(bulkOps, { session });
+
+        const teacherReports = await User.find({
+            school: schoolId,
+            role: 'teacher',
+            isDeleted: false,
+        }).session(session);
+
+        await rankItems(teacherReports, 'teacher');
+
+        const finalTeacherReports = await User.find({
+            school: schoolId,
+            role: 'teacher',
+            isDeleted: false,
+        }).select('fullName averageScore competencyRate totalStudents rank remarks').session(session);
 
         await session.commitTransaction();
         return res.status(200).json({
             message: 'Teacher performance report generated successfully.',
-            report: reportData,
+            report: finalTeacherReports,
         });
     } catch (error) {
         await session.abortTransaction();
@@ -2307,7 +1757,262 @@ async function generateTeacherReport(req, res) {
     }
 }
 
-// Export all functions
+// Main function to create a new report card record
+async function createReportCard(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { studentId, classId, academicYear, termId, schoolId, results } = req.body;
+
+        const school = await School.findById(schoolId).select('name').session(session);
+        if (!school) {
+            return res.status(400).json({ message: 'Invalid school.' });
+        }
+
+        const student = await User.findOne({ _id: studentId, school: schoolId, role: 'student' }).session(session);
+        if (!student) {
+            return res.status(400).json({ message: 'Invalid student or not associated with the school.' });
+        }
+
+        const classDoc = await Class.findOne({ _id: classId, school: schoolId }).session(session);
+        if (!classDoc) {
+            return res.status(400).json({ message: 'Invalid class or not associated with the school.' });
+        }
+
+        const term = await Term.findOne({ _id: termId, school: schoolId }).session(session);
+        if (!term) {
+            return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
+        }
+
+        if (!Array.isArray(results)) {
+            return res.status(400).json({ message: 'Results must be an array.' });
+        }
+
+        const validatedResults = [];
+        let totalScore = 0;
+        for (const result of results) {
+            const subject = await Subject.findOne({ _id: result.subject, school: schoolId }).session(session);
+            if (!subject) {
+                return res.status(400).json({ message: `Invalid subject ${result.subject} or not associated with the school.` });
+            }
+
+            const { assessment1 = 0, assessment2 = 0, test = 0, exam = 0 } = result.scores || {};
+            const total = assessment1 + assessment2 + test + exam;
+            const maxTotal = (result.maxScores?.assessment1 || 100) + (result.maxScores?.assessment2 || 100) + (result.maxScores?.test || 100) + (result.maxScores?.exam || 100);
+            const percentage = maxTotal > 0 ? Math.round((total / maxTotal) * 100) : 0;
+            const decision = percentage >= 70 ? 'Competent' : 'Not Yet Competent';
+
+            validatedResults.push({
+                subject: result.subject,
+                subjectName: subject.name,
+                scores: { assessment1, assessment2, test, exam },
+                total,
+                percentage,
+                decision,
+            });
+            totalScore += total;
+        }
+
+        const average = validatedResults.length ? Math.round(totalScore / validatedResults.length) : 0;
+
+        const reportCardData = {
+            student: studentId,
+            class: classId,
+            academicYear: Number(academicYear),
+            term: termId,
+            school: schoolId,
+            results: validatedResults,
+            totalScore,
+            average,
+            remarks: 'Manually created report card.',
+            isDeleted: false,
+        };
+
+        const reportCard = await ReportCard.create([reportCardData], { session });
+
+        const classReportCards = await ReportCard.find({
+            class: classId,
+            academicYear: Number(academicYear),
+            term: termId,
+            school: schoolId,
+            isDeleted: false,
+        }).session(session);
+
+        await rankItems([...classReportCards, reportCard[0]], 'class');
+
+        const finalReportCard = await ReportCard.findById(reportCard[0]._id)
+            .populate('class')
+            .populate('term')
+            .populate('results.subject')
+            .populate('student', 'fullName')
+            .session(session);
+
+        await session.commitTransaction();
+        return res.status(201).json({
+            message: 'Report card created successfully.',
+            reportCard: finalReportCard,
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('Error creating report card:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    } finally {
+        session.endSession();
+    }
+}
+
+// Main function to generate assessment-specific report for a school, class, and term
+async function generateAssessmentReport(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { assessmentType, schoolId, classId, termId } = req.body;
+
+        const school = await School.findById(schoolId).select('name').session(session);
+        if (!school) {
+            return res.status(400).json({ message: 'Invalid school.' });
+        }
+
+        if (!['assessment1', 'assessment2'].includes(assessmentType)) {
+            return res.status(400).json({ message: 'Invalid assessment type. Use "assessment1" or "assessment2".' });
+        }
+
+        const term = await Term.findOne({ _id: termId, school: schoolId }).select('termNumber academicYear startDate endDate').session(session);
+        if (!term || new Date('2025-07-21T16:35:00Z') < term.startDate || new Date('2025-07-21T16:35:00Z') > term.endDate) {
+            return res.status(400).json({ message: 'Invalid term or mismatch with date range.' });
+        }
+
+        let pipeline = [
+            {
+                $match: {
+                    status: 'graded',
+                    isDeleted: false,
+                },
+            },
+            {
+                $lookup: {
+                    from: 'enrollments',
+                    localField: 'enrollment',
+                    foreignField: '_id',
+                    as: 'enrollmentDetails',
+                },
+            },
+            {
+                $unwind: '$enrollmentDetails',
+            },
+            {
+                $match: {
+                    'enrollmentDetails.school': new mongoose.Types.ObjectId(schoolId),
+                    'enrollmentDetails.term': new mongoose.Types.ObjectId(termId),
+                    'enrollmentDetails.isActive': true,
+                    'enrollmentDetails.isDeleted': false,
+                },
+            },
+            {
+                $lookup: {
+                    from: 'exams',
+                    localField: 'exam',
+                    foreignField: '_id',
+                    as: 'examDetails',
+                    pipeline: [{ $project: { maxScore: 1, type: 1, subject: 1, school: 1 } }],
+                },
+            },
+            {
+                $unwind: '$examDetails',
+            },
+            {
+                $match: {
+                    'examDetails.type': assessmentType,
+                    'examDetails.school': new mongoose.Types.ObjectId(schoolId),
+                },
+            },
+            {
+                $lookup: {
+                    from: 'subjects',
+                    localField: 'examDetails.subject',
+                    foreignField: '_id',
+                    as: 'subjectDetails',
+                },
+            },
+            {
+                $unwind: '$subjectDetails',
+            },
+        ];
+
+        if (classId) {
+            pipeline.push({ $match: { 'enrollmentDetails.class': new mongoose.Types.ObjectId(classId) } });
+            const classDoc = await Class.findOne({ _id: classId, school: schoolId }).session(session);
+            if (!classDoc) {
+                return res.status(400).json({ message: 'Invalid class or not associated with the school.' });
+            }
+        }
+
+        pipeline.push(
+            {
+                $group: {
+                    _id: {
+                        student: '$student',
+                        subject: '$subjectDetails._id',
+                    },
+                    studentName: { $first: { $arrayElemAt: ['$enrollmentDetails.student.fullName', 0] } },
+                    subjectName: { $first: '$subjectDetails.name' },
+                    score: { $sum: '$totalScore' },
+                    maxScore: { $max: '$examDetails.maxScore' },
+                },
+            },
+            {
+                $project: {
+                    student: '$_id.student',
+                    studentName: 1,
+                    subject: '$_id.subject',
+                    subjectName: 1,
+                    score: 1,
+                    percentage: {
+                        $cond: [
+                            { $gt: ['$score', 0] },
+                            { $round: [{ $multiply: [{ $divide: ['$score', '$maxScore'] }, 100] }, 2] },
+                            0,
+                        ],
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: '$student',
+                    studentName: { $first: '$studentName' },
+                    results: { $push: { subject: '$subject', subjectName: '$subjectName', score: '$score', percentage: '$percentage' } },
+                    totalScore: { $sum: '$score' },
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    student: '$_id',
+                    studentName: 1,
+                    results: 1,
+                    totalScore: 1,
+                    average: { $cond: [{ $eq: [{ $size: '$results' }, 0] }, 0, { $round: [{ $divide: ['$totalScore', { $size: '$results' }] }, 2] }] },
+                },
+            }
+        );
+
+        const result = await Submission.aggregate(pipeline).session(session).exec();
+
+        await session.commitTransaction();
+        return res.status(200).json({
+            message: `${assessmentType} report for school and class in term generated successfully.`,
+            report: result,
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('Error generating assessment report:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    } finally {
+        session.endSession();
+    }
+}
+
+// Export only the main functions
 module.exports = {
     generateSingleStudentReport,
     generateClassReport,
@@ -2315,7 +2020,8 @@ module.exports = {
     generateSchoolReport,
     generateSubjectReport,
     generateTradeReport,
-    generateAssessmentReport,
     generatePromotionReport,
     generateTeacherReport,
-}
+    createReportCard,
+    generateAssessmentReport,
+};

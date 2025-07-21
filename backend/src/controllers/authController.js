@@ -9,7 +9,7 @@ const User = require('../models/User');
 const School = require('../models/school');
 const Enrollment = require('../models/enrollment');
 const Class = require('../models/Class');
-const Term = require('../models/Term');
+const Term = require('../models/term');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -116,10 +116,7 @@ const register = async (req, res) => {
       logger.warn('Subjects provided for student', { role, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Students cannot have subjects' });
     }
-    if (role === 'teacher' && (!subjects || !subjects.length)) {
-      logger.warn('No subjects provided for teacher', { role, ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Teachers require at least one subject' });
-    }
+
     if (['dean', 'admin', 'headmaster'].includes(role) && subjects?.length) {
       logger.warn('Subjects provided for non-teacher role', { role, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Subjects are only allowed for teachers' });
@@ -134,7 +131,6 @@ const register = async (req, res) => {
       registrationNumber,
       email: role !== 'student' ? email : email || undefined,
       phoneNumber,
-      subjects: role === 'teacher' ? subjects || [] : [],
       profilePicture,
       preferences: { notifications: { email: !!email, sms: !!phoneNumber }, theme: 'light' },
       class: role === 'student' && classId ? classId : undefined,

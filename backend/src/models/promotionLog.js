@@ -6,48 +6,66 @@ const PromotionLogSchema = new Schema({
     student: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
+        required: true
     },
     fromClass: {
         type: Schema.Types.ObjectId,
         ref: 'Class',
-        required: true,
+        required: true
     },
     toClass: {
         type: Schema.Types.ObjectId,
         ref: 'Class',
-        default: null, // null for graduation or expulsion
+        default: null
+    },
+    fromTerm: {
+        type: Schema.Types.ObjectId,
+        ref: 'Term',
+        default: null
+    },
+    toTerm: {
+        type: Schema.Types.ObjectId,
+        ref: 'Term',
+        default: null
     },
     academicYear: {
         type: Number,
-        required: true,
+        required: true
     },
     status: {
         type: String,
-        enum: ['promoted', 'repeated', 'graduated', 'expelled'],
-        required: true,
+        enum: ['promoted', 'repeated', 'graduated', 'expelled', 'onLeave', 'withdrawn', 'termTransition'],
+        required: true
     },
     remarks: {
         type: String,
         trim: true,
-        default: '',
+        default: ''
     },
     school: {
         type: Schema.Types.ObjectId,
         ref: 'School',
-        required: true,
+        required: true
     },
     promotionDate: {
         type: Date,
-        default: Date.now,
+        default: Date.now
     },
     manual: {
         type: Boolean,
-        default: false, // True if triggered by a dean manually
+        default: false
+    },
+    cronJob: {
+        type: Boolean,
+        default: false // True if triggered by cron job
+    },
+    passingThreshold: {
+        type: Number,
+        default: 50
     }
 }, { timestamps: true });
 
-// Prevent duplicate promotions per student per academic year
-PromotionLogSchema.index({ student: 1, academicYear: 1 }, { unique: true });
+PromotionLogSchema.index({ student: 1, academicYear: 1, fromTerm: 1 }, { unique: true, partialFilterExpression: { fromTerm: { $exists: true } } });
+PromotionLogSchema.index({ student: 1, academicYear: 1 }, { unique: true, partialFilterExpression: { fromTerm: { $exists: false } } });
 
 module.exports = mongoose.model('PromotionLog', PromotionLogSchema);

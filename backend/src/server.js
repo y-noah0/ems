@@ -68,7 +68,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam
 
     // Start scheduled jobs (e.g., promotion scheduler)
     try {
-      require('./jobs/promotionScheduler');
+      require('./jobs/promotionScheduler').startCronJobs();
     } catch (error) {
       console.error('Error loading promotion scheduler:', error.message, error.stack);
     }
