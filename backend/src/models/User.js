@@ -36,13 +36,7 @@ const UserSchema = new Schema({
   },
   passwordHash: {
     type: String,
-    required: true,
-    validate: {
-      validator: function (v) {
-        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(.*[@$!%*?&])?[A-Za-z\d@$!%*?&]{8,}$/.test(v);
-      },
-      message: 'Password must be at least 8 characters long and include one uppercase letter, one lowercase letter, and one number'
-    }
+    required: true
   },
   phoneNumber: {
     type: String,
@@ -53,17 +47,11 @@ const UserSchema = new Schema({
   school: {
     type: Schema.Types.ObjectId,
     ref: 'School',
-    required: true
-  },
-  subjects: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Subject',
-    required: function () { return this.role === 'teacher'; },
-    validate: {
-      validator: function (v) { return this.role !== 'teacher' ? v.length === 0 : true; },
-      message: 'Subjects are only allowed for teachers'
+    default: null,
+    required: function () {
+      return ['student', 'teacher', 'dean'].includes(this.role);
     }
-  }],
+  },
   profilePicture: {
     type: String,
     trim: true,
@@ -79,6 +67,22 @@ const UserSchema = new Schema({
       type: String,
       enum: ['light', 'dark'],
       default: 'light'
+    }
+  },
+  classId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Class',
+    validate: {
+      validator: function (v) { return this.role === 'student' ? v.length > 0 : v.length === 0; },
+      message: 'classIds are required for students and not allowed for other roles'
+    }
+  },
+  termId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Term',
+    validate: {
+      validator: function (v) { return this.role === 'student' ? v.length > 0 : v.length === 0; },
+      message: 'termids are required for students and not allowed for other roles'
     }
   },
   lastLogin: {
@@ -108,10 +112,6 @@ const UserSchema = new Schema({
     type: Boolean,
     default: false
   },
-
-  // --- Student-specific optional fields ---
-
-  // Parent info fields (optional, only for students)
   parentFullName: {
     type: String,
     trim: true,
@@ -145,8 +145,6 @@ const UserSchema = new Schema({
     default: null,
     required: false
   },
-
-  // Graduation status (optional)
   graduated: {
     type: Boolean,
     default: false,
@@ -157,42 +155,40 @@ const UserSchema = new Schema({
     default: null,
     required: false
   }
-
 }, { timestamps: true });
 
+// Indexes
 UserSchema.index({ email: 1 }, { unique: true, sparse: true });
 UserSchema.index({ role: 1, school: 1 });
 
+// Pre-save validations
 UserSchema.pre('save', async function (next) {
   if (this.isModified('passwordHash')) {
     try {
       const salt = await bcrypt.genSalt(10);
       this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
-      this.tokenVersion += 1; // Increment tokenVersion on password change
+      this.tokenVersion += 1;
     } catch (error) {
       return next(error);
     }
   }
 
-  if (this.role === 'teacher' && this.subjects.length) {
-    const Subject = mongoose.model('Subject');
-    const subjects = await Subject.find({ _id: { $in: this.subjects }, school: this.school });
-    if (subjects.length !== this.subjects.length) {
-      return next(new Error('All subjects must belong to the user’s school'));
-    }
+  if (this.role === 'teacher') {
+    if (!this.school) return next(new Error('Teacher must be assigned to a school'));
   }
 
-  if (this.role === 'headmaster') {
+  if (this.role === 'headmaster' && this.school) {
     const School = mongoose.model('School');
     const school = await School.findOne({ headmaster: this._id });
-    if (!school || school._id.toString() !== this.school.toString()) {
-      return next(new Error('Headmaster must be assigned to the specified school'));
+    if (school && school._id.toString() !== this.school.toString()) {
+      return next(new Error('Headmaster is already assigned to another school'));
     }
   }
 
   next();
 });
 
+// Methods
 UserSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.passwordHash);
 };

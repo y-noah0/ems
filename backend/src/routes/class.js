@@ -19,20 +19,17 @@ const router = express.Router();
 const deanOrAdmin = requireRoles(['dean', 'admin']);
 
 // Read-only for all authenticated users
-router.get('/', authenticate, getClasses);
+router.get('/', getClasses);
 router.get('/:id', authenticate, getClassById);
 
 // Only dean and admin can create
 router.post(
     '/',
-    authenticate,
-    deanOrAdmin,
     [
         check('level').isIn(['L3', 'L4', 'L5']).withMessage('Invalid class level'),
         check('trade').isMongoId().withMessage('Valid trade ID is required'),
         check('year').isInt({ min: 2000 }).withMessage('Valid year is required'),
         check('school').isMongoId().withMessage('Valid school ID is required'),
-        check('subjects').optional().isArray().withMessage('Subjects must be an array')
     ],
     createClass
 );

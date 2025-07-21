@@ -53,9 +53,9 @@ router.put(
 
 // Delete enrollment (soft delete)
 router.delete(
+    '/:id',
     authenticate,
     isDean,
-    '/:id',
     param('id').isMongoId().withMessage('Valid enrollment ID required'),
     deleteEnrollment
 );

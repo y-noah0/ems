@@ -113,7 +113,7 @@ const deleteTrade = async (req, res) => {
         logger.error('Error in deleteTrade', { error: error.message, ip: req.ip });
         res.status(500).json({ success: false, message: 'Server Error' });
     }
-};
+}
 
 module.exports = {
     createTrade,
@@ -121,4 +121,4 @@ module.exports = {
     getTradeById,
     updateTrade,
     deleteTrade
-};
+}

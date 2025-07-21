@@ -10,9 +10,8 @@ const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
 const http = require('http');
-const routes = require('./routes/trade');
-
-
+const fs = require('fs');
+const path = require('path');
 
 // Initialize Express and HTTP server
 const app = express();
@@ -68,20 +67,36 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam
     console.log('✅ MongoDB connected');
 
     // Start scheduled jobs (e.g., promotion scheduler)
-    require('./jobs/promotionScheduler');
+    try {
+      require('./jobs/promotionScheduler');
+    } catch (error) {
+      console.error('Error loading promotion scheduler:', error.message, error.stack);
+    }
 
     // Start the server after DB is ready
     server.listen(PORT, () => {
-      console.log(`🚀 Server is running on http://localhost:${PORT}`);
+      console.log(`Server is running on http://localhost:${PORT}`);
     });
   })
   .catch(err => {
-    console.error('MongoDB connection error:', err.message);
+    console.error('MongoDB connection error:', err.message, err.stack);
     process.exit(1);
   });
 
 // ===== API Routes =====
-app.use('/api', routes);
+// Dynamically mount all route files in the routes folder
+const routesPath = path.join(__dirname, 'routes');
+fs.readdirSync(routesPath).forEach(file => {
+  if (file.endsWith('.js')) {
+    const routeName = file.replace('.js', '');
+    try {
+      const route = require(`./routes/${routeName}`);
+      app.use(`/api/${routeName}`, route);
+    } catch (error) {
+      console.error(`Error loading route ${routeName}:`, error.message, error.stack);
+    }
+  }
+});
 
 // ===== 404 Fallback =====
 app.use((req, res) => {
@@ -93,10 +108,17 @@ app.use((req, res) => {
 
 // ===== Error Handler =====
 app.use((err, req, res, next) => {
-  console.error('Server error:', err.stack);
+  console.error('Server error:', {
+    message: err.message,
+    stack: err.stack,
+    method: req.method,
+    url: req.url,
+    body: req.body,
+    ip: req.ip
+  });
   res.status(500).json({
     success: false,
-    message: 'Server Error',
+    message: 'Server Error occurred',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined,
   });
 });

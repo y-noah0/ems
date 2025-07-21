@@ -17,9 +17,6 @@ const isDeanOrAdmin = (req) => req.user && ['dean', 'admin'].includes(req.user.r
 
 // Create Class (only dean or admin)
 const createClass = async (req, res) => {
-    if (!isDeanOrAdmin(req)) {
-        return res.status(403).json({ success: false, message: 'Access denied' });
-    }
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {

@@ -21,10 +21,6 @@ const ClassSchema = new Schema({
     ref: 'School',
     required: true
   },
-  subjects: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Subject'
-  }],
   isDeleted: {
     type: Boolean,
     default: false

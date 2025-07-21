@@ -1,4 +1,5 @@
-const School = require('../models/School');
+const School = require('../models/school');
+const User = require('../models/User');
 const { validationResult, check } = require('express-validator');
 const winston = require('winston');
 const fs = require('fs');
@@ -37,6 +38,13 @@ const createSchool = async (req, res) => {
             return res.status(400).json({ success: false, message: 'School already exists' });
         }
 
+        // Validate headmaster
+        const user = await User.findById(headmaster);
+        if (!user || user.role !== 'headmaster') {
+            logger.warn('Invalid headmaster provided', { headmaster });
+            return res.status(400).json({ success: false, message: 'Invalid headmaster ID or role' });
+        }
+
         const school = new School({
             name,
             address,
@@ -48,7 +56,13 @@ const createSchool = async (req, res) => {
         });
 
         await school.save();
-        logger.info('School created', { schoolId: school.id });
+
+        // Update headmaster's school field
+        user.school = school._id;
+        await user.save();
+        logger.info('Headmaster school updated', { headmasterId: headmaster, schoolId: school._id });
+
+        logger.info('School created', { schoolId: school._id });
         res.status(201).json({ success: true, message: 'School created successfully', school });
     } catch (error) {
         logger.error('Error in createSchool', { error: error.message });
@@ -105,6 +119,26 @@ const updateSchool = async (req, res) => {
             });
         }
 
+        // If updating headmaster, update the new headmaster's school field
+        if (headmaster && headmaster !== school.headmaster?.toString()) {
+            const newHeadmaster = await User.findById(headmaster);
+            if (!newHeadmaster || newHeadmaster.role !== 'headmaster') {
+                logger.warn('Invalid headmaster provided for update', { headmaster });
+                return res.status(400).json({ success: false, message: 'Invalid headmaster ID or role' });
+            }
+            newHeadmaster.school = school._id;
+            await newHeadmaster.save();
+
+            // If there was a previous headmaster, clear their school field
+            if (school.headmaster) {
+                const oldHeadmaster = await User.findById(school.headmaster);
+                if (oldHeadmaster) {
+                    oldHeadmaster.school = null;
+                    await oldHeadmaster.save();
+                }
+            }
+        }
+
         school.name = name;
         school.address = address;
         school.contactEmail = contactEmail;
@@ -114,7 +148,7 @@ const updateSchool = async (req, res) => {
         if (req.file) school.logo = req.file.path;
 
         await school.save();
-        logger.info('School updated', { schoolId: school.id });
+        logger.info('School updated', { schoolId: school._id });
         res.json({ success: true, message: 'School updated successfully', school });
     } catch (error) {
         logger.error('Error in updateSchool', { error: error.message });
@@ -130,9 +164,17 @@ const deleteSchool = async (req, res) => {
             logger.warn('School not found for delete', { id: req.params.id });
             return res.status(404).json({ success: false, message: 'School not found' });
         }
+
+        // Clear the school field for the associated headmaster
+        const headmaster = await User.findById(school.headmaster);
+        if (headmaster) {
+            headmaster.school = null;
+            await headmaster.save();
+        }
+
         school.isDeleted = true;
         await school.save();
-        logger.info('School deleted (soft)', { schoolId: school.id });
+        logger.info('School deleted (soft)', { schoolId: school._id });
         res.json({ success: true, message: 'School deleted successfully' });
     } catch (error) {
         logger.error('Error in deleteSchool', { error: error.message });
