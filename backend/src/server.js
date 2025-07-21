@@ -9,9 +9,15 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
+const winston = require('winston');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const authMiddleware = require('./middlewares/authMiddleware');
+const socketHandler = require('./socketHandler');
+const Exam = require('./models/Exam');
+const Submission = require('./models/Submission');
+const schedule = require('node-schedule');
 
 // Initialize Express and HTTP server
 const app = express();
@@ -25,9 +31,47 @@ const io = new Server(server, {
   },
 });
 
+// Socket.IO middleware to authenticate users
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+      return next(new Error('Authentication token required'));
+    }
+    const user = await authMiddleware.authenticateSocket(token);
+    socket.user = user;
+    next();
+  } catch (error) {
+    next(new Error('Authentication error'));
+  }
+});
+
+// Initialize Socket.IO event handlers
+socketHandler(io);
+
 const PORT = process.env.PORT || 5000;
 
-// ===== Middleware =====
+// Logger setup
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' }),
+  ],
+});
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    })
+  );
+}
+
+// Middleware
 app.use(cors());
 app.use(helmet());
 app.use(bodyParser.json());
@@ -44,47 +88,93 @@ app.use((req, res, next) => {
   next();
 });
 
-// ===== Socket.IO Events =====
-io.on('connection', (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
-
-  socket.on('join', (userId) => {
-    socket.join(userId);
-    console.log(`User ${userId} joined socket room`);
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`Socket disconnected: ${socket.id}`);
-  });
-});
-
-// ===== MongoDB Connection =====
+// MongoDB Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam-system', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
   .then(() => {
-    console.log('✅ MongoDB connected');
+    logger.info('✅ MongoDB connected');
 
     // Start scheduled jobs (e.g., promotion scheduler)
     try {
       require('./jobs/promotionScheduler').startCronJobs();
     } catch (error) {
-      console.error('Error loading promotion scheduler:', error.message, error.stack);
+      logger.error('Error loading promotion scheduler:', error.message, error.stack);
     }
+
+    // Initialize auto-submission jobs for active exams
+    const initializeAutoSubmissionJobs = async () => {
+      const now = new Date();
+      const activeExams = await Exam.find({
+        status: 'active',
+        isDeleted: false,
+        'schedule.start': { $exists: true },
+        'schedule.duration': { $exists: true },
+      });
+      for (const exam of activeExams) {
+        const endTime = new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000);
+        if (endTime > now) {
+          schedule.scheduleJob(`auto-submit-${exam._id}`, endTime, async () => {
+            try {
+              const submissions = await Submission.find({
+                exam: exam._id,
+                status: 'in-progress',
+                isDeleted: false,
+              });
+              for (const submission of submissions) {
+                submission.status = 'submitted';
+                submission.submittedAt = new Date();
+                await submission.save();
+                io.to(submission.student.toString()).emit('exam-auto-submitted', {
+                  examId: exam._id,
+                  submissionId: submission._id,
+                  title: exam.title,
+                  submittedAt: submission.submittedAt,
+                });
+                io.to(exam.teacher.toString()).emit('exam-auto-submitted', {
+                  examId: exam._id,
+                  submissionId: submission._id,
+                  studentId: submission.student,
+                  title: exam.title,
+                  submittedAt: submission.submittedAt,
+                });
+                logger.info('Auto-submitted submission', {
+                  examId: exam._id,
+                  submissionId: submission._id,
+                  studentId: submission.student,
+                });
+              }
+              logger.info('Auto-submission job completed', { examId: exam._id });
+            } catch (error) {
+              logger.error('Error in auto-submission job', {
+                examId: exam._id,
+                error: error.message,
+                stack: error.stack,
+              });
+            }
+          });
+          logger.info('Auto-submission job scheduled on server start', {
+            examId: exam._id,
+            endTime,
+          });
+        }
+      }
+    };
+
+    initializeAutoSubmissionJobs();
 
     // Start the server after DB is ready
     server.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
+      logger.info(`Server is running on http://localhost:${PORT}`);
     });
   })
   .catch(err => {
-    console.error('MongoDB connection error:', err.message, err.stack);
+    logger.error('MongoDB connection error:', err.message, err.stack);
     process.exit(1);
   });
 
-// ===== API Routes =====
-// Dynamically mount all route files in the routes folder
+// API Routes
 const routesPath = path.join(__dirname, 'routes');
 fs.readdirSync(routesPath).forEach(file => {
   if (file.endsWith('.js')) {
@@ -93,12 +183,12 @@ fs.readdirSync(routesPath).forEach(file => {
       const route = require(`./routes/${routeName}`);
       app.use(`/api/${routeName}`, route);
     } catch (error) {
-      console.error(`Error loading route ${routeName}:`, error.message, error.stack);
+      logger.error(`Error loading route ${routeName}:`, error.message, error.stack);
     }
   }
 });
 
-// ===== 404 Fallback =====
+// 404 Fallback
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -106,9 +196,9 @@ app.use((req, res) => {
   });
 });
 
-// ===== Error Handler =====
+// Error Handler
 app.use((err, req, res, next) => {
-  console.error('Server error:', {
+  logger.error('Server error:', {
     message: err.message,
     stack: err.stack,
     method: req.method,
