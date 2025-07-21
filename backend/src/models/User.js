@@ -3,6 +3,10 @@ const Schema = mongoose.Schema;
 const bcrypt = require('bcryptjs');
 
 const UserSchema = new Schema({
+  isActive: {
+    type: Boolean,
+    default:false
+  },
   role: {
     type: String,
     required: true,
