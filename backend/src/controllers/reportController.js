@@ -1042,8 +1042,9 @@ async function generateAssessmentReportData(classId, academicYear, termId, schoo
                     studentName: 1,
                     subject: '$_id.subject',
                     subjectName: 1,
-                    score: 1,
-                    maxScore: 1,
+                    scores: { [assessmentType]: '$score' },
+                    total: '$score',
+                    maxScore: '$maxScore',
                     percentage: {
                         $cond: [
                             { $gt: ['$maxScore', 0] },
@@ -1064,8 +1065,8 @@ async function generateAssessmentReportData(classId, academicYear, termId, schoo
                 $group: {
                     _id: '$student',
                     studentName: { $first: '$studentName' },
-                    results: { $push: { subject: '$subject', subjectName: '$subjectName', score: '$score', maxScore: '$maxScore', percentage: '$percentage', decision: '$decision' } },
-                    totalScore: { $sum: '$score' },
+                    results: { $push: { subject: '$subject', subjectName: '$subjectName', scores: '$scores', total: '$total', percentage: '$percentage', decision: '$decision' } },
+                    totalScore: { $sum: '$total' },
                 },
             },
             {
@@ -1114,7 +1115,7 @@ async function generatePromotionEligibilityReport(schoolId, academicYear) {
                 school: schoolId,
                 isDeleted: false,
             }).session(session);
-            const promotionStatus = reportCard && reportCard.average >= 50 ? 'Eligible' : 'Not Eligible';
+            const promotionStatus = reportCard && reportCard.average >= reportCard.passingThreshold ? 'Eligible' : 'Not Eligible';
             return {
                 student: enrollment.student._id,
                 studentName: enrollment.student.fullName,
@@ -1495,12 +1496,123 @@ async function rankItems(items, scopeField) {
     }
 }
 
+// Function to create a report card
+async function createReportCard(req, res) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        const { studentId, classId, academicYear, termId, schoolId, results, remarks, passingThreshold } = req.body;
+
+        const school = await School.findById(schoolId).select('name').session(session);
+        if (!school) {
+            return res.status(400).json({ message: 'Invalid school.' });
+        }
+
+        const student = await User.findOne({ _id: studentId, school: schoolId, role: 'student' }).session(session);
+        if (!student) {
+            return res.status(400).json({ message: 'Invalid student or not associated with the school.' });
+        }
+
+        const classDoc = await Class.findOne({ _id: classId, school: schoolId }).session(session);
+        if (!classDoc) {
+            return res.status(400).json({ message: 'Invalid class or not associated with the school.' });
+        }
+
+        const term = await Term.findOne({ _id: termId, school: schoolId }).select('termNumber academicYear startDate endDate').session(session);
+        if (!term) {
+            return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
+        }
+        const currentDate = new Date('2025-07-22T10:13:00Z');
+        if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
+            return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
+        }
+
+        const enrollment = await Enrollment.findOne({
+            student: studentId,
+            class: classId,
+            academicYear: Number(academicYear),
+            term: termId,
+            school: schoolId,
+            isActive: true,
+            isDeleted: false,
+        }).session(session);
+
+        if (!enrollment) {
+            return res.status(404).json({ message: 'No active enrollment found.' });
+        }
+
+        const reportCardData = {
+            student: studentId,
+            class: classId,
+            academicYear: Number(academicYear),
+            term: termId,
+            school: schoolId,
+            results: results.map(result => ({
+                subject: result.subject,
+                scores: {
+                    assessment1: result.scores?.assessment1 || 0,
+                    assessment2: result.scores?.assessment2 || 0,
+                    test: result.scores?.test || 0,
+                    exam: result.scores?.exam || 0,
+                },
+                total: result.total || 0,
+                percentage: result.percentage || 0,
+                decision: result.decision || 'Not Yet Competent',
+            })),
+            totalScore: results.reduce((sum, result) => sum + (result.total || 0), 0),
+            average: results.length ? results.reduce((sum, result) => sum + (result.total || 0), 0) / results.length : 0,
+            remarks: remarks || 'Manually created report card.',
+            passingThreshold: passingThreshold || 50,
+            isDeleted: false,
+        };
+
+        let reportCard;
+        const existingReportCard = await ReportCard.findOne({
+            student: studentId,
+            class: classId,
+            academicYear: Number(academicYear),
+            term: termId,
+            school: schoolId,
+            isDeleted: false,
+        }).session(session);
+
+        if (existingReportCard) {
+            existingReportCard.set(reportCardData);
+            reportCard = await existingReportCard.save({ session });
+        } else {
+            reportCard = await ReportCard.create([reportCardData], { session });
+            reportCard = reportCard[0];
+        }
+
+        await rankItems([reportCard], 'student');
+
+        const finalReportCard = await ReportCard.findById(reportCard._id)
+            .populate('class', 'className')
+            .populate('term', 'termNumber')
+            .populate('results.subject', 'name')
+            .populate('student', 'fullName')
+            .session(session);
+
+        await session.commitTransaction();
+        return res.status(201).json({
+            message: 'Report card created successfully.',
+            reportCard: finalReportCard,
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('Error creating report card:', error);
+        return res.status(500).json({ message: 'Internal server error' });
+    } finally {
+        session.endSession();
+    }
+}
+
 // Function to generate single student report
 async function generateSingleStudentReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { studentId, academicYear, termId, schoolId } = req.body;
+        const { studentId, academicYear, termId, schoolId, passingThreshold } = req.body;
 
         const school = await School.findById(schoolId).select('name').session(session);
         if (!school) {
@@ -1516,7 +1628,7 @@ async function generateSingleStudentReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-22T10:13:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -1547,6 +1659,7 @@ async function generateSingleStudentReport(req, res) {
             totalScore: reportData.totalScore,
             average: reportData.average,
             remarks: 'Generated for single student.',
+            passingThreshold: passingThreshold || 50,
             isDeleted: false,
         };
 
@@ -1596,7 +1709,7 @@ async function generateClassReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { classId, academicYear, termId, schoolId } = req.body;
+        const { classId, academicYear, termId, schoolId, passingThreshold } = req.body;
 
         const school = await School.findById(schoolId).select('name').session(session);
         if (!school) {
@@ -1612,7 +1725,7 @@ async function generateClassReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-22T10:13:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -1630,6 +1743,7 @@ async function generateClassReport(req, res) {
                 totalScore: studentReport.totalScore,
                 average: studentReport.average,
                 remarks: 'Generated for class report.',
+                passingThreshold: passingThreshold || 50,
                 isDeleted: false,
             };
             return {
@@ -1708,7 +1822,7 @@ async function generateTermReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { academicYear, termId, schoolId } = req.body;
+        const { academicYear, termId, schoolId, passingThreshold } = req.body;
 
         const school = await School.findById(schoolId).select('name').session(session);
         if (!school) {
@@ -1719,7 +1833,7 @@ async function generateTermReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-22T10:13:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -1749,6 +1863,7 @@ async function generateTermReport(req, res) {
                 totalScore: studentReport.totalScore,
                 average: studentReport.average,
                 remarks: 'Generated for term report.',
+                passingThreshold: passingThreshold || 50,
                 isDeleted: false,
             };
 
@@ -1812,7 +1927,7 @@ async function generateSchoolReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { academicYear, schoolId } = req.body;
+        const { academicYear, schoolId, passingThreshold } = req.body;
 
         const school = await School.findById(schoolId).select('name').session(session);
         if (!school) {
@@ -1843,6 +1958,7 @@ async function generateSchoolReport(req, res) {
                 totalScore: studentReport.totalScore,
                 average: studentReport.average,
                 remarks: 'Generated for school report.',
+                passingThreshold: passingThreshold || 50,
                 isDeleted: false,
             };
 
@@ -1904,7 +2020,7 @@ async function generateSubjectReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { subjectId, academicYear, termId, schoolId } = req.body;
+        const { subjectId, academicYear, termId, schoolId, passingThreshold } = req.body;
 
         const school = await School.findById(schoolId).select('name').session(session);
         if (!school) {
@@ -1920,7 +2036,7 @@ async function generateSubjectReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-22T10:13:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -1950,6 +2066,7 @@ async function generateSubjectReport(req, res) {
                 totalScore: studentReport.totalScore,
                 average: studentReport.average,
                 remarks: 'Generated for subject report.',
+                passingThreshold: passingThreshold || 50,
                 isDeleted: false,
             };
 
@@ -2015,7 +2132,7 @@ async function generateTradeReport(req, res) {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-        const { tradeId, academicYear, termId, schoolId } = req.body;
+        const { tradeId, academicYear, termId, schoolId, passingThreshold } = req.body;
 
         const school = await School.findById(schoolId).select('name').session(session);
         if (!school) {
@@ -2031,7 +2148,7 @@ async function generateTradeReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-22T10:13:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -2061,6 +2178,7 @@ async function generateTradeReport(req, res) {
                 totalScore: studentReport.totalScore,
                 average: studentReport.average,
                 remarks: 'Generated for trade report.',
+                passingThreshold: passingThreshold || 50,
                 isDeleted: false,
             };
 
@@ -2154,7 +2272,7 @@ async function generateAssessmentReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-22T10:13:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -2170,17 +2288,16 @@ async function generateAssessmentReport(req, res) {
                 school: schoolId,
                 results: studentReport.results.map(result => ({
                     subject: result.subject,
-                    subjectName: result.subjectName,
-                    scores: { [assessmentType]: result.score },
-                    total: result.score,
+                    scores: { [assessmentType]: result.scores[assessmentType] },
+                    total: result.total,
                     percentage: result.percentage,
                     decision: result.decision,
                 })),
                 totalScore: studentReport.totalScore,
                 average: studentReport.average,
                 remarks: `Generated for ${assessmentType} report.`,
+                passingThreshold: 50, // Default value, can be adjusted
                 isDeleted: false,
-                assessmentType: assessmentType,
             };
             return {
                 updateOne: {
@@ -2191,7 +2308,6 @@ async function generateAssessmentReport(req, res) {
                         term: termId,
                         school: schoolId,
                         isDeleted: false,
-                        assessmentType: assessmentType,
                     },
                     update: { $set: reportCardData },
                     upsert: true,
@@ -2207,7 +2323,6 @@ async function generateAssessmentReport(req, res) {
             term: termId,
             school: schoolId,
             isDeleted: false,
-            assessmentType: assessmentType,
         }).session(session);
 
         await rankItems(reportCards, 'class');
@@ -2218,7 +2333,6 @@ async function generateAssessmentReport(req, res) {
             term: termId,
             school: schoolId,
             isDeleted: false,
-            assessmentType: assessmentType,
         })
             .populate('class', 'className')
             .populate('term', 'termNumber')
@@ -2284,7 +2398,7 @@ async function generateTeacherReport(req, res) {
         if (!term) {
             return res.status(400).json({ message: 'Invalid term or not associated with the school.' });
         }
-        const currentDate = new Date('2025-07-21T19:21:00Z');
+        const currentDate = new Date('2025-07-22T10:13:00Z');
         if (Number(academicYear) !== term.academicYear || currentDate < term.startDate || currentDate > term.endDate) {
             return res.status(400).json({ message: 'Term and academic year mismatch or invalid date range.' });
         }
@@ -2309,6 +2423,7 @@ async function generateTeacherReport(req, res) {
 
 // Export all functions
 module.exports = {
+    createReportCard,
     generateSingleStudentReport,
     generateClassReport,
     generateTermReport,
@@ -2318,4 +2433,4 @@ module.exports = {
     generateAssessmentReport,
     generatePromotionReport,
     generateTeacherReport,
-}
+};

@@ -122,6 +122,9 @@ const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Subjects are only allowed for teachers' });
     }
 
+    // Generate 6-digit verification code for non-students
+    const verificationCode = role !== 'student' ? Math.floor(100000 + Math.random() * 900000).toString() : undefined;
+
     // Create user
     const user = new User({
       fullName,
@@ -134,7 +137,7 @@ const register = async (req, res) => {
       profilePicture,
       preferences: { notifications: { email: !!email, sms: !!phoneNumber }, theme: 'light' },
       class: role === 'student' && classId ? classId : undefined,
-      emailVerificationToken: role !== 'student' ? speakeasy.generateSecret({ length: 20 }).base32 : undefined,
+      emailVerificationToken: verificationCode,
       parentFullName: role === 'student' ? parentFullName : undefined,
       parentNationalId: role === 'student' ? parentNationalId : undefined,
       parentPhoneNumber: role === 'student' ? parentPhoneNumber : undefined
@@ -180,14 +183,14 @@ const register = async (req, res) => {
       logger.info('Student enrolled', { enrollmentId: enrollment._id, userId: user.id, ip: req.ip });
     }
 
-    // Send verification email for non-students
+    // Send verification email for non-students with the 6-digit code
     if (role !== 'student' && email) {
       try {
         await transporter.sendMail({
           from: process.env.EMAIL_USER,
           to: email,
           subject: 'Verify Your Email',
-          html: `<p>Please verify your email by clicking <a href="${process.env.APP_URL}/verify-email?token=${user.emailVerificationToken}">here</a>.</p>`
+          html: `<p>Your verification code is: <strong>${user.emailVerificationToken}</strong></p><p>Please enter this code in the application to verify your email.</p>`
         });
         req.io.to(user.id).emit('notification', { message: 'Verification email sent' });
         logger.info('Verification email sent', { userId: user.id, email, ip: req.ip });

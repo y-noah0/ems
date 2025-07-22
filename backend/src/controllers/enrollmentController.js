@@ -19,14 +19,22 @@ const createEnrollment = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { student, class: classId, term, school } = req.body;
+        const { student, class: classId, term, school, promotionStatus, isActive, transferredFromSchool } = req.body;
 
-        const existing = await Enrollment.findOne({ student, term });
+        const existing = await Enrollment.findOne({ student, term, isDeleted: false });
         if (existing) {
             return res.status(400).json({ success: false, message: 'Student already enrolled for this term' });
         }
 
-        const enrollment = new Enrollment({ student, class: classId, term, school });
+        const enrollment = new Enrollment({
+            student,
+            class: classId,
+            term,
+            school,
+            promotionStatus,
+            isActive,
+            transferredFromSchool
+        });
         await enrollment.save();
 
         logger.info('Enrollment created', { enrollmentId: enrollment._id });
@@ -82,17 +90,33 @@ const updateEnrollment = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { student, class: classId, term, school } = req.body;
+        const { student, class: classId, term, school, promotionStatus, isActive, transferredFromSchool } = req.body;
         const enrollment = await Enrollment.findById(req.params.id);
 
         if (!enrollment || enrollment.isDeleted) {
             return res.status(404).json({ success: false, message: 'Enrollment not found' });
         }
 
-        enrollment.student = student;
-        enrollment.class = classId;
-        enrollment.term = term;
-        enrollment.school = school;
+        // Check for duplicate enrollment if student or term is updated
+        if (student && term && (student !== enrollment.student.toString() || term !== enrollment.term.toString())) {
+            const existing = await Enrollment.findOne({
+                student,
+                term,
+                isDeleted: false,
+                _id: { $ne: enrollment._id }
+            });
+            if (existing) {
+                return res.status(400).json({ success: false, message: 'Student already enrolled for this term' });
+            }
+        }
+
+        enrollment.student = student || enrollment.student;
+        enrollment.class = classId || enrollment.class;
+        enrollment.term = term || enrollment.term;
+        enrollment.school = school || enrollment.school;
+        enrollment.promotionStatus = promotionStatus || enrollment.promotionStatus;
+        enrollment.isActive = isActive !== undefined ? isActive : enrollment.isActive;
+        enrollment.transferredFromSchool = transferredFromSchool !== undefined ? transferredFromSchool : enrollment.transferredFromSchool;
         await enrollment.save();
 
         logger.info('Enrollment updated', { enrollmentId: enrollment._id });

@@ -1,57 +1,3 @@
-// const express = require('express');
-// const router = express.Router();
-// const { check } = require('express-validator');
-// const authController = require('../controllers/authController');
-// const authMiddleware = require('../middlewares/authMiddleware');
-
-// // @route   POST api/auth/register
-// // @desc    Register a user
-// // @access  Public (for students) / Admin for others
-// router.post(
-//   '/register',
-//   [
-//     check('email', 'Please include a valid email').isEmail(),
-//     check('password', 'Password is required and should be at least 6 characters').isLength({ min: 6 }),
-//     check('fullName', 'Full name is required').notEmpty()
-//   ],
-//   authController.register
-// );
-
-// // @route   POST api/auth/login
-// // @desc    Login user & get token
-// // @access  Public
-// router.post(
-//   '/login',
-//   [
-//     check('identifier', 'Please include a valid identifier').isEmail(),
-//     check('password', 'Password is required').exists()
-//   ],
-//   authController.login
-// );
-
-// // @route   GET api/auth/me
-// // @desc    Get current user
-// // @access  Private
-// router.get('/me', authMiddleware.authenticate, authController.getCurrentUser);
-
-// // @route   PUT api/auth/change-password
-// // @desc    Change password
-// // @access  Private
-// router.put(
-//   '/change-password',
-//   [
-//     authMiddleware.authenticate,
-//     check('currentPassword', 'Current password is required').exists(),
-//     check('newPassword', 'New password should be at least 6 characters').isLength({ min: 6 })
-//   ],
-//   authController.changePassword
-// );
-
-// module.exports = router;
-
-
-
-
 const express = require('express');
 const { check } = require('express-validator');
 const router = express.Router();
@@ -68,11 +14,63 @@ const {
   updateProfile
 } = require('../controllers/authController');
 
-const {
-  authenticate,
-  loginValidation,
-  registerValidation
-} = require('../middlewares/authMiddleware');
+// Middleware for validation
+const registerValidation = [
+  check('fullName', 'Full name is required').notEmpty().trim(),
+  check('password', 'Password is required and should be at least 6 characters').isLength({ min: 6 }),
+  check('email', 'Please include a valid email')
+    .if((value, { req }) => req.body.role !== 'student')
+    .isEmail()
+    .normalizeEmail(),
+  check('role', 'Invalid role').optional().isIn(['student', 'teacher', 'dean', 'admin', 'headmaster']),
+  check('schoolId', 'School ID is required for student, teacher, or dean')
+    .if((value, { req }) => ['student', 'teacher', 'dean'].includes(req.body.role))
+    .notEmpty(),
+  check('classId', 'Class ID is required for students')
+    .if((value, { req }) => req.body.role === 'student')
+    .notEmpty(),
+  check('termId', 'Term ID is required for students')
+    .if((value, { req }) => req.body.role === 'student')
+    .notEmpty(),
+  check('phoneNumber', 'Please enter a valid phone number')
+    .optional()
+    .matches(/^\+?\d{10,15}$/)
+    .withMessage('Invalid phone number'),
+  check('profilePicture', 'Please enter a valid image URL')
+    .optional()
+    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
+    .withMessage('Invalid image URL'),
+  check('subjects', 'Subjects are only allowed for teachers')
+    .if((value, { req }) => req.body.role !== 'teacher')
+    .isEmpty()
+    .withMessage('Subjects are only allowed for teachers'),
+  check('parentFullName', 'Parent full name must not be empty if provided')
+    .if((value, { req }) => req.body.role === 'student' && value != null)
+    .notEmpty(),
+  check('parentNationalId', 'Parent national ID must not be empty if provided')
+    .if((value, { req }) => req.body.role === 'student' && value != null)
+    .notEmpty(),
+  check('parentPhoneNumber', 'Please enter a valid parent phone number')
+    .if((value, { req }) => req.body.role === 'student' && value != null)
+    .matches(/^\+?\d{10,15}$/)
+    .withMessage('Invalid parent phone number')
+];
+
+const loginValidation = [
+  check('identifier', 'Identifier is required').notEmpty(),
+  check('identifier', 'Please include a valid email for non-students')
+    .if((value, { req }) => {
+      // Check if identifier looks like an email
+      const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+      return emailRegex.test(value);
+    })
+    .isEmail()
+    .normalizeEmail(),
+  check('password', 'Password is required').exists(),
+  check('twoFactorCode', '2FA code must be a 6-digit number').optional().isNumeric().isLength({ min: 6, max: 6 })
+];
+
+const { authenticate } = require('../middlewares/authMiddleware');
 
 // @route   POST /auth/register
 // @desc    Register user
@@ -82,7 +80,9 @@ router.post('/register', registerValidation, register);
 // @route   POST /auth/verify-email
 // @desc    Verify email
 // @access  Public
-router.post('/verify-email', verifyEmail);
+router.post('/verify-email', [
+  check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 })
+], verifyEmail);
 
 // @route   POST /auth/login
 // @desc    Log in user
@@ -102,12 +102,17 @@ router.post('/refresh-token', refreshToken);
 // @route   POST /auth/request-password-reset
 // @desc    Request password reset
 // @access  Public
-router.post('/request-password-reset', requestPasswordReset);
+router.post('/request-password-reset', [
+  check('email', 'Please include a valid email').isEmail().normalizeEmail()
+], requestPasswordReset);
 
 // @route   POST /auth/reset-password
 // @desc    Reset password
 // @access  Public
-router.post('/reset-password', resetPassword);
+router.post('/reset-password', [
+  check('token', 'Reset token is required').notEmpty(),
+  check('newPassword', 'New password should be at least 6 characters').isLength({ min: 6 })
+], resetPassword);
 
 // @route   POST /auth/enable-2fa
 // @desc    Enable 2FA for user
@@ -118,13 +123,12 @@ router.post('/enable-2fa', authenticate, enable2FA);
 // @desc    Update user profile
 // @access  Private
 router.put('/profile', authenticate, [
-  check('email').optional().isEmail().withMessage('Invalid email'),
+  check('email').optional().isEmail().withMessage('Invalid email').normalizeEmail(),
   check('phoneNumber').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number'),
   check('profilePicture').optional().matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i).withMessage('Invalid image URL'),
   check('preferences.notifications.email').optional().isBoolean(),
   check('preferences.notifications.sms').optional().isBoolean(),
   check('preferences.theme').optional().isIn(['light', 'dark']).withMessage('Invalid theme')
 ], updateProfile);
-
 
 module.exports = router;

@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const UserSchema = new Schema({
   isActive: {
     type: Boolean,
-    default:false
+    default: false
   },
   role: {
     type: String,
@@ -22,7 +22,7 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please Enter a valid email'],
     required: function () { return this.role !== 'student'; },
     sparse: true,
     unique: true

@@ -24,13 +24,13 @@ const createClass = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { level, trade, year, school, subjects } = req.body;
-        const existing = await Class.findOne({ level, trade, year, school });
+        const { level, trade, year, school, capacity, subjects } = req.body;
+        const existing = await Class.findOne({ level, trade, year, school, isDeleted: false });
         if (existing) {
             return res.status(400).json({ success: false, message: 'Class already exists' });
         }
 
-        const newClass = new Class({ level, trade, year, school, subjects });
+        const newClass = new Class({ level, trade, year, school, capacity, subjects });
         await newClass.save();
 
         logger.info('Class created', { classId: newClass._id });
@@ -92,7 +92,7 @@ const updateClass = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Class not found' });
         }
 
-        const { level, trade, year, school, subjects } = req.body;
+        const { level, trade, year, school, capacity, subjects } = req.body;
         const duplicate = await Class.findOne({
             _id: { $ne: classDoc._id },
             level,
@@ -109,6 +109,7 @@ const updateClass = async (req, res) => {
         classDoc.trade = trade;
         classDoc.year = year;
         classDoc.school = school;
+        classDoc.capacity = capacity;
         classDoc.subjects = subjects;
         await classDoc.save();
 
