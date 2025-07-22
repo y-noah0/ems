@@ -18,7 +18,8 @@ const ReportCardSchema = new Schema({
     },
     term: {
         type: Schema.Types.ObjectId,
-        ref: 'Term'
+        ref: 'Term',
+        required: true
     },
     school: {
         type: Schema.Types.ObjectId,
@@ -26,17 +27,24 @@ const ReportCardSchema = new Schema({
         required: true
     },
     results: [{
-        submission: {
-            type: Schema.Types.ObjectId,
-            ref: 'Submission'
-        },
         subject: {
             type: Schema.Types.ObjectId,
-            ref: 'Subject'
+            ref: 'Subject',
+            required: true
         },
-        score: Number,
-        outOf: Number,
-        grade: String
+        scores: {
+            assessment1: { type: Number, default: 0 }, // /15
+            assessment2: { type: Number, default: 0 }, // /15
+            test: { type: Number, default: 0 }, // /10
+            exam: { type: Number, default: 0 }, // /60
+        },
+        total: { type: Number, default: 0 }, // /100
+        percentage: { type: Number, default: 0 }, // %
+        decision: {
+            type: String,
+            enum: ['Competent', 'Not Yet Competent'],
+            default: 'Not Yet Competent'
+        }
     }],
     totalScore: {
         type: Number,
@@ -56,21 +64,49 @@ const ReportCardSchema = new Schema({
     isDeleted: {
         type: Boolean,
         default: false
+    },
+    isComplete: {
+        type: Boolean,
+        default: false
+    },
+    passingThreshold: {
+        type: Number,
+        default: 50
     }
 }, { timestamps: true });
 
 ReportCardSchema.index({ student: 1, class: 1, academicYear: 1, term: 1, school: 1 }, { unique: true });
 
 ReportCardSchema.pre('save', async function (next) {
-    if (this.isModified('results')) {
-        this.totalScore = this.results.reduce((sum, r) => sum + (r.score || 0), 0);
-        this.average = this.results.length ? this.totalScore / this.results.length : 0;
-    }
+    const Subject = mongoose.model('Subject');
+    const Class = mongoose.model('Class');
+
+    this.totalScore = 0;
+    this.results.forEach(result => {
+        const { assessment1, assessment2, test, exam } = result.scores;
+        const total = (assessment1 || 0) + (assessment2 || 0) + (test || 0) + (exam || 0);
+        result.total = total;
+        result.percentage = total ? Math.round((total / 100) * 100) : 0;
+        result.decision = result.percentage >= 70 ? 'Competent' : 'Not Yet Competent';
+        this.totalScore += total;
+    });
+
+    this.average = this.results.length ? this.totalScore / this.results.length : 0;
+
+    // Check if report card is complete
+    const classDoc = await Class.findById(this.class).populate('subjects');
+    const expectedSubjects = classDoc.subjects.map(s => s._id.toString());
+    const resultSubjects = this.results.map(r => r.subject.toString());
+    this.isComplete = expectedSubjects.length > 0 &&
+        expectedSubjects.every(id => resultSubjects.includes(id)) &&
+        this.results.every(result => result.total > 0);
+
     const User = mongoose.model('User');
     const user = await User.findById(this.student);
     if (!user || user.role !== 'student') {
         return next(new Error('Student must be a user with role "student"'));
     }
+
     next();
 });
 

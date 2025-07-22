@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMS Backend API Documentation</title>
+    <style>
+        :root {
+            --bg-light: #f8f9fa;
+            --bg-dark: #181a1b;
+            --text-light: #222;
+            --text-dark: #f8f9fa;
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --card-bg-light: #fff;
+            --card-bg-dark: #23272b;
+            --border-radius: 10px;
+            --transition: 0.3s;
+        }
+
+        body {
+            background: var(--bg-light);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            transition: background var(--transition), color var(--transition);
+        }
+
+        body.dark {
+            background: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: var(--primary);
+        }
+
+        .theme-toggle {
+            float: right;
+            margin-top: 1rem;
+            cursor: pointer;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 0.5rem 1.2rem;
+            font-size: 1rem;
+            transition: background var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background: var(--secondary);
+        }
+
+        .card {
+            background: var(--card-bg-light);
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            transition: background var(--transition);
+        }
+
+        body.dark .card {
+            background: var(--card-bg-dark);
+        }
+
+        code,
+        pre {
+            background: #e9ecef;
+            color: #c7254e;
+            border-radius: 5px;
+            padding: 2px 6px;
+            font-size: 1em;
+        }
+
+        body.dark code,
+        body.dark pre {
+            background: #23272b;
+            color: #ffb86c;
+        }
+
+        .endpoint {
+            margin-bottom: 1.2rem;
+        }
+
+        .method {
+            font-weight: bold;
+            color: var(--primary);
+            margin-right: 0.5em;
+        }
+
+        .url {
+            font-family: monospace;
+            color: var(--secondary);
+        }
+
+        .desc {
+            margin: 0.2em 0 0.5em 0;
+            color: #555;
+        }
+
+        .section-title {
+            margin-top: 2.5rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 0.3rem;
+        }
+
+        .json-block {
+            background: #f4f4f4;
+            color: #333;
+            border-radius: 6px;
+            padding: 0.7em 1em;
+            font-family: 'Fira Mono', 'Consolas', monospace;
+            font-size: 0.98em;
+            overflow-x: auto;
+        }
+
+        body.dark .json-block {
+            background: #23272b;
+            color: #e0e0e0;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem 0.2rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <button class="theme-toggle" id="themeToggle">Toggle Theme</button>
+        <h1>EMS Backend API Documentation</h1>
+        <p>Comprehensive documentation for the Educational Management System backend API. All endpoints are prefixed
+            with <code>/api</code>.</p>
+
+        <h2 class="section-title">Authentication & Profile</h2>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/auth/register</span>
+            <div class="desc">Register a new user (student, teacher, dean, admin)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "email": "string",
+  "password": "string",
+  "fullName": "string",
+  "role": "student|teacher|dean|admin",
+  "registrationNumber": "string", // for students
+  "schoolId": "string",
+  "phoneNumber": "string",
+  "subjects": ["subjectId"], // for teachers
+  "profilePicture": "url",
+  "classId": "string", // for students
+  "termId": "string" // for students
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/auth/verify-email</span>
+            <div class="desc">Verify user email</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "token": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/auth/login</span>
+            <div class="desc">Authenticate user and get JWT token</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "identifier": "email|registrationNumber|fullName",
+  "password": "string",
+  "twoFactorCode": "string" // optional
+}</pre>
+            </div>
+            <div><b>Response:</b>
+                <pre class="json-block">{
+  "success": true,
+  "token": "jwt-token",
+  "refreshToken": "jwt-refresh-token",
+  "user": { ... }
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/auth/logout</span>
+            <div class="desc">Logout user (requires authentication)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/auth/refresh-token</span>
+            <div class="desc">Refresh JWT token</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "refreshToken": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/auth/request-password-reset</span>
+            <div class="desc">Request password reset email</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "email": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/auth/reset-password</span>
+            <div class="desc">Reset password using token</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "token": "string",
+  "newPassword": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/auth/enable-2fa</span>
+            <div class="desc">Enable two-factor authentication (requires authentication)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/auth/profile</span>
+            <div class="desc">Update user profile (requires authentication)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "email": "string", // optional
+  "phoneNumber": "string", // optional
+  "profilePicture": "url", // optional
+  "preferences": {
+    "notifications": { "email": true, "sms": false },
+    "theme": "light|dark"
+  }
+}</pre>
+            </div>
+        </div>
+
+        <h2 class="section-title">Admin & Class Management</h2>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/admin/classes</span>
+            <div class="desc">Get all classes (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/admin/classes</span>
+            <div class="desc">Create a new class (Dean only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "level": "L3|L4|L5",
+  "trade": "SOD|NIT|MMP",
+  "year": 2025,
+  "term": 1
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/admin/classes/:id</span>
+            <div class="desc">Update a class (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">DELETE</span> <span class="url">/api/admin/classes/:id</span>
+            <div class="desc">Delete a class (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/admin/classes/:classId/subjects</span>
+            <div class="desc">Get subjects for a class (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/admin/subjects</span>
+            <div class="desc">Create a new subject (Dean only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "name": "string",
+  "classId": "string",
+  "teacherId": "string", // optional
+  "description": "string", // optional
+  "credits": 3 // optional
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/admin/subjects/:id/assign-teacher</span>
+            <div class="desc">Assign or remove teacher from subject (Dean only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "teacherId": "string" // empty to remove
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/admin/teachers</span>
+            <div class="desc">List all teachers (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/admin/classes/:classId/students</span>
+            <div class="desc">List students by class (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/admin/import-students</span>
+            <div class="desc">Import students from CSV (Dean only)</div>
+            <div><b>Body:</b> <i>multipart/form-data</i> with <code>file</code> and <code>classId</code></div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/admin/students</span>
+            <div class="desc">Create a new student (Dean only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "fullName": "string",
+  "email": "string",
+  "registrationNumber": "string",
+  "classId": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/admin/students/:id</span>
+            <div class="desc">Get student by ID (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/admin/students/:id/results</span>
+            <div class="desc">Get student results by ID (Dean only)</div>
+        </div>
+
+        <h2 class="section-title">Exam Management</h2>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/exams</span>
+            <div class="desc">Create new exam (Teacher only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "title": "string",
+  "classId": "string",
+  "subjectId": "string",
+  "type": "ass1|ass2|hw|exam|midterm|final|quiz|practice",
+  "questions": [ ... ]
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/exams/teacher</span>
+            <div class="desc">Get all exams created by teacher (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/exams/classes</span>
+            <div class="desc">Get all classes for teacher (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/exams/:examId</span>
+            <div class="desc">Get exam by ID (Teacher/Student)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/exams/:id</span>
+            <div class="desc">Update exam (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">DELETE</span> <span class="url">/api/exams/:id</span>
+            <div class="desc">Delete exam (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/exams/:id/schedule</span>
+            <div class="desc">Schedule an exam (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/exams/:id/activate</span>
+            <div class="desc">Activate exam (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/exams/:id/complete</span>
+            <div class="desc">Complete exam (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/exams/student/upcoming</span>
+            <div class="desc">Get upcoming exams for student</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/exams/student/class</span>
+            <div class="desc">Get all exams for student's class</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/subjects/teacher</span>
+            <div class="desc">Get all subjects assigned to teacher</div>
+        </div>
+
+        <h2 class="section-title">Submission & Grading</h2>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/submissions/start</span>
+            <div class="desc">Start exam (create submission, Student only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "examId": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/submissions/save</span>
+            <div class="desc">Save answers (auto-save, Student only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "submissionId": "string",
+  "answers": [ ... ]
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/submissions/submit</span>
+            <div class="desc">Submit exam (Student only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "submissionId": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/submissions/auto-submit</span>
+            <div class="desc">Auto-submit exam (Student only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "submissionId": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/submissions/log-violation</span>
+            <div class="desc">Log a violation (Student only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "submissionId": "string",
+  "violationType": "string",
+  "details": "string"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/student</span>
+            <div class="desc">Get student's submissions (Student only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/teacher</span>
+            <div class="desc">Get all submissions for teacher's exams (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/exam/:examId</span>
+            <div class="desc">Get submissions for an exam (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/submissions/:submissionId/grade</span>
+            <div class="desc">Grade open questions (Teacher only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "grades": [ ... ]
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/student/results</span>
+            <div class="desc">Get student's exam results by term (Student only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/:id</span>
+            <div class="desc">Get detailed submission (Student/Teacher)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/results/homework</span>
+            <div class="desc">Get homework results (All authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/results/quiz</span>
+            <div class="desc">Get quiz results (All authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/results/by-type</span>
+            <div class="desc">Get results by assessment type (All authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/results/detailed</span>
+            <div class="desc">Get detailed performance report (All authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/results/assessment1</span>
+            <div class="desc">Get Assessment 1 results (All authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/results/assessment2</span>
+            <div class="desc">Get Assessment 2 results (All authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/results/exam</span>
+            <div class="desc">Get Exam results (All authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/results/combined</span>
+            <div class="desc">Get combined results report (All authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/student/assessment-results</span>
+            <div class="desc">Get a specific student's results by assessment type (Teacher only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/student/marks</span>
+            <div class="desc">Get marks for a specific student by ID (Teacher/Dean/Admin)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/submissions/my-marks</span>
+            <div class="desc">Get marks for the currently logged in student</div>
+        </div>
+
+        <h2 class="section-title">System Administration</h2>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/system-admin/staff</span>
+            <div class="desc">Get all staff members (Admin only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/system-admin/users/:id</span>
+            <div class="desc">Get user by ID (Admin only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/system-admin/staff</span>
+            <div class="desc">Create a new staff member (Admin only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "email": "string",
+  "password": "string",
+  "fullName": "string",
+  "role": "teacher|dean|admin",
+  "subjects": ["subjectId"] // optional
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/system-admin/users/:id</span>
+            <div class="desc">Update user data (Admin only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "email": "string", // optional
+  "fullName": "string", // optional
+  "role": "teacher|dean|admin" // optional
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">DELETE</span> <span class="url">/api/system-admin/users/:id</span>
+            <div class="desc">Delete a user (Admin only)</div>
+        </div>
+
+        <h2 class="section-title">School Management</h2>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/school</span>
+            <div class="desc">Create a new school (Admin only, with logo upload)</div>
+            <div><b>Body:</b> <i>multipart/form-data</i> with <code>logo</code> and school fields</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/school</span>
+            <div class="desc">Get all schools (Admin only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/school/:id</span>
+            <div class="desc">Get school by ID (Admin only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/school/:id</span>
+            <div class="desc">Update school (Admin only, with logo upload)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">DELETE</span> <span class="url">/api/school/:id</span>
+            <div class="desc">Delete school (Admin only)</div>
+        </div>
+
+        <h2 class="section-title">Term Management</h2>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/terms</span>
+            <div class="desc">Create a new term</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "termNumber": 1,
+  "academicYear": 2025,
+  "school": "schoolId",
+  "startDate": "YYYY-MM-DD",
+  "endDate": "YYYY-MM-DD"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/terms</span>
+            <div class="desc">Get all terms</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/terms/:id</span>
+            <div class="desc">Get term by ID</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/terms/:id</span>
+            <div class="desc">Update term by ID</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">DELETE</span> <span class="url">/api/terms/:id</span>
+            <div class="desc">Delete (soft) term by ID</div>
+        </div>
+
+        <h2 class="section-title">Subject Management</h2>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/subject</span>
+            <div class="desc">Create a new subject</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "name": "string",
+  "description": "string",
+  "school": "schoolId",
+  "classes": ["classId"],
+  "trades": ["tradeId"],
+  "teacher": "teacherId",
+  "credits": 3
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/subject</span>
+            <div class="desc">Get all subjects</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/subject/:id</span>
+            <div class="desc">Get subject by ID</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/subject/:id</span>
+            <div class="desc">Update subject by ID</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">DELETE</span> <span class="url">/api/subject/:id</span>
+            <div class="desc">Delete (soft) subject by ID</div>
+        </div>
+
+        <h2 class="section-title">Enrollment Management</h2>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/enrollment</span>
+            <div class="desc">Create a new enrollment (Dean only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "student": "studentId",
+  "class": "classId",
+  "term": "termId",
+  "school": "schoolId"
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/enrollment</span>
+            <div class="desc">Get all enrollments</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/enrollment/:id</span>
+            <div class="desc">Get enrollment by ID (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/enrollment/:id</span>
+            <div class="desc">Update enrollment (Dean only)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">DELETE</span> <span class="url">/api/enrollment/:id</span>
+            <div class="desc">Delete (soft) enrollment (Dean only)</div>
+        </div>
+
+        <h2 class="section-title">Trade Management</h2>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/trade</span>
+            <div class="desc">Get all trades (Authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">GET</span> <span class="url">/api/trade/:id</span>
+            <div class="desc">Get trade by ID (Authenticated users)</div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">POST</span> <span class="url">/api/trade</span>
+            <div class="desc">Create a new trade (Dean/Admin only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "code": "string",
+  "name": "string",
+  "description": "string" // optional, max 500 chars
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">PUT</span> <span class="url">/api/trade/:id</span>
+            <div class="desc">Update trade (Dean/Admin only)</div>
+            <div><b>Body:</b>
+                <pre class="json-block">{
+  "code": "string",
+  "name": "string",
+  "description": "string" // optional, max 500 chars
+}</pre>
+            </div>
+        </div>
+        <div class="card endpoint">
+            <span class="method">DELETE</span> <span class="url">/api/trade/:id</span>
+            <div class="desc">Delete trade (Dean/Admin only)</div>
+        </div>
+    </div>
+    <script>
+        // Theme toggle with persistence
+        const themeToggle = document.getElementById('themeToggle');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            document.body.classList.add('dark');
+        }
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+        });
+    </script>
+</body>
+
+</html>

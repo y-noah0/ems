@@ -36,7 +36,7 @@ const SchoolSchema = new Schema({
     logo: {
         type: String,
         trim: true,
-        match: [/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i, 'Please enter a valid image URL (png, jpg, jpeg, svg, or gif)'],
+        match: [/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i, 'Please enter a valid image URL'],
         default: null
     },
     isDeleted: {

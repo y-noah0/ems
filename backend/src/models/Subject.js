@@ -16,10 +16,6 @@ const SubjectSchema = new Schema({
     ref: 'School',
     required: true
   },
-  classes: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Class'
-  }],
   trades: [{
     type: Schema.Types.ObjectId,
     ref: 'Trade'

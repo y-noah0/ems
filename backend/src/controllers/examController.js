@@ -2,6 +2,7 @@ const Exam = require('../models/Exam');
 const Class = require('../models/Class');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
+const Submission = require('../models/Submission'); // Added for auto-submission
 const { check, validationResult, param } = require('express-validator');
 const winston = require('winston');
 const mongoose = require('mongoose');
@@ -12,11 +13,12 @@ const { logAudit } = require('../utils/auditLogger');
 const notificationService = require('../utils/notificationService');
 const { sendSMS } = require('../services/twilioService');
 const { sendEmail } = require('../services/emailService');
+const schedule = require('node-schedule'); // Added for scheduling
 
-// Temporary sanitize function (replace with actual implementation if available)
+// Temporary sanitize function
 const sanitize = (value) => String(value || '');
 
-// --- Logger Configuration ---
+// Logger Configuration
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: winston.format.combine(
@@ -34,9 +36,8 @@ if (process.env.NODE_ENV !== 'production') {
     format: winston.format.simple()
   }));
 }
-// --- End Logger Configuration ---
 
-// --- Validation Rules ---
+// Validation Rules
 const allowedExamTypes = ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'];
 
 // Define validation arrays
@@ -77,11 +78,8 @@ const validateScheduleExam = [
   check('start').isISO8601().toDate().withMessage('Invalid start date format'),
   check('duration').isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes')
 ];
-// --- End Validation Rules ---
 
-// @route   POST /api/exams
-// @desc    Create new exam
-// @access  Private (Teacher)
+// Create new exam
 exports.createExam = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -242,22 +240,103 @@ exports.createExam = async (req, res) => {
     }
   } catch (error) {
     logger.error('createExam error', { error: error.message, stack: error.stack });
+
+    const classes = await Class.find({ _id: { $in: classIds } });
+    if (classes.length !== classIds.length) {
+      return res.status(404).json({ success: false, message: 'One or more classes not found' });
+    }
+
+    // Prepare questions array
+    const preparedQuestions = questions.map(q => ({
+      type: q.type,
+      text: q.text,
+      options: q.options || [],
+      correctAnswer: q.correctAnswer || '',
+      maxScore: q.maxScore
+    }));
+
+    const exam = new Exam({
+      title,
+      type,
+      classes: classIds,
+      subject: subjectId,
+      teacher: teacherId,
+      school: teacher.school,
+      schedule: {
+        start: schedule.start,
+        duration: schedule.duration
+      },
+      questions: preparedQuestions,
+      instructions: instructions || undefined,
+      status: 'scheduled',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await exam.save();
+
+    // Emit Socket.IO event to admins and notify deans, headmasters
+    req.io.to('admins').emit('exam-created', {
+      examId: exam._id,
+      title: exam.title,
+      type: exam.type,
+      status: exam.status,
+      createdAt: exam.createdAt,
+    });
+    req.io.to(`school:${exam.school}:dean`).emit('exam-created', {
+      examId: exam._id,
+      title: exam.title,
+      type: exam.type,
+      status: exam.status,
+      createdAt: exam.createdAt,
+    });
+    req.io.to(`school:${exam.school}:headmaster`).emit('exam-created', {
+      examId: exam._id,
+      title: exam.title,
+      type: exam.type,
+      status: exam.status,
+      createdAt: exam.createdAt,
+    });
+
+    res.status(201).json({ success: true, exam, message: 'Exam created successfully' });
+  } catch (error) {
+    logger.error('createExam error', { error: error.message, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-// @route   GET /api/exams/:examId
-// @desc    Get exam by ID (for Teacher and Student based on authorization)
-// @access  Private (Teacher, Student)
+// Get exam by ID
 exports.getExamById = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
     const { examId } = req.params;
     const exam = await Exam.findById(examId)
       .populate('classes', 'level trade year term')
       .populate('subject', 'name')
       .populate('teacher', 'fullName');
-    if (!exam) {
+    if (!exam || exam.isDeleted) {
       return res.status(404).json({ success: false, message: 'Exam not found' });
+    }
+    if (req.user.role === 'student') {
+      const enrollment = await Enrollment.findOne({
+        student: req.user.id,
+        class: { $in: exam.classes },
+        isActive: true,
+        isDeleted: false,
+      });
+      if (!enrollment) {
+        return res.status(403).json({ success: false, message: 'You are not enrolled in this exam\'s class' });
+      }
+    } else if (req.user.role === 'teacher' && exam.teacher.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to view this exam' });
+    } else if (['dean', 'headmaster'].includes(req.user.role)) {
+      const user = await User.findById(req.user.id).select('school');
+      if (user.school.toString() !== exam.school.toString()) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to view exams from this school' });
+      }
     }
     // Remove correctAnswer from questions for students
     let examObj = exam.toObject();
@@ -267,16 +346,14 @@ exports.getExamById = async (req, res) => {
         return rest;
       });
     }
-    res.json({ success: true, exam: examObj });
+    res.json({ success: true, exam: examObj, message: 'Exam retrieved successfully' });
   } catch (error) {
-    logger.error('getExamById error', { error: error.message });
+    logger.error('getExamById error', { error: error.message, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-// @route   PUT /api/exams/:examId
-// @desc    Update exam details
-// @access  Private (Teacher)
+// Update exam details
 exports.updateExam = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -299,12 +376,12 @@ exports.updateExam = async (req, res) => {
     } = req.body;
 
     const exam = await Exam.findById(sanitizedExamId);
-    if (!exam) {
+    if (!exam || exam.isDeleted) {
       logger.warn('Exam not found for update', { examId: sanitizedExamId, userId: req.user.id });
       return res.status(404).json({ success: false, message: 'Exam not found' });
     }
 
-    if (exam.teacher.toString() !== req.user.id) {
+    if (exam.teacher.toString() !== req.user.id && !['admin', 'dean'].includes(req.user.role)) {
       logger.warn('Unauthorized attempt to update exam', { userId: req.user.id, examId: sanitizedExamId });
       return res.status(403).json({
         success: false,
@@ -330,22 +407,10 @@ exports.updateExam = async (req, res) => {
 
       if (classIds && Array.isArray(classIds)) {
         const sanitizedClassIds = classIds.map(id => sanitize(id));
-        const classes = await Class.find({ _id: { $in: sanitizedClassIds } }).lean();
+        const classes = await Class.find({ _id: { $in: sanitizedClassIds }, school: exam.school }).lean();
         if (classes.length !== sanitizedClassIds.length) {
           logger.warn('One or more classes not found for update', { classIds: sanitizedClassIds, userId: req.user.id });
-          return res.status(404).json({ success: false, message: 'One or more classes not found' });
-        }
-
-        // Ensure teacher is authorized for all classes
-        const teacherSubjects = await Subject.find({ teacher: req.user.id, class: { $in: sanitizedClassIds } }).lean();
-        const teacherClassIds = teacherSubjects.map(s => s.class.toString());
-        const invalidClasses = sanitizedClassIds.filter(id => !teacherClassIds.includes(id));
-        if (invalidClasses.length > 0) {
-          logger.warn('Teacher not authorized for some classes during update', { userId: req.user.id, invalidClasses });
-          return res.status(403).json({
-            success: false,
-            message: 'You are not authorized to use some of the specified classes'
-          });
+          return res.status(404).json({ success: false, message: 'One or more classes not found or not in your school' });
         }
         exam.classes = sanitizedClassIds;
       }
@@ -355,13 +420,6 @@ exports.updateExam = async (req, res) => {
         if (!subject) {
           logger.warn('Subject not found for update', { subjectId, userId: req.user.id });
           return res.status(404).json({ success: false, message: 'Subject not found' });
-        }
-        if (subject.teacher.toString() !== req.user.id) {
-          logger.warn('Unauthorized subject update for exam', { userId: req.user.id, subjectId });
-          return res.status(403).json({
-            success: false,
-            message: 'You are not authorized to use this subject'
-          });
         }
         exam.subject = sanitize(subjectId);
       }
@@ -398,8 +456,6 @@ exports.updateExam = async (req, res) => {
           if (exam.status === 'scheduled') {
             exam.status = 'draft';
           }
-        } else {
-          logger.warn('Partial schedule update attempt, ignored.', { examId: sanitizedExamId, schedule, userId: req.user.id });
         }
       }
 
@@ -433,19 +489,48 @@ exports.updateExam = async (req, res) => {
       }
     }
 
+    exam.updatedAt = new Date();
     await exam.save();
 
+    // Emit Socket.IO event to admins and notify teacher, deans, headmasters
+    req.io.to('admins').emit('exam-updated', {
+      examId: exam._id,
+      title: exam.title,
+      type: exam.type,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(exam.teacher.toString()).emit('exam-updated', {
+      examId: exam._id,
+      title: exam.title,
+      type: exam.type,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(`school:${exam.school}:dean`).emit('exam-updated', {
+      examId: exam._id,
+      title: exam.title,
+      type: exam.type,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(`school:${exam.school}:headmaster`).emit('exam-updated', {
+      examId: exam._id,
+      title: exam.title,
+      type: exam.type,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+
     logger.info('Exam updated successfully', { examId: sanitizedExamId, teacherId: req.user.id });
-    res.status(200).json({ success: true, exam: exam.toObject() });
+    res.status(200).json({ success: true, exam: exam.toObject(), message: 'Exam updated successfully' });
   } catch (error) {
     logger.error('Error in updateExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-// @route   DELETE /api/exams/:examId
-// @desc    Delete exam
-// @access  Private (Teacher)
+// Delete exam
 exports.deleteExam = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -458,12 +543,12 @@ exports.deleteExam = async (req, res) => {
     const sanitizedExamId = sanitize(examId);
 
     const exam = await Exam.findById(sanitizedExamId);
-    if (!exam) {
+    if (!exam || exam.isDeleted) {
       logger.warn('Exam not found for deletion', { examId: sanitizedExamId, userId: req.user.id });
       return res.status(404).json({ success: false, message: 'Exam not found' });
     }
 
-    if (exam.teacher.toString() !== req.user.id) {
+    if (exam.teacher.toString() !== req.user.id && !['admin', 'dean'].includes(req.user.role)) {
       logger.warn('Unauthorized attempt to delete exam', { userId: req.user.id, examId: sanitizedExamId });
       return res.status(403).json({
         success: false,
@@ -479,7 +564,31 @@ exports.deleteExam = async (req, res) => {
       });
     }
 
-    await exam.deleteOne();
+    exam.isDeleted = true;
+    exam.updatedAt = new Date();
+    await exam.save();
+
+    // Emit Socket.IO event to admins and notify teacher, deans, headmasters
+    req.io.to('admins').emit('exam-deleted', {
+      examId: exam._id,
+      title: exam.title,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(exam.teacher.toString()).emit('exam-deleted', {
+      examId: exam._id,
+      title: exam.title,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(`school:${exam.school}:dean`).emit('exam-deleted', {
+      examId: exam._id,
+      title: exam.title,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(`school:${exam.school}:headmaster`).emit('exam-deleted', {
+      examId: exam._id,
+      title: exam.title,
+      updatedAt: exam.updatedAt,
+    });
 
     logger.info('Exam deleted successfully', { examId: sanitizedExamId, teacherId: req.user.id });
     res.status(200).json({ success: true, message: 'Exam deleted successfully' });
@@ -489,9 +598,7 @@ exports.deleteExam = async (req, res) => {
   }
 };
 
-// @route   GET /api/exams/student/upcoming
-// @desc    Get upcoming exams for a student
-// @access  Private (Student)
+// Get upcoming exams for a student
 exports.getUpcomingExamsForStudent = async (req, res) => {
   try {
     const student = await User.findById(req.user.id).lean();
@@ -504,7 +611,8 @@ exports.getUpcomingExamsForStudent = async (req, res) => {
     const exams = await Exam.find({
       classes: student.class,
       status: 'scheduled',
-      'schedule.start': { $gte: now }
+      'schedule.start': { $gte: now },
+      isDeleted: false,
     })
       .populate('subject', 'name')
       .populate('teacher', 'fullName')
@@ -512,17 +620,24 @@ exports.getUpcomingExamsForStudent = async (req, res) => {
       .sort({ 'schedule.start': 1 })
       .lean();
 
+    // Hide correct answers
+    const filteredExams = exams.map(exam => ({
+      ...exam,
+      questions: exam.questions.map(q => {
+        const { correctAnswer, ...rest } = q;
+        return rest;
+      }),
+    }));
+
     logger.info('Upcoming exams fetched for student', { userId: req.user.id, classId: student.class });
-    res.status(200).json({ success: true, exams });
+    res.status(200).json({ success: true, exams: filteredExams, message: 'Upcoming exams retrieved successfully' });
   } catch (error) {
     logger.error('Error in getUpcomingExamsForStudent', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-// @route   GET /api/exams/student/class
-// @desc    Get all exams for student's class (scheduled or active)
-// @access  Private (Student)
+// Get all exams for student's class
 exports.getStudentClassExams = async (req, res) => {
   try {
     const student = await User.findById(req.user.id).select('class');
@@ -532,20 +647,29 @@ exports.getStudentClassExams = async (req, res) => {
     }
     const exams = await Exam.find({
       classes: student.class,
-      status: { $in: ['scheduled', 'active'] }
+      status: { $in: ['scheduled', 'active'] },
+      isDeleted: false,
     })
       .populate('subject', 'name')
       .populate('teacher', 'fullName')
       .populate('classes', 'level trade year term')
       .lean();
+
+    // Hide correct answers
+    const filteredExams = exams.map(exam => ({
+      ...exam,
+      questions: exam.questions.map(q => {
+        const { correctAnswer, ...rest } = q;
+        return rest;
+      }),
+    }));
+
     logger.info('Class exams fetched for student', {
       classId: student.class,
       userId: req.user.id,
       examCount: exams.length,
-      exams: exams.map(e => ({ id: e._id, title: e.title, status: e.status }))
     });
-    console.log('Exams for class:', exams.map(e => ({ id: e._id, title: e.title, status: e.status })));
-    res.status(200).json({ success: true, exams });
+    res.status(200).json({ success: true, exams: filteredExams, message: 'Student class exams retrieved successfully' });
   } catch (error) {
     logger.error('Error fetching student class exams', {
       error: error.message,
@@ -555,9 +679,7 @@ exports.getStudentClassExams = async (req, res) => {
   }
 };
 
-// @route   PUT /api/exams/:examId/activate
-// @desc    Activate exam (change status from 'scheduled' to 'active')
-// @access  Private (Teacher)
+// Activate exam
 exports.activateExam = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -571,13 +693,11 @@ exports.activateExam = async (req, res) => {
     try {
       const exam = await validateEntity(Exam, examId, 'Exam');
 
-      if (exam.teacher.toString() !== req.user.id) {
-        logger.warn('Unauthorized attempt to activate exam', { userId: req.user.id, examId });
-        return res.status(403).json({
-          success: false,
-          message: 'You are not authorized to activate this exam'
-        });
-      }
+    const exam = await Exam.findById(sanitizedExamId);
+    if (!exam || exam.isDeleted) {
+      logger.warn('Exam not found for activation', { examId: sanitizedExamId, userId: req.user.id });
+      return res.status(404).json({ success: false, message: 'Exam not found' });
+    }
 
       if (exam.status !== 'scheduled') {
         logger.warn('Cannot activate exam with status', { 
@@ -629,15 +749,111 @@ exports.activateExam = async (req, res) => {
         message: validationError.message 
       });
     }
+
+    if (exam.status !== 'scheduled') {
+      logger.warn('Cannot activate exam with status', { examId: sanitizedExamId, status: exam.status, userId: req.user.id });
+      return res.status(400).json({
+        success: false,
+        message: `Exam status must be 'scheduled' to activate. Current status: '${exam.status}'.`
+      });
+    }
+
+    if (exam.schedule && new Date(exam.schedule.start) > new Date()) {
+      logger.warn('Cannot activate exam before its scheduled start time', { examId: sanitizedExamId, userId: req.user.id, scheduledStart: exam.schedule.start });
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot activate exam before its scheduled start time.'
+      });
+    }
+
+    exam.status = 'active';
+    exam.updatedAt = new Date();
+    await exam.save();
+
+    // Schedule auto-submission job
+    if (exam.schedule && exam.schedule.start && exam.schedule.duration) {
+      const endTime = new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000);
+      schedule.scheduleJob(`auto-submit-${exam._id}`, endTime, async () => {
+        try {
+          const submissions = await Submission.find({
+            exam: exam._id,
+            status: 'in-progress',
+            isDeleted: false,
+          });
+          for (const submission of submissions) {
+            submission.status = 'submitted';
+            submission.submittedAt = new Date();
+            await submission.save();
+            // Notify student and teacher
+            req.io.to(submission.student.toString()).emit('exam-auto-submitted', {
+              examId: exam._id,
+              submissionId: submission._id,
+              title: exam.title,
+              submittedAt: submission.submittedAt,
+            });
+            req.io.to(exam.teacher.toString()).emit('exam-auto-submitted', {
+              examId: exam._id,
+              submissionId: submission._id,
+              studentId: submission.student,
+              title: exam.title,
+              submittedAt: submission.submittedAt,
+            });
+            logger.info('Auto-submitted submission', {
+              examId: exam._id,
+              submissionId: submission._id,
+              studentId: submission.student,
+            });
+          }
+          logger.info('Auto-submission job completed', { examId: exam._id });
+        } catch (error) {
+          logger.error('Error in auto-submission job', {
+            examId: exam._id,
+            error: error.message,
+            stack: error.stack,
+          });
+        }
+      });
+      logger.info('Auto-submission job scheduled', {
+        examId: exam._id,
+        endTime,
+      });
+    }
+
+    // Emit Socket.IO event to admins and notify teacher, deans, headmasters
+    req.io.to('admins').emit('exam-status-changed', {
+      examId: exam._id,
+      title: exam.title,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(exam.teacher.toString()).emit('exam-status-changed', {
+      examId: exam._id,
+      title: exam.title,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(`school:${exam.school}:dean`).emit('exam-status-changed', {
+      examId: exam._id,
+      title: exam.title,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(`school:${exam.school}:headmaster`).emit('exam-status-changed', {
+      examId: exam._id,
+      title: exam.title,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+
+    logger.info('Exam activated successfully', { examId: sanitizedExamId, teacherId: req.user.id });
+    res.status(200).json({ success: true, message: 'Exam activated successfully', exam: exam.toObject() });
   } catch (error) {
     logger.error('Error in activateExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 };
 
-// @route   PUT /api/exams/:examId/complete
-// @desc    Complete exam (change status from 'active' to 'completed')
-// @access  Private (Teacher)
+// Complete exam
 exports.completeExam = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -651,13 +867,11 @@ exports.completeExam = async (req, res) => {
     try {
       const exam = await validateEntity(Exam, examId, 'Exam');
 
-      if (exam.teacher.toString() !== req.user.id) {
-        logger.warn('Unauthorized attempt to complete exam', { userId: req.user.id, examId });
-        return res.status(403).json({
-          success: false,
-          message: 'You are not authorized to complete this exam'
-        });
-      }
+    const exam = await Exam.findById(sanitizedExamId);
+    if (!exam || exam.isDeleted) {
+      logger.warn('Exam not found for completion', { examId: sanitizedExamId, userId: req.user.id });
+      return res.status(404).json({ success: false, message: 'Exam not found' });
+    }
 
       if (exam.status !== 'active') {
         logger.warn('Cannot complete exam with status', { 
@@ -697,6 +911,85 @@ exports.completeExam = async (req, res) => {
         message: validationError.message 
       });
     }
+
+    if (exam.status !== 'active') {
+      logger.warn('Cannot complete exam with status', { examId: sanitizedExamId, status: exam.status, userId: req.user.id });
+      return res.status(400).json({
+        success: false,
+        message: `Exam status must be 'active' to complete. Current status: '${exam.status}'.`
+      });
+    }
+
+    // Cancel auto-submission job if it exists
+    const job = schedule.scheduledJobs[`auto-submit-${exam._id}`];
+    if (job) {
+      job.cancel();
+      logger.info('Auto-submission job cancelled', { examId: exam._id });
+    }
+
+    exam.status = 'completed';
+    exam.updatedAt = new Date();
+    await exam.save();
+
+    // Auto-submit any remaining in-progress submissions
+    const submissions = await Submission.find({
+      exam: exam._id,
+      status: 'in-progress',
+      isDeleted: false,
+    });
+    for (const submission of submissions) {
+      submission.status = 'submitted';
+      submission.submittedAt = new Date();
+      await submission.save();
+      // Notify student and teacher
+      req.io.to(submission.student.toString()).emit('exam-auto-submitted', {
+        examId: exam._id,
+        submissionId: submission._id,
+        title: exam.title,
+        submittedAt: submission.submittedAt,
+      });
+      req.io.to(exam.teacher.toString()).emit('exam-auto-submitted', {
+        examId: exam._id,
+        submissionId: submission._id,
+        studentId: submission.student,
+        title: exam.title,
+        submittedAt: submission.submittedAt,
+      });
+      logger.info('Auto-submitted submission on exam completion', {
+        examId: exam._id,
+        submissionId: submission._id,
+        studentId: submission.student,
+      });
+    }
+
+    // Emit Socket.IO event to admins and notify teacher, deans, headmasters
+    req.io.to('admins').emit('exam-status-changed', {
+      examId: exam._id,
+      title: exam.title,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(exam.teacher.toString()).emit('exam-status-changed', {
+      examId: exam._id,
+      title: exam.title,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(`school:${exam.school}:dean`).emit('exam-status-changed', {
+      examId: exam._id,
+      title: exam.title,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+    req.io.to(`school:${exam.school}:headmaster`).emit('exam-status-changed', {
+      examId: exam._id,
+      title: exam.title,
+      status: exam.status,
+      updatedAt: exam.updatedAt,
+    });
+
+    logger.info('Exam completed successfully', { examId: sanitizedExamId, teacherId: req.user.id });
+    res.status(200).json({ success: true, message: 'Exam marked as completed', exam: exam.toObject() });
   } catch (error) {
     logger.error('Error in completeExam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -918,20 +1211,71 @@ exports.getTeacherSubjects = async (req, res) => {
       .populate('classes', 'level trade year term')
       .populate('school', 'name')
       .lean();
-    
-    logger.info('Teacher subjects fetched', { 
-      teacherId: req.user.id, 
-      subjectCount: subjects.length 
-    });
-    
-    res.status(200).json({ success: true, subjects });
+
+    logger.info('Teacher subjects fetched', { userId: req.user.id });
+    res.status(200).json({ success: true, subjects, message: 'Teacher subjects retrieved successfully' });
   } catch (error) {
-    logger.error('Error fetching teacher subjects', { 
-      error: error.message, 
-      stack: error.stack,
-      userId: req.user.id 
-    });
+    logger.error('Error in getTeacherSubjects', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// Get classes associated with subjects taught by teacher
+exports.getClassesForTeacher = async (req, res) => {
+  try {
+    const teacherSubjects = await Subject.find({ teacher: req.user.id }).lean();
+    const classIds = [...new Set(teacherSubjects.map(subject => subject.class.toString()))].map(id => new mongoose.Types.ObjectId(id));
+
+    if (classIds.length === 0) {
+      logger.info('No classes found for teacher', { userId: req.user.id });
+      return res.status(200).json({ success: true, classes: [], message: 'No classes found for teacher' });
+    }
+
+    const classes = await Class.find({ _id: { $in: classIds } })
+      .sort({ level: 1, trade: 1, year: 1, term: 1 })
+      .lean();
+
+    logger.info('Classes fetched for teacher', { userId: req.user.id });
+    res.status(200).json({ success: true, classes, message: 'Classes retrieved successfully' });
+  } catch (error) {
+    logger.error('Error in getClassesForTeacher', { error: error.message, stack: error.stack, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// Get all exams created by teacher
+exports.getTeacherExams = async (req, res) => {
+  try {
+    const exams = await Exam.find({ teacher: req.user.id, isDeleted: false })
+      .populate('classes', 'level trade year term')
+      .populate('subject', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    logger.info('Teacher exams fetched', { userId: req.user.id, examCount: exams.length });
+    res.status(200).json({ success: true, exams, message: 'Teacher exams retrieved successfully' });
+  } catch (error) {
+    logger.error('Error in getTeacherExams', { error: error.message, stack: error.stack, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+// Get all exams for a school (dean/headmaster)
+exports.getSchoolExams = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('school');
+    const exams = await Exam.find({
+      school: user.school,
+      isDeleted: false,
+    })
+      .populate('teacher', 'fullName')
+      .populate('subject', 'name')
+      .populate('classes', 'level trade year term')
+      .lean();
+    res.json({ success: true, exams, message: 'School exams retrieved successfully' });
+  } catch (error) {
+    logger.error('getSchoolExams error', { error: error.message, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving school exams' });
   }
 };
 
@@ -952,5 +1296,6 @@ module.exports = {
   validateCreateExam,
   validateUpdateExam,
   validateExamIdParam,
-  validateScheduleExam
+  validateScheduleExam,
+  getSchoolExams: exports.getSchoolExams,
 };

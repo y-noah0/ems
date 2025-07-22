@@ -10,12 +10,25 @@ const {
     deleteEnrollment
 } = require('../controllers/enrollmentController');
 const { authenticate, isDean } = require('../middlewares/authMiddleware');
-// Validation rules you can customize:
+
+// Validation rules
 const enrollmentValidationRules = [
     body('student').isMongoId().withMessage('Valid student ID required'),
     body('class').isMongoId().withMessage('Valid class ID required'),
     body('term').isMongoId().withMessage('Valid term ID required'),
     body('school').isMongoId().withMessage('Valid school ID required'),
+    body('promotionStatus')
+        .optional()
+        .isIn(['eligible', 'repeat', 'expelled', 'onLeave', 'withdrawn'])
+        .withMessage('Invalid promotion status'),
+    body('isActive')
+        .optional()
+        .isBoolean()
+        .withMessage('isActive must be a boolean'),
+    body('transferredFromSchool')
+        .optional()
+        .isMongoId()
+        .withMessage('Valid transferredFromSchool ID required')
 ];
 
 // Create enrollment
@@ -53,9 +66,9 @@ router.put(
 
 // Delete enrollment (soft delete)
 router.delete(
+    '/:id',
     authenticate,
     isDean,
-    '/:id',
     param('id').isMongoId().withMessage('Valid enrollment ID required'),
     deleteEnrollment
 );

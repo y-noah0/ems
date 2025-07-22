@@ -1,7 +1,6 @@
 const Submission = require('../models/Submission');
 const Exam = require('../models/Exam');
 const Enrollment = require('../models/enrollment');
-const Class = require('../models/Class');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
@@ -21,13 +20,15 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' })
-  ]
+    new winston.transports.File({ filename: 'combined.log' }),
+  ],
 });
 if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple()
-  }));
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.simple(),
+    })
+  );
 }
 
 const submissionController = {};
@@ -69,6 +70,31 @@ submissionController.startExam = async (req, res) => {
     if (exam.status === 'scheduled' && exam.schedule && new Date(exam.schedule.start) <= new Date()) {
       exam.status = 'active';
       await exam.save();
+      req.io.to('admins').emit('exam-status-changed', {
+        examId: exam._id,
+        title: exam.title,
+        status: exam.status,
+        updatedAt: exam.updatedAt,
+      });
+      // Notify teacher, deans, headmasters of status change
+      req.io.to(exam.teacher.toString()).emit('exam-status-changed', {
+        examId: exam._id,
+        title: exam.title,
+        status: exam.status,
+        updatedAt: exam.updatedAt,
+      });
+      req.io.to(`school:${exam.school}:dean`).emit('exam-status-changed', {
+        examId: exam._id,
+        title: exam.title,
+        status: exam.status,
+        updatedAt: exam.updatedAt,
+      });
+      req.io.to(`school:${exam.school}:headmaster`).emit('exam-status-changed', {
+        examId: exam._id,
+        title: exam.title,
+        status: exam.status,
+        updatedAt: exam.updatedAt,
+      });
     }
     if (exam.status !== 'active') {
       return res.status(400).json({ success: false, message: 'Exam is not active' });
@@ -76,34 +102,35 @@ submissionController.startExam = async (req, res) => {
     const enrollment = await Enrollment.findOne({
       student: req.user.id,
       isActive: true,
-      isDeleted: false
+      isDeleted: false,
     });
     if (!enrollment) {
       return res.status(403).json({ success: false, message: 'No active enrollment found' });
     }
     if (!exam.classes.map(id => id.toString()).includes(enrollment.class.toString())) {
-      return res.status(403).json({ success: false, message: 'Not enrolled in this class' });
+      return res.status(403).json({ success: false, message: 'You are not enrolled in this exam\'s class' });
     }
     const existing = await Submission.findOne({
       exam: examId,
       student: req.user.id,
-      isDeleted: false
+      isDeleted: false,
     });
     if (existing) {
       if (existing.status === 'in-progress') {
         return res.json({
           success: true,
           submission: existing,
-          timeRemaining: calculateTimeRemaining(existing, exam)
+          timeRemaining: calculateTimeRemaining(existing, exam),
+          message: 'Exam already in progress',
         });
       }
-      return res.status(400).json({ success: false, message: 'Already submitted' });
+      return res.status(400).json({ success: false, message: 'You have already submitted this exam' });
     }
     const answers = exam.questions.map(q => ({
       questionId: q._id,
       answer: '',
       score: 0,
-      timeSpent: 0
+      timeSpent: 0,
     }));
     const submission = new Submission({
       exam: examId,
@@ -115,17 +142,35 @@ submissionController.startExam = async (req, res) => {
       violations: 0,
       totalScore: 0,
       percentage: 0,
-      timeSpent: 0
+      timeSpent: 0,
     });
     await submission.save();
+
+    // Emit Socket.IO event to admins and notify teacher, deans, headmasters
+    const student = await User.findById(req.user.id).select('fullName');
+    req.io.to(`exam:${examId}`).emit('submission-started', {
+      examId,
+      submissionId: submission._id,
+      studentId: req.user.id,
+      studentName: student.fullName,
+      startedAt: submission.startedAt,
+    });
+    req.io.emit('notify-exam-start', {
+      examId,
+      submissionId: submission._id,
+      studentId: req.user.id,
+      studentName: student.fullName,
+    });
+
     res.status(201).json({
       success: true,
       submission,
-      timeRemaining: exam.schedule.duration * 60 * 1000
+      timeRemaining: exam.schedule.duration * 60 * 1000,
+      message: 'Exam started successfully',
     });
   } catch (error) {
     logger.error('startExam error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while starting the exam' });
   }
 };
 
@@ -140,10 +185,10 @@ submissionController.saveAnswers = async (req, res) => {
     const submission = await Submission.findOne({
       _id: submissionId,
       student: req.user.id,
-      isDeleted: false
+      isDeleted: false,
     });
     if (!submission || submission.status !== 'in-progress') {
-      return res.status(400).json({ success: false, message: 'Submission not found or not in progress' });
+      return res.status(400).json({ success: false, message: 'Submission not found or exam is not in progress' });
     }
     if (answers && Array.isArray(answers)) {
       answers.forEach(answer => {
@@ -156,10 +201,21 @@ submissionController.saveAnswers = async (req, res) => {
     }
     submission.autoSaves.push({ timestamp: new Date(), data: answers });
     await submission.save();
-    res.json({ success: true, message: 'Answers saved', lastSaved: new Date() });
+
+    // Emit Socket.IO event to admins
+    const student = await User.findById(req.user.id).select('fullName');
+    req.io.to(`exam:${submission.exam}`).emit('answers-saved', {
+      examId: submission.exam,
+      submissionId: submission._id,
+      studentId: req.user.id,
+      studentName: student.fullName,
+      lastSaved: new Date(),
+    });
+
+    res.json({ success: true, message: 'Answers saved successfully', lastSaved: new Date() });
   } catch (error) {
     logger.error('saveAnswers error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while saving answers' });
   }
 };
 
@@ -175,11 +231,11 @@ submissionController.submitExam = async (req, res) => {
     const submission = await Submission.findOne({
       _id: submissionId,
       student: req.user.id,
-      isDeleted: false
+      isDeleted: false,
     });
     
     if (!submission || submission.status !== 'in-progress') {
-      return res.status(400).json({ success: false, message: 'Submission not found or not in progress' });
+      return res.status(400).json({ success: false, message: 'Submission not found or exam is not in progress' });
     }
     
     // Update submission with latest answers
@@ -291,7 +347,7 @@ submissionController.submitExam = async (req, res) => {
     });
   } catch (error) {
     logger.error('submitExam error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while submitting the exam' });
   }
 };
 
@@ -307,11 +363,11 @@ submissionController.autoSubmitExam = async (req, res) => {
     const submission = await Submission.findOne({
       _id: submissionId,
       student: req.user.id,
-      isDeleted: false
+      isDeleted: false,
     });
     
     if (!submission || submission.status !== 'in-progress') {
-      return res.status(400).json({ success: false, message: 'Submission not found or not in progress' });
+      return res.status(400).json({ success: false, message: 'Submission not found or exam is not in progress' });
     }
     
     if (reason && reason.answers && Array.isArray(reason.answers)) {
@@ -330,7 +386,7 @@ submissionController.autoSubmitExam = async (req, res) => {
       submission.violationLogs.push({
         type: reason.type || 'other',
         timestamp: new Date(),
-        details: reason.details || 'Auto-submitted'
+        details: reason.details || 'Auto-submitted due to time expiry or violation',
       });
     }
     
@@ -343,26 +399,29 @@ submissionController.autoSubmitExam = async (req, res) => {
     }
     
     await submission.save();
-    
-    // Log the auto-submission
-    await logAudit(
-      'submission',
-      submission._id,
-      'auto-submit',
-      req.user.id,
-      { status: 'in-progress' },
-      { status: submission.status, reason: reason?.type || 'time-expired' }
-    );
-    
-    res.json({ 
-      success: true, 
-      message: 'Exam auto-submitted', 
-      submission,
-      autoGraded: submission.status === 'graded'
+
+    // Emit Socket.IO event to admins and notify teacher, deans, headmasters
+    const student = await User.findById(req.user.id).select('fullName');
+    req.io.to(`exam:${submission.exam}`).emit('submission-auto-submitted', {
+      examId: submission.exam,
+      submissionId: submission._id,
+      studentId: req.user.id,
+      studentName: student.fullName,
+      submittedAt: submission.submittedAt,
+      reason: reason?.details || 'Auto-submitted',
     });
+    req.io.emit('notify-submission', {
+      examId: submission.exam,
+      submissionId: submission._id,
+      studentId: req.user.id,
+      studentName: student.fullName,
+      status: 'auto-submitted',
+    });
+
+    res.json({ success: true, message: 'Exam auto-submitted successfully', submission });
   } catch (error) {
     logger.error('autoSubmitExam error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while auto-submitting the exam' });
   }
 };
 
@@ -377,39 +436,122 @@ submissionController.logViolation = async (req, res) => {
     const submission = await Submission.findOne({
       _id: submissionId,
       student: req.user.id,
-      isDeleted: false
+      isDeleted: false,
     });
     if (!submission || submission.status !== 'in-progress') {
-      return res.status(400).json({ success: false, message: 'Submission not found or not in progress' });
+      return res.status(400).json({ success: false, message: 'Submission not found or exam is not in progress' });
     }
     submission.violations += 1;
     submission.violationLogs.push({
       type: violationType,
       timestamp: new Date(),
-      details: details || ''
+      details: details || 'No additional details provided',
     });
     const violationThreshold = 2;
+    let shouldAutoSubmit = false;
     if (submission.violations >= violationThreshold) {
       submission.status = 'auto-submitted';
       submission.submittedAt = new Date();
-      await submission.save();
-      return res.json({
-        success: true,
-        message: 'Violation threshold exceeded - exam auto-submitted.',
-        shouldAutoSubmit: true,
-        violations: submission.violations
-      });
+      shouldAutoSubmit = true;
     }
     await submission.save();
+
+    // Emit Socket.IO events
+    const student = await User.findById(req.user.id).select('fullName');
+    req.io.to(`exam:${submission.exam}`).emit('violation-logged', {
+      examId: submission.exam,
+      submissionId: submission._id,
+      studentId: req.user.id,
+      studentName: student.fullName,
+      violationType,
+      details,
+      violations: submission.violations,
+      timestamp: new Date(),
+    });
+    req.io.emit('notify-violation', {
+      examId: submission.exam,
+      submissionId: submission._id,
+      studentId: req.user.id,
+      studentName: student.fullName,
+      violationType,
+      details,
+    });
+
+    if (shouldAutoSubmit) {
+      req.io.to(`exam:${submission.exam}`).emit('submission-auto-submitted', {
+        examId: submission.exam,
+        submissionId: submission._id,
+        studentId: req.user.id,
+        studentName: student.fullName,
+        submittedAt: submission.submittedAt,
+        reason: 'Violation threshold exceeded',
+      });
+      req.io.emit('notify-submission', {
+        examId: submission.exam,
+        submissionId: submission._id,
+        studentId: req.user.id,
+        studentName: student.fullName,
+        status: 'auto-submitted',
+      });
+    }
+
     res.json({
       success: true,
-      message: 'Violation logged',
-      shouldAutoSubmit: false,
-      violations: submission.violations
+      message: shouldAutoSubmit ? 'Violation threshold exceeded - exam auto-submitted' : 'Violation logged successfully',
+      shouldAutoSubmit,
+      violations: submission.violations,
     });
   } catch (error) {
     logger.error('logViolation error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while logging violation' });
+  }
+};
+
+// Monitor exam (real-time active submissions)
+submissionController.monitorExam = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    const { examId } = req.params;
+    const exam = await Exam.findById(examId).select('teacher school status');
+    if (!exam) {
+      return res.status(404).json({ success: false, message: 'Exam not found' });
+    }
+    // Check authorization
+    if (req.user.role === 'teacher' && exam.teacher.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to monitor this exam' });
+    }
+    if (['dean', 'headmaster'].includes(req.user.role)) {
+      const user = await User.findById(req.user.id).select('school');
+      if (user.school.toString() !== exam.school.toString()) {
+        return res.status(403).json({ success: false, message: 'You are not authorized to monitor exams from this school' });
+      }
+    }
+    if (exam.status !== 'active') {
+      return res.status(400).json({ success: false, message: 'Exam is not currently active' });
+    }
+    const submissions = await Submission.find({
+      exam: examId,
+      status: 'in-progress',
+      isDeleted: false,
+    })
+      .populate('student', 'fullName')
+      .lean();
+    const activeSubmissions = submissions.map(s => ({
+      submissionId: s._id,
+      studentId: s.student._id,
+      studentName: s.student.fullName,
+      startedAt: s.startedAt,
+      timeSpent: s.timeSpent,
+      violations: s.violations,
+      timeRemaining: calculateTimeRemaining(s, exam),
+    }));
+    res.json({ success: true, examId, submissions: activeSubmissions, message: 'Active submissions retrieved successfully' });
+  } catch (error) {
+    logger.error('monitorExam error', { error: error.message, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server error occurred while monitoring exam' });
   }
 };
 
@@ -418,14 +560,14 @@ submissionController.getStudentSubmissions = async (req, res) => {
   try {
     const submissions = await Submission.find({
       student: req.user.id,
-      isDeleted: false
+      isDeleted: false,
     })
       .populate('exam', 'title type')
       .lean();
-    res.json({ success: true, submissions });
+    res.json({ success: true, submissions, message: 'Submissions retrieved successfully' });
   } catch (error) {
     logger.error('getStudentSubmissions error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving submissions' });
   }
 };
 
@@ -435,15 +577,15 @@ submissionController.getTeacherSubmissions = async (req, res) => {
     const exams = await Exam.find({ teacher: req.user.id }).select('_id');
     const submissions = await Submission.find({
       exam: { $in: exams.map(e => e._id) },
-      isDeleted: false
+      isDeleted: false,
     })
       .populate('exam', 'title type')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, submissions });
+    res.json({ success: true, submissions, message: 'Teacher submissions retrieved successfully' });
   } catch (error) {
     logger.error('getTeacherSubmissions error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving teacher submissions' });
   }
 };
 
@@ -456,18 +598,18 @@ submissionController.getExamSubmissions = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Exam not found' });
     }
     if (exam.teacher.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success: false, message: 'You are not authorized to view submissions for this exam' });
     }
     const submissions = await Submission.find({
       exam: examId,
-      isDeleted: false
+      isDeleted: false,
     })
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, submissions });
+    res.json({ success: true, submissions, message: 'Exam submissions retrieved successfully' });
   } catch (error) {
     logger.error('getExamSubmissions error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving exam submissions' });
   }
 };
 
@@ -781,22 +923,22 @@ submissionController.getStudentResultsByTerm = async (req, res) => {
       student: req.user.id,
       term: termId,
       isActive: true,
-      isDeleted: false
+      isDeleted: false,
     });
     if (!enrollment) {
-      return res.status(404).json({ success: false, message: 'Enrollment not found' });
+      return res.status(404).json({ success: false, message: 'No active enrollment found for the specified term' });
     }
     const submissions = await Submission.find({
       student: req.user.id,
       enrollment: enrollment._id,
-      isDeleted: false
+      isDeleted: false,
     })
       .populate('exam', 'title type subject')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Results retrieved successfully' });
   } catch (error) {
     logger.error('getStudentResultsByTerm error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving results' });
   }
 };
 
@@ -812,12 +954,12 @@ submissionController.getSubmissionDetails = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Submission not found' });
     }
     if (req.user.role === 'student' && submission.student._id.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Unauthorized' });
+      return res.status(403).json({ success: false, message: 'You are not authorized to view this submission' });
     }
     if (req.user.role === 'teacher') {
       const exam = await Exam.findById(submission.exam._id);
       if (exam.teacher.toString() !== req.user.id) {
-        return res.status(403).json({ success: false, message: 'Unauthorized' });
+        return res.status(403).json({ success: false, message: 'You are not authorized to view this submission' });
       }
     }
     if (req.user.role === 'student') {
@@ -826,10 +968,10 @@ submissionController.getSubmissionDetails = async (req, res) => {
         return rest;
       });
     }
-    res.json({ success: true, submission });
+    res.json({ success: true, submission, message: 'Submission details retrieved successfully' });
   } catch (error) {
     logger.error('getSubmissionDetails error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving submission details' });
   }
 };
 
@@ -847,10 +989,10 @@ submissionController.getHomeworkResults = async (req, res) => {
       .populate('exam', 'title subject')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Homework results retrieved successfully' });
   } catch (error) {
     logger.error('getHomeworkResults error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving homework results' });
   }
 };
 
@@ -868,10 +1010,10 @@ submissionController.getQuizResults = async (req, res) => {
       .populate('exam', 'title subject')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Quiz results retrieved successfully' });
   } catch (error) {
     logger.error('getQuizResults error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving quiz results' });
   }
 };
 
@@ -893,10 +1035,10 @@ submissionController.getResultsByAssessmentType = async (req, res) => {
       .populate('exam', 'title subject')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: `${type} results retrieved successfully` });
   } catch (error) {
     logger.error('getResultsByAssessmentType error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving results' });
   }
 };
 
@@ -922,14 +1064,14 @@ submissionController.getCombinedDetailedResults = async (req, res) => {
         student: sub.student.fullName,
         totalScore: sub.totalScore,
         percentage: sub.percentage,
-        gradeLetter: sub.gradeLetter
+        gradeLetter: sub.gradeLetter,
       });
       return acc;
     }, {});
-    res.json({ success: true, results });
+    res.json({ success: true, results, message: 'Detailed results retrieved successfully' });
   } catch (error) {
     logger.error('getCombinedDetailedResults error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving detailed results' });
   }
 };
 
@@ -947,10 +1089,10 @@ submissionController.getAssessment1Results = async (req, res) => {
       .populate('exam', 'title subject')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Assessment 1 results retrieved successfully' });
   } catch (error) {
     logger.error('getAssessment1Results error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving Assessment 1 results' });
   }
 };
 
@@ -968,10 +1110,10 @@ submissionController.getAssessment2Results = async (req, res) => {
       .populate('exam', 'title subject')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Assessment 2 results retrieved successfully' });
   } catch (error) {
     logger.error('getAssessment2Results error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving Assessment 2 results' });
   }
 };
 
@@ -989,10 +1131,10 @@ submissionController.getExamResults = async (req, res) => {
       .populate('exam', 'title subject')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Exam results retrieved successfully' });
   } catch (error) {
     logger.error('getExamResults error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving exam results' });
   }
 };
 
@@ -1010,10 +1152,10 @@ submissionController.getCombinedResults = async (req, res) => {
       .populate('exam', 'title type subject')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Combined results retrieved successfully' });
   } catch (error) {
     logger.error('getCombinedResults error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving combined results' });
   }
 };
 
@@ -1028,15 +1170,15 @@ submissionController.getStudentResultsByAssessmentType = async (req, res) => {
     const submissions = await Submission.find({
       student: studentId,
       exam: { $in: exams.map(e => e._id) },
-      isDeleted: false
+      isDeleted: false,
     })
       .populate('exam', 'title subject')
       .populate('student', 'fullName')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: `${type} results for student retrieved successfully` });
   } catch (error) {
     logger.error('getStudentResultsByAssessmentType error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving student results' });
   }
 };
 
@@ -1050,14 +1192,62 @@ submissionController.getStudentMarksByID = async (req, res) => {
     }
     const submissions = await Submission.find({
       student: studentId,
-      isDeleted: false
+      isDeleted: false,
     })
       .populate('exam', 'title type subject')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Student marks retrieved successfully' });
   } catch (error) {
     logger.error('getStudentMarksByID error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving student marks' });
+  }
+};
+
+// Update submission grades
+submissionController.updateSubmissionGrades = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+    const { submissionId } = req.params;
+    const { grades } = req.body;
+    const submission = await Submission.findById(submissionId).populate('exam');
+    if (!submission) {
+      return res.status(404).json({ success: false, message: 'Submission not found' });
+    }
+    if (submission.exam.teacher.toString() !== req.user.id && !['dean', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to grade this submission' });
+    }
+    let totalScore = 0;
+    grades.forEach(grade => {
+      const idx = submission.answers.findIndex(a => a.questionId.toString() === grade.questionId);
+      if (idx !== -1) {
+        submission.answers[idx].score = parseInt(grade.score) || 0;
+        totalScore += submission.answers[idx].score;
+      }
+    });
+    const maxScore = submission.exam.questions.reduce((sum, q) => sum + q.maxScore, 0);
+    submission.totalScore = totalScore;
+    submission.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+    submission.gradeLetter = calculateGradeLetter(submission.percentage);
+    await submission.save();
+
+    // Emit Socket.IO event to admins
+    req.io.to(`exam:${submission.exam._id}`).emit('submission-graded', {
+      examId: submission.exam._id,
+      submissionId: submission._id,
+      studentId: submission.student,
+      totalScore: submission.totalScore,
+      percentage: submission.percentage,
+      gradeLetter: submission.gradeLetter,
+      gradedAt: new Date(),
+    });
+
+    res.json({ success: true, submission, message: 'Grades updated successfully' });
+  } catch (error) {
+    logger.error('updateSubmissionGrades error', { error: error.message, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server error occurred while updating grades' });
   }
 };
 
@@ -1066,14 +1256,14 @@ submissionController.getMyMarks = async (req, res) => {
   try {
     const submissions = await Submission.find({
       student: req.user.id,
-      isDeleted: false
+      isDeleted: false,
     })
       .populate('exam', 'title type subject')
       .lean();
-    res.json({ success: true, results: submissions });
+    res.json({ success: true, results: submissions, message: 'Your marks retrieved successfully' });
   } catch (error) {
     logger.error('getMyMarks error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: 'Server error occurred while retrieving your marks' });
   }
 };
 
