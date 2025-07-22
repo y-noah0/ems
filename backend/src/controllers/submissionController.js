@@ -60,7 +60,10 @@ submissionController.startExam = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
+      return res.status(400).json({ 
+        success: false, 
+        errors: errors.array() 
+      });
     }
     const { examId } = req.body;
     const exam = await Exam.findById(examId);
@@ -169,8 +172,15 @@ submissionController.startExam = async (req, res) => {
       message: 'Exam started successfully',
     });
   } catch (error) {
-    logger.error('startExam error', { error: error.message, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server error occurred while starting the exam' });
+    logger.error('startExam error', { 
+      error: error.message, 
+      stack: error.stack,
+      userId: req.user?.id 
+    });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error occurred while starting exam' 
+    });
   }
 };
 
