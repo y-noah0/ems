@@ -107,7 +107,10 @@ const SubmissionSchema = new Schema({
   }
 }, { timestamps: true });
 
-SubmissionSchema.index({ exam: 1, student: 1 }, { unique: true });
+// Enforce uniqueness at DB level
+SubmissionSchema.index({ exam: 1, student: 1, isDeleted: false }, { unique: true });
+
+// Keep existing indexes
 SubmissionSchema.index({ status: 1 });
 SubmissionSchema.index({ enrollment: 1 });
 

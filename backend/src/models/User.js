@@ -76,9 +76,14 @@ const UserSchema = new Schema({
   classId: {
     type: Schema.Types.ObjectId,
     ref: 'Class',
+    required: function() {
+      return this.role === 'student';
+    },
     validate: {
-      validator: function (v) { return this.role === 'student' ? v.length > 0 : v.length === 0; },
-      message: 'classIds are required for students and not allowed for other roles'
+      validator: function(v) {
+        return this.role === 'student' ? v != null : v == null;
+      },
+      message: 'Students must have a class, non-students must not have a class'
     }
   },
   termId: {
