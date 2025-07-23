@@ -5,9 +5,11 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const { param } = require('express-validator');
 
 // All routes here require authentication
+
+// All routes require authentication
 router.use(authMiddleware.authenticate);
 
-// @route   POST api/exams
+// @route   POST /api/exams
 // @desc    Create new exam
 // @access  Teachers
 router.post(
@@ -17,71 +19,103 @@ router.post(
   examController.createExam
 );
 
-// @route   GET api/exams/teacher
+// @route   GET /api/exams/teacher
 // @desc    Get all exams created by teacher
 // @access  Teachers
-router.get('/teacher', authMiddleware.isTeacher, examController.getTeacherExams);
+router.get(
+  '/teacher',
+  authMiddleware.isTeacher,
+  examController.getTeacherExams
+);
 
-// @route   GET api/exams/:examId
+// @route   GET /api/exams/subjects/teacher
+// @desc    Get all subjects assigned to teacher
+// @access  Teachers
+router.get(
+  '/subjects/teacher',
+  authMiddleware.isTeacher,
+  examController.getTeacherSubjects
+);
+
+// @route   GET /api/exams/classes
+// @desc    Get all classes taught by teacher
+// @access  Teachers
+router.get(
+  '/classes',
+  authMiddleware.isTeacher,
+  examController.getClassesForTeacher
+);
+
+// @route   GET /api/exams/:examId
 // @desc    Get exam by ID
-// @access  Teachers/Students
-router.get('/:examId', 
-  [param('examId').isMongoId().withMessage('Invalid exam ID format')],
+// @access  Teachers, Deans, Headmasters, Students (with restrictions)
+router.get(
+  '/:examId',
+  // Remove the undefined middleware and just use basic auth since the controller handles role-based access
+  examController.validateExamIdParam,
   examController.getExamById
 );
 
-// @route   PUT api/exams/:examId
+
+// @route   PUT /api/exams/:examId
 // @desc    Update exam
-// @access  Teachers
+// @access  Teachers, Deans, Admins
 router.put(
   '/:examId',
-  authMiddleware.isTeacher,
-  examController.validateExamIdParam,
+  authMiddleware.isTeacherOrDeanOrAdmin,
   examController.validateUpdateExam,
   examController.updateExam
 );
 
-// @route   DELETE api/exams/:examId
+// @route   DELETE /api/exams/:examId
 // @desc    Delete exam
-// @access  Teachers
+// @access  Teachers, Deans, Admins
 router.delete(
-  '/:examId', 
-  authMiddleware.isTeacher,
+  '/:examId',
+  authMiddleware.isTeacherOrDeanOrAdmin,
   examController.validateExamIdParam,
   examController.deleteExam
 );
 
-// @route   GET api/exams/student/upcoming
+// @route   GET /api/exams/student/upcoming
 // @desc    Get upcoming exams for student
 // @access  Students
-router.get('/student/upcoming', authMiddleware.isStudent, examController.getUpcomingExamsForStudent);
+router.get(
+  '/student/upcoming',
+  authMiddleware.isStudent,
+  examController.getUpcomingExamsForStudent
+);
 
-// @route   GET api/exams/student/class
+// @route   GET /api/exams/student/class
 // @desc    Get all exams for student's class
 // @access  Students
-router.get('/student/class', authMiddleware.isStudent, examController.getStudentClassExams);
+router.get(
+  '/student/class',
+  authMiddleware.isStudent,
+  examController.getStudentClassExams
+);
 
-// @route   PUT api/exams/:examId/activate
+// @route   PUT /api/exams/:examId/activate
 // @desc    Activate exam (make it active)
 // @access  Teachers
 router.put(
-  '/:examId/activate', 
+  '/:examId/activate',
   authMiddleware.isTeacher,
   examController.validateExamIdParam,
   examController.activateExam
 );
 
-// @route   PUT api/exams/:examId/complete
+// @route   PUT /api/exams/:examId/complete
 // @desc    Complete exam
 // @access  Teachers
 router.put(
-  '/:examId/complete', 
+  '/:examId/complete',
   authMiddleware.isTeacher,
   examController.validateExamIdParam,
   examController.completeExam
 );
 
-// @route   PUT api/exams/:examId/schedule
+// @route   PUT /api/exams/:examId/schedule
 // @desc    Schedule an exam
 // @access  Teachers
 router.put(
@@ -92,9 +126,22 @@ router.put(
   examController.scheduleExam
 );
 
-// @route   GET api/exams/classes/teacher
-// @desc    Get classes for logged in teacher
-// @access  Teachers
-router.get('/classes/teacher', authMiddleware.isTeacher, examController.getClassesForTeacher);
+// @route   GET /api/exams/school
+// @desc    Get all exams for a school
+// @access  Deans, Headmasters
+router.get(
+  '/school',
+  authMiddleware.authenticate,
+  (req, res, next) => {
+    if (!['dean', 'headmaster'].includes(req.user.role)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. Dean or Headmaster role required.' 
+      });
+    }
+    next();
+  },
+  examController.getSchoolExams
+);
 
 module.exports = router;

@@ -1,3 +1,4 @@
+// subjectController.js
 const Subject = require('../models/Subject');
 const School = require('../models/School');
 const Class = require('../models/Class');
@@ -37,7 +38,7 @@ const createSubject = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { name, description, school, classes = [], trades = [], teacher, credits } = req.body;
+        const { name, description, school, trades, teacher, credits } = req.body;
 
         // Validate referenced entities
         await ensureActiveEntity(School, school, 'School');
@@ -51,7 +52,7 @@ const createSubject = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Subject with this name already exists in this school' });
         }
 
-        const subject = new Subject({ name, description, school, classes, trades, teacher, credits });
+        const subject = new Subject({ name, description, school, trades, teacher, credits });
         await subject.save();
 
         logger.info('Subject created', { subjectId: subject._id });
@@ -67,7 +68,6 @@ const getSubjects = async (req, res) => {
     try {
         const subjects = await Subject.find({ isDeleted: false })
             .populate('school', 'name')
-            .populate('classes', 'level trade year')
             .populate('trades', 'name')
             .populate('teacher', 'fullName email');
 
@@ -84,7 +84,6 @@ const getSubjectById = async (req, res) => {
         const subject = await validateEntity(Subject, req.params.id, 'Subject');
         await subject
             .populate('school', 'name')
-            .populate('classes', 'level trade year')
             .populate('trades', 'name')
             .populate('teacher', 'fullName email');
 
@@ -108,6 +107,7 @@ const updateSubject = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
+        const { name, description, school, trades, teacher, credits } = req.body;
         const subject = await Subject.findById(req.params.id);
         if (!subject || subject.isDeleted) {
             return res.status(404).json({ success: false, message: 'Subject not found' });
@@ -130,7 +130,6 @@ const updateSubject = async (req, res) => {
         subject.name = name || subject.name;
         subject.description = description || subject.description;
         subject.school = school || subject.school;
-        subject.classes = classes || subject.classes;
         subject.trades = trades || subject.trades;
         subject.teacher = teacher || subject.teacher;
         subject.credits = credits !== undefined ? credits : subject.credits;

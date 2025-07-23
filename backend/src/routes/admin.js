@@ -114,7 +114,8 @@ router.post(
   '/import-students',
   upload.single('file'),
   [
-    check('classId', 'Class ID is required').notEmpty()
+    check('classId', 'Class ID is required').notEmpty(),
+    check('schoolId', 'School ID is required').notEmpty()
   ],
   adminController.importStudentsFromCSV
 );
@@ -128,7 +129,8 @@ router.post(
     check('fullName', 'Full name is required').notEmpty(),
     check('email', 'Please include a valid email').isEmail(),
     check('registrationNumber', 'Registration number is required').notEmpty(),
-    check('classId', 'Class ID is required').notEmpty()
+    check('classId', 'Class ID is required').notEmpty(),
+    check('schoolId', 'School ID is required').notEmpty()
   ],
   adminController.createStudent
 );

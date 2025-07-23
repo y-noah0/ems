@@ -1,11 +1,12 @@
+// models/Term.js
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const TermSchema = new Schema({
     termNumber: {
         type: Number,
-        enum: [1, 2, 3],
-        required: true
+        required: true,
+        enum: [1, 2, 3]
     },
     academicYear: {
         type: Number,
@@ -30,11 +31,16 @@ const TermSchema = new Schema({
     }
 }, { timestamps: true });
 
-TermSchema.index({ termNumber: 1, academicYear: 1, school: 1 }, { unique: true });
+TermSchema.index({ school: 1, academicYear: 1, termNumber: 1 }, { unique: true });
 
-TermSchema.pre('save', function (next) {
+TermSchema.pre('save', async function (next) {
     if (this.startDate >= this.endDate) {
-        return next(new Error('End date must be after start date'));
+        return next(new Error('Start date must be before end date'));
+    }
+    const School = mongoose.model('School');
+    const school = await School.findById(this.school);
+    if (!school || school.isDeleted) {
+        return next(new Error('Invalid or deleted school'));
     }
     next();
 });
