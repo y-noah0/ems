@@ -18,7 +18,7 @@ const {
 // Middleware for validation
 const registerValidation = [
   check('fullName', 'Full name is required').notEmpty().trim(),
-  check('password', 'Password is required and should be at least 6 characters').isLength({ min: 6 }),
+  check('password', 'Password is required and should be at least 6 characters'),
   check('email', 'Please include a valid email')
     .if((value, { req }) => req.body.role !== 'student')
     .isEmail()
