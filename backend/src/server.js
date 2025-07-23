@@ -19,11 +19,12 @@ const Exam = require('./models/Exam');
 const Submission = require('./models/Submission');
 const schedule = require('node-schedule');
 
-// Initialize Express and HTTP server
+dotenv.config();
+
 const app = express();
 const server = http.createServer(app);
 
-// Initialize Socket.IO
+// ⚡ Attach Socket.IO
 const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:3000',
@@ -31,47 +32,7 @@ const io = new Server(server, {
   },
 });
 
-// Socket.IO middleware to authenticate users
-io.use(async (socket, next) => {
-  try {
-    const token = socket.handshake.auth.token;
-    if (!token) {
-      return next(new Error('Authentication token required'));
-    }
-    const user = await authMiddleware.authenticateSocket(token);
-    socket.user = user;
-    next();
-  } catch (error) {
-    next(new Error('Authentication error'));
-  }
-});
-
-// Initialize Socket.IO event handlers
-socketHandler(io);
-
-const PORT = process.env.PORT || 5000;
-
-// Logger setup
-const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' }),
-  ],
-});
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    })
-  );
-}
-
-// Middleware
+// 🔒 Security & Middleware
 app.use(cors());
 app.use(helmet());
 app.use(bodyParser.json());
@@ -87,6 +48,39 @@ app.use((req, res, next) => {
   req.io = io;
   next();
 });
+
+// 🎧 Socket.IO events
+io.on('connection', (socket) => {
+  socket.on('join', (userId) => {
+    socket.join(userId);
+    console.log(`User ${userId} joined socket room`);
+  });
+});
+
+// 🛣️ Routes
+const routes = require('./routes');
+app.use('/api', routes);
+
+// Fix missing imports and variables
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  ]
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.simple()
+  }));
+}
+
+const PORT = process.env.PORT || 5000;
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam-system', {

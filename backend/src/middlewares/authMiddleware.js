@@ -63,6 +63,7 @@ const isTeacher = requireRoles(['teacher', 'dean', 'admin']);
 const isStudent = requireRoles(['student']);
 const isStudentOrTeacher = requireRoles(['student', 'teacher']);
 const isTeacherOrDeanOrAdmin = requireRoles(['teacher', 'dean', 'admin']);
+const isTeacherOrDeanOrHeadmaster = requireRoles(['teacher', 'dean', 'headmaster']); // Add this missing function
 
 // Login validation
 const loginValidation = [
@@ -146,6 +147,7 @@ module.exports = {
   isStudent,
   isStudentOrTeacher,
   isTeacherOrDeanOrAdmin,
+  isTeacherOrDeanOrHeadmaster, // Add this to exports
   loginValidation,
   registerValidation,
   limiter

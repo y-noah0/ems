@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const examController = require('../controllers/examController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { param } = require('express-validator');
+
+// All routes here require authentication
 
 // All routes require authentication
 router.use(authMiddleware.authenticate);
@@ -48,10 +51,11 @@ router.get(
 // @access  Teachers, Deans, Headmasters, Students (with restrictions)
 router.get(
   '/:examId',
-  authMiddleware.isTeacherOrDeanOrHeadmaster,
+  // Remove the undefined middleware and just use basic auth since the controller handles role-based access
   examController.validateExamIdParam,
   examController.getExamById
 );
+
 
 // @route   PUT /api/exams/:examId
 // @desc    Update exam
@@ -127,7 +131,16 @@ router.put(
 // @access  Deans, Headmasters
 router.get(
   '/school',
-  authMiddleware.isDeanOrHeadmaster,
+  authMiddleware.authenticate,
+  (req, res, next) => {
+    if (!['dean', 'headmaster'].includes(req.user.role)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access denied. Dean or Headmaster role required.' 
+      });
+    }
+    next();
+  },
   examController.getSchoolExams
 );
 

@@ -4,6 +4,8 @@ const { validationResult, check } = require('express-validator');
 const winston = require('winston');
 const fs = require('fs');
 const path = require('path');
+const { validateEntity, validateEntities } = require('../utils/entityValidator');
+const { toUTC } = require('../utils/dateUtils');
 
 const logger = winston.createLogger({
     level: 'info',
@@ -106,11 +108,15 @@ const updateSchool = async (req, res) => {
         }
 
         const { name, address, contactEmail, contactPhone, headmaster, tradesOffered } = req.body;
-        const school = await School.findById(req.params.id);
-
-        if (!school || school.isDeleted) {
-            logger.warn('School not found for update', { id: req.params.id });
-            return res.status(404).json({ success: false, message: 'School not found' });
+        let school;
+        try {
+            school = await validateEntity(School, req.params.id, 'School');
+        } catch (validationError) {
+            logger.warn(`School validation failed: ${validationError.message}`, { id: req.params.id });
+            return res.status(validationError.statusCode || 400).json({ 
+                success: false, 
+                message: validationError.message 
+            });
         }
 
         if (req.file && school.logo) {
