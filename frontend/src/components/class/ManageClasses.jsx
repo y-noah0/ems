@@ -1,25 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DynamicTable from './DynamicTable';
 import { FiPlus, FiX, FiEdit } from 'react-icons/fi';
+import deanService from '../../services/deanService';
+import LoadingSpinner from '../ui/LoadingSpinner';
+import ErrorMessage from '../ui/ErrorMessage';
+import { toast } from 'react-toastify';
 
 const ManageClasses = () => {
-  // Sample data with more items to demonstrate scrolling
-  const [classesData, setClassesData] = useState([
-    { id: 1, className: 'L480D', rank: 'No. 3', students: '21 students' },
-    { id: 2, className: 'L4MEN', rank: 'No. 2', students: '21 students' },
-    { id: 3, className: 'L480D', rank: 'No. 3', students: '21 students' },
-    { id: 4, className: 'L480D', rank: 'No. 3', students: '21 students' },
-    { id: 5, className: 'L480D', rank: 'No. 3', students: '21 students' },
-    { id: 6, className: 'L480D', rank: 'No. 3', students: '21 students' },
-    { id: 7, className: 'L480D', rank: 'No. 3', students: '21 students' },
-    { id: 8, className: 'L480D', rank: 'No. 3', students: '21 students' },
-    { id: 9, className: 'L480D', rank: 'No. 3', students: '21 students' },
-    { id: 10, className: 'L490D', rank: 'No. 1', students: '22 students' },
-    { id: 11, className: 'L470D', rank: 'No. 2', students: '20 students' },
-    { id: 12, className: 'L460D', rank: 'No. 3', students: '19 students' },
-    { id: 13, className: 'L450D', rank: 'No. 1', students: '23 students' },
-    { id: 14, className: 'L440D', rank: 'No. 2', students: '20 students' },
-  ]);
+  const [classesData, setClassesData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // Define columns for the classes table
   const classesColumns = [
@@ -47,15 +37,54 @@ const ManageClasses = () => {
     rank: ''
   });
 
+  // Fetch classes data from backend
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setLoading(true);
+        const classes = await deanService.getAllClasses();
+        
+        // Process each class to get student count
+        const processedClasses = await Promise.all(classes.map(async (classItem) => {
+          try {
+            const students = await deanService.getStudentsByClass(classItem._id);
+            // Format the class data to match our table structure
+            return {
+              id: classItem._id,
+              className: classItem.name,
+              rank: classItem.rank || 'Not ranked',
+              students: `${students.length} students`
+            };
+          } catch (err) {
+            console.error(`Error fetching students for class ${classItem._id}:`, err);
+            return {
+              id: classItem._id,
+              className: classItem.name,
+              rank: classItem.rank || 'Not ranked',
+              students: '0 students'
+            };
+          }
+        }));
+        
+        setClassesData(processedClasses);
+        setError('');
+      } catch (err) {
+        console.error('Error fetching classes:', err);
+        setError('Failed to load classes data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchClasses();
+  }, []);
+
   // Function to extract year and trade from class name
   const parseClassName = (className) => {
-    // This is a simple parsing logic - adjust based on your actual naming pattern
     let year = '';
     let trade = '';
     
-    // Assuming format like "L4SOD" where L4 is the year and SOD is the trade
     if (className) {
-      // Find where numbers end and letters begin again for trade
       const match = className.match(/^([A-Z]+\d+)([A-Z].*)$/);
       
       if (match) {
@@ -82,11 +111,16 @@ const ManageClasses = () => {
     setShowEditModal(true);
   };
 
-  const handleDelete = (item) => {
-    console.log('Delete class:', item);
-    // Add your delete logic here
+  const handleDelete = async (item) => {
     if (window.confirm(`Are you sure you want to delete ${item.className}?`)) {
-      setClassesData(classesData.filter(cls => cls.id !== item.id));
+      try {
+        await deanService.deleteClass(item.id);
+        setClassesData(classesData.filter(cls => cls.id !== item.id));
+        toast.success(`Class ${item.className} deleted successfully`);
+      } catch (err) {
+        console.error('Error deleting class:', err);
+        toast.error('Failed to delete class');
+      }
     }
   };
 
@@ -122,53 +156,79 @@ const ManageClasses = () => {
     }));
   };
   
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     
     // Add validation here
     if (!newClass.year || !newClass.trade) {
-      alert('Please fill in all fields');
+      toast.error('Please fill in all fields');
       return;
     }
     
     // Create class name from form data
     const className = `${newClass.year}${newClass.trade}`;
     
-    // Add new class to the list
-    const newClassData = {
-      id: classesData.length + 1,
-      className: className,
-      rank: 'No. 3', // Default rank for new classes
-      students: '0 students' // New class starts with 0 students
-    };
-    
-    setClassesData(prev => [...prev, newClassData]);
-    setShowAddModal(false);
+    try {
+      // Add new class to the backend
+      const classData = await deanService.createClass({ name: className });
+      
+      // Add new class to the local state
+      const newClassData = {
+        id: classData._id,
+        className: classData.name,
+        rank: classData.rank || 'Not ranked',
+        students: '0 students'
+      };
+      
+      setClassesData(prev => [...prev, newClassData]);
+      setShowAddModal(false);
+      toast.success(`Class ${className} created successfully`);
+    } catch (err) {
+      console.error('Error creating class:', err);
+      toast.error('Failed to create class');
+    }
   };
   
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     
     // Add validation here
     if (!editClass.year || !editClass.trade) {
-      alert('Please fill in all fields');
+      toast.error('Please fill in all fields');
       return;
     }
     
     // Create updated class name from form data
     const className = `${editClass.year}${editClass.trade}`;
     
-    // Update class in the list
-    setClassesData(prev => 
-      prev.map(cls => 
-        cls.id === editClass.id 
-          ? { ...cls, className: className }
-          : cls
-      )
-    );
-    
-    setShowEditModal(false);
+    try {
+      // Update class in the backend
+      await deanService.updateClass(editClass.id, { name: className });
+      
+      // Update class in the local state
+      setClassesData(prev => 
+        prev.map(cls => 
+          cls.id === editClass.id 
+            ? { ...cls, className: className }
+            : cls
+        )
+      );
+      
+      setShowEditModal(false);
+      toast.success(`Class updated successfully`);
+    } catch (err) {
+      console.error('Error updating class:', err);
+      toast.error('Failed to update class');
+    }
   };
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (error) {
+    return <ErrorMessage message={error} />;
+  }
 
   return (
     <div className="p-6">
@@ -184,14 +244,18 @@ const ManageClasses = () => {
       </div>
       
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <DynamicTable
-          data={classesData}
-          columns={classesColumns}
-            containerWidth="1040px" // Set exact width
-          containerHeight="450px" 
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
+        {classesData.length === 0 ? (
+          <div className="p-4 text-center text-gray-500">No classes found. Click "Add class" to create one.</div>
+        ) : (
+          <DynamicTable
+            data={classesData}
+            columns={classesColumns}
+            containerWidth="1040px"
+            containerHeight="450px" 
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        )}
       </div>
       
       {/* Add Class Modal */}
@@ -268,7 +332,7 @@ const ManageClasses = () => {
         <>
           {/* Modal Backdrop */}
           <div 
-            className="fixed inset-0 backdrop-blur-sm  bg-opacity-30 flex items-center justify-center z-50"
+            className="fixed inset-0 backdrop-blur-sm bg-opacity-30 flex items-center justify-center z-50"
             onClick={handleCloseEditModal}
           >
             {/* Modal Content */}

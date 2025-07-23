@@ -1,484 +1,510 @@
-require('dotenv').config();
 const mongoose = require('mongoose');
-
-// Import models
+const dotenv = require('dotenv');
 const Class = require('./models/Class');
 const User = require('./models/User');
 const Subject = require('./models/Subject');
 const Exam = require('./models/Exam');
 const Submission = require('./models/Submission');
-const School = require('./models/school');
-const Trade = require('./models/trade');
-const Term = require('./models/term');
-const Enrollment = require('./models/enrollment');
-const ReportCard = require('./models/report');
-const PromotionLog = require('./models/promotionLog');
+const School = require('./models/School');
+const Trade = require('./models/Trade');
+const Term = require('./models/Term');
+const bcrypt = require('bcrypt')
 
-// Generate unique registration number for students (e.g., STU2025002)
-const generateRegistrationNumber = async () => {
-  const year = new Date().getFullYear();
-  let isUnique = false;
-  let registrationNumber;
-  const maxAttempts = 100;
-  let attempts = 0;
+dotenv.config();
 
-  while (!isUnique && attempts < maxAttempts) {
-    const randomNum = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
-    registrationNumber = `STU${year}${randomNum}`;
-    const existingUser = await User.findOne({ registrationNumber });
-    if (!existingUser) {
-      isUnique = true;
-    }
-    attempts++;
-  }
-
-  if (!isUnique) {
-    throw new Error('Unable to generate unique registration number after maximum attempts');
-  }
-  return registrationNumber;
-};
-
-(async () => {
-  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/schoolExams';
-  console.log(`🔌 Connecting to MongoDB at ${uri}...`);
-
+const connectDB = async () => {
   try {
-    await mongoose.connect(uri, {
+    await mongoose.connect("mongodb://localhost:27017/school-exam-system", {
       useNewUrlParser: true,
       useUnifiedTopology: true,
+      useFindAndModify: false, // Add this line
+      useCreateIndex: true     // Add this line for index warning
     });
-    console.log('✅ MongoDB connection established');
+    console.log('MongoDB connected for seeding...');
   } catch (err) {
-    console.error('❌ MongoDB connection error:', err.message);
+    console.error('Database connection error:', err.message);
     process.exit(1);
   }
+};
 
-  // 1. Clear all collections
+const createUserWithoutHook = async (userData) => {
+  const collection = mongoose.connection.collection('users');
+  // Accept either password or passwordHash field
+  const rawPassword = userData.password || userData.passwordHash;
+  const userWithHashedPassword = {
+    ...userData,
+    // Initialize preferences to satisfy nested schema defaults
+    preferences: {
+      notifications: {
+        email: userData.email,
+        sms: userData.phoneNumber
+      },
+      theme: userData.preferences?.theme || 'light'
+    },
+    passwordHash: bcrypt.hashSync(rawPassword, 10),
+    emailVerified: userData.email ? true : false, // Set emailVerified to true if user has email
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+  const result = await collection.insertOne(userWithHashedPassword);
+  return User.findById(result.insertedId);
+};
+
+const seedDatabase = async () => {
   try {
-    await Promise.all([
-      School.deleteMany({}),
-      User.deleteMany({}),
-      Trade.deleteMany({}),
-      Class.deleteMany({}),
-      Term.deleteMany({}),
-      Subject.deleteMany({}),
-      Exam.deleteMany({}),
-      Enrollment.deleteMany({}),
-      Submission.deleteMany({}),
-      ReportCard.deleteMany({}),
-      PromotionLog.deleteMany({})
+    // Clear existing data
+    await Class.deleteMany({});
+    await User.deleteMany({});
+    await Subject.deleteMany({});
+    await Exam.deleteMany({});
+    await Submission.deleteMany({});
+    await School.deleteMany({});
+    await Trade.deleteMany({});
+    await Term.deleteMany({});
+    console.log('Previous data cleared');
+
+    // Create trades first
+    const trades = await Trade.insertMany([
+      { code: 'SOD', name: 'Software Development', description: 'Learn programming and software development' },
+      { code: 'NIT', name: 'Network Infrastructure Technology', description: 'Computer networking and infrastructure' },
+      { code: 'MMP', name: 'Multimedia Production', description: 'Digital media and multimedia content creation' },
+      { code: 'ELT', name: 'Electronics Technology', description: 'Electronics and electrical systems' },
+      { code: 'AUT', name: 'Automotive Technology', description: 'Vehicle maintenance and repair' }
     ]);
-    console.log('✅ All collections cleared');
-  } catch (err) {
-    console.error('❌ Error clearing collections:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    console.log('Trades created');
 
-  // Predefine ObjectIds
-  const schoolId = new mongoose.Types.ObjectId();
-  const tradeId1 = new mongoose.Types.ObjectId();
-  const tradeId2 = new mongoose.Types.ObjectId();
-  const classId1 = new mongoose.Types.ObjectId();
-  const classId2 = new mongoose.Types.ObjectId();
-  const termId = new mongoose.Types.ObjectId();
-  const headmasterId = new mongoose.Types.ObjectId();
-  const teacherId = new mongoose.Types.ObjectId();
-  const studentId = new mongoose.Types.ObjectId();
-  const subjectId = new mongoose.Types.ObjectId();
-  const examId = new mongoose.Types.ObjectId();
-  const enrollmentId = new mongoose.Types.ObjectId();
+    // Create schools
+    const schools = await School.insertMany([
+      {
+        name: 'Botswana Technical College',
+        address: '123 Technical Street, Gaborone, Botswana',
+        contactEmail: 'info@btc.ac.bw',
+        contactPhone: '+26771234567',
+        headmaster: new mongoose.Types.ObjectId(), // Temporary, will update later
+        tradesOffered: trades.map(trade => trade._id)
+      },
+      {
+        name: 'Francistown Technical College',
+        address: '456 Education Avenue, Francistown, Botswana',
+        contactEmail: 'info@ftc.ac.bw',
+        contactPhone: '+26771234568',
+        headmaster: new mongoose.Types.ObjectId(), // Temporary, will update later
+        tradesOffered: [trades[0]._id, trades[1]._id, trades[3]._id]
+      }
+    ]);
+    console.log('Schools created');
 
-  // 2. Create Headmaster
-  let headmasterDoc;
-  try {
-    headmasterDoc = await User.create({
-      _id: headmasterId,
-      fullName: 'Dr. Emily Carter',
-      email: 'emily.carter@example.com',
-      passwordHash: 'Headmaster123!',
+    // Create headmasters and update schools
+    const headmaster1 = await createUserWithoutHook({
+      fullName: 'Dr. John Mogotsi',
+      email: 'headmaster@btc.ac.bw',
+      passwordHash: 'headmaster123',
       role: 'headmaster',
-      phoneNumber: '+12025550101',
-      preferences: { notifications: { email: true, sms: true }, theme: 'light' },
-      emailVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      school: schools[0]._id,
+      phoneNumber: '+26771234567'
     });
-    console.log('✅ Headmaster seeded');
-  } catch (err) {
-    console.error('❌ Headmaster error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
 
-  // 3. Create School
-  let schoolDoc;
-  try {
-    schoolDoc = await School.create({
-      _id: schoolId,
-      name: 'Springfield High',
-      address: '123 Main St, Springfield',
-      contactEmail: 'school@example.com',
-      contactPhone: '+12025550100',
-      logo: 'https://example.com/logo.png',
-      headmaster: headmasterId,
-      tradesOffered: [],
-      isDeleted: false,
+    const headmaster2 = await createUserWithoutHook({
+      fullName: 'Prof. Mary Kebonang',
+      email: 'headmaster@ftc.ac.bw',
+      passwordHash: 'headmaster123',
+      role: 'headmaster',
+      school: schools[1]._id,
+      phoneNumber: '+26771234568'
     });
-    console.log('✅ School seeded');
-  } catch (err) {
-    console.error('❌ School error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
 
-  // 4. Create Trades
-  let trades;
-  try {
-    trades = await Trade.insertMany([
-      { _id: tradeId1, code: 'SD1', name: 'Software Development', description: 'Software engineering and programming', isDeleted: false },
-      { _id: tradeId2, code: 'MMP', name: 'Multimedia', description: 'Multimedia design and production', isDeleted: false },
-    ]);
-    schoolDoc.tradesOffered = trades.map(t => t._id);
-    await schoolDoc.save();
-    console.log('✅ Trades seeded:', trades.map(t => t.name).join(', '));
-  } catch (err) {
-    console.error('❌ Trade error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    // Update schools with actual headmaster IDs
+    await School.findByIdAndUpdate(schools[0]._id, { headmaster: headmaster1._id });
+    await School.findByIdAndUpdate(schools[1]._id, { headmaster: headmaster2._id });
+    console.log('Headmasters created and assigned');
 
-  // 5. Create Classes
-  let classes;
-  try {
-    classes = await Class.insertMany([
+    // Create system admin
+    const systemAdmin = await createUserWithoutHook({
+      fullName: 'System Administrator',
+      email: 'admin@example.com',
+      passwordHash: 'admin123',
+      role: 'admin',
+      school: schools[0]._id,
+      phoneNumber: '+26771234569'
+    });
+    console.log('System admin created');
+
+    // Create deans using Mongoose model to trigger schema pre-save hashing
+    let dean1 = new User({
+      fullName: 'Robert Brown',
+      email: 'dean@btc.ac.bw',
+      passwordHash: 'dean@123',
+      role: 'dean',
+      school: schools[0]._id,
+      phoneNumber: '+26771234570'
+    });
+    await dean1.save();
+
+    let dean2 = new User({
+      fullName: 'Sarah Mothibi',
+      email: 'dean@ftc.ac.bw',
+      passwordHash: 'dean@123',
+      role: 'dean',
+      school: schools[1]._id,
+      phoneNumber: '+26771234571'
+    });
+    await dean2.save();
+    console.log('Deans created');
+
+    // Create terms
+    const terms = await Term.insertMany([
       {
-        _id: classId1,
-        level: 'L3',
-        trade: tradeId1,
-        year: 2025,
-        school: schoolId,
-        isDeleted: false,
+        termNumber: 1,
+        academicYear: 2025,
+        school: schools[0]._id,
+        startDate: new Date('2025-01-15'),
+        endDate: new Date('2025-04-15')
       },
       {
-        _id: classId2,
-        level: 'L4',
-        trade: tradeId1,
-        year: 2025,
-        school: schoolId,
-        isDeleted: false,
+        termNumber: 2,
+        academicYear: 2025,
+        school: schools[0]._id,
+        startDate: new Date('2025-05-01'),
+        endDate: new Date('2025-08-01')
       },
+      {
+        termNumber: 3,
+        academicYear: 2025,
+        school: schools[0]._id,
+        startDate: new Date('2025-08-15'),
+        endDate: new Date('2025-11-15')
+      },
+      {
+        termNumber: 1,
+        academicYear: 2025,
+        school: schools[1]._id,
+        startDate: new Date('2025-01-15'),
+        endDate: new Date('2025-04-15')
+      },
+      {
+        termNumber: 2,
+        academicYear: 2025,
+        school: schools[1]._id,
+        startDate: new Date('2025-05-01'),
+        endDate: new Date('2025-08-01')
+      }
     ]);
-    console.log('✅ Classes seeded:', classes.map(c => c.level).join(', '));
-  } catch (err) {
-    console.error('❌ Class error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    console.log('Terms created');
 
-  // 6. Create Term
-  let termDoc;
-  try {
-    termDoc = await Term.create({
-      _id: termId,
-      termNumber: 1,
-      academicYear: 2025,
-      startDate: new Date('2025-01-01'),
-      endDate: new Date('2025-04-30'),
-      school: schoolId,
-      isDeleted: false,
-    });
-    console.log('✅ Term seeded');
-  } catch (err) {
-    console.error('❌ Term error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    // Create classes
+    const classes = await Class.insertMany([
+      { level: 'L3', trade: trades[0]._id, year: 2025, school: schools[0]._id }, // L3 SOD
+      { level: 'L4', trade: trades[1]._id, year: 2025, school: schools[0]._id }, // L4 NIT
+      { level: 'L5', trade: trades[2]._id, year: 2025, school: schools[0]._id }, // L5 MMP
+      { level: 'L3', trade: trades[0]._id, year: 2025, school: schools[1]._id }, // L3 SOD (Francistown)
+      { level: 'L4', trade: trades[3]._id, year: 2025, school: schools[1]._id }  // L4 ELT (Francistown)
+    ]);
+    console.log('Classes created');
 
-  // 7. Create Teacher
-  let teacherDoc;
-  try {
-    teacherDoc = await User.create({
-      _id: teacherId,
-      fullName: 'Mr. John Doe',
-      email: 'john.doe@example.com',
-      passwordHash: 'Teacher123!',
-      role: 'teacher',
-      school: schoolId,
-      phoneNumber: '+12025550102',
-      subjects: [], // Start with empty array as per schema
-      preferences: { notifications: { email: true, sms: false }, theme: 'light' },
-      emailVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    console.log('✅ Teacher seeded');
-  } catch (err) {
-    console.error('❌ Teacher error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    // Create teachers
+    const teachersDocs = [
+      {
+        fullName: 'David Johnson',
+        email: 'david@btc.ac.bw',
+        passwordHash: 'teacher123',
+        role: 'teacher',
+        school: schools[0]._id,
+        phoneNumber: '+26771234572',
+        subjects: []
+      },
+      {
+        fullName: 'Sarah Williams',
+        email: 'sarah@btc.ac.bw',
+        passwordHash: 'teacher123',
+        role: 'teacher',
+        school: schools[0]._id,
+        phoneNumber: '+26771234573',
+        subjects: []
+      },
+      {
+        fullName: 'Michael Setlhako',
+        email: 'michael@btc.ac.bw',
+        passwordHash: 'teacher123',
+        role: 'teacher',
+        school: schools[0]._id,
+        phoneNumber: '+26771234574',
+        subjects: []
+      },
+      {
+        fullName: 'Grace Mmolawa',
+        email: 'grace@ftc.ac.bw',
+        passwordHash: 'teacher123',
+        role: 'teacher',
+        school: schools[1]._id,
+        phoneNumber: '+26771234575',
+        subjects: []
+      }
+    ];
 
-  // 8. Create Subject
-  let subjectDoc;
-  try {
-    subjectDoc = await Subject.create({
-      _id: subjectId,
-      name: 'Programming Fundamentals',
-      description: 'Introduction to programming concepts',
-      school: schoolId,
-      classes: [classId1],
-      trades: [tradeId1],
-      teacher: teacherId,
-      credits: 3,
-      isDeleted: false,
-    });
-    console.log('✅ Subject seeded:', subjectDoc.name);
-  } catch (err) {
-    console.error('❌ Subject error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
-
-  // 9. Update Teacher with Subject
-  try {
-    teacherDoc.subjects = [subjectId];
-    await teacherDoc.save();
-    console.log('✅ Teacher updated with subject');
-  } catch (err) {
-    console.error('❌ Teacher update error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
-
-  // 10. Verify Class and Term Existence
-  try {
-    const classDoc = await Class.findById(classId1);
-    if (!classDoc) throw new Error('Class L3 not found');
-    const termDocVerify = await Term.findById(termId);
-    if (!termDocVerify) throw new Error('Term not found');
-    console.log('✅ Class and Term verified');
-  } catch (err) {
-    console.error('❌ Class/Term verification error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
-
-  // 11. Create Student
-  let studentDoc;
-  try {
-    const studentRegistrationNumber = await generateRegistrationNumber();
-    try {
-      // Attempt to create student with classId and termId
-      studentDoc = await User.create({
-        _id: studentId,
-        fullName: 'Alice Student',
-        registrationNumber: studentRegistrationNumber,
-        passwordHash: 'Student123!',
-        role: 'student',
-        school: schoolId,
-        classId: classId1, // Single ObjectId
-        termId: termId,   // Single ObjectId
-        phoneNumber: '+12025550103',
-        preferences: { notifications: { email: false, sms: true }, theme: 'light' },
-        parentFullName: 'Jane Student',
-        parentPhoneNumber: '+12025550104',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      console.log('✅ Student seeded with classId and termId');
-    } catch (err) {
-      console.error('⚠️ Initial student creation failed:', err.message);
-      // Fallback: Create student without classId and termId, then update
-      studentDoc = await User.create({
-        _id: studentId,
-        fullName: 'Alice Student',
-        registrationNumber: studentRegistrationNumber,
-        passwordHash: 'Student123!',
-        role: 'student',
-        school: schoolId,
-        phoneNumber: '+12025550103',
-        preferences: { notifications: { email: false, sms: true }, theme: 'light' },
-        parentFullName: 'Jane Student',
-        parentPhoneNumber: '+12025550104',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      console.log('✅ Student seeded without classId and termId');
-      // Update student with classId and termId
-      studentDoc.classId = classId1;
-      studentDoc.termId = termId;
-      await studentDoc.save();
-      console.log('✅ Student updated with classId and termId');
+    const teachers = [];
+    for (const teacherDoc of teachersDocs) {
+      const teacher = await createUserWithoutHook(teacherDoc);
+      teachers.push(teacher);
     }
-  } catch (err) {
-    console.error('❌ Student error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    console.log('Teachers created');
 
-  // 12. Create Exam
-  let examDoc;
-  try {
-    const exams = await Exam.insertMany([
+    // Create subjects
+    const subjects = await Subject.insertMany([
       {
-        _id: examId,
-        title: 'Midterm Programming Exam',
-        subject: subjectId,
-        classes: [classId1],
-        teacher: teacherId,
-        type: 'exam',
-        schedule: {
-          start: new Date(Date.now() + 86400000), // Tomorrow
-          duration: 90, // 90 minutes
-        },
-        questions: [
-          {
-            type: 'multiple-choice',
-            text: 'What is a variable in programming?',
-            options: [
-              { text: 'A storage location with a name', isCorrect: true },
-              { text: 'A type of loop', isCorrect: false },
-              { text: 'A function', isCorrect: false },
-              { text: 'A class', isCorrect: false },
-            ],
-            correctAnswer: 'A storage location with a name',
-            maxScore: 10,
-          },
-          {
-            type: 'short-answer',
-            text: 'Explain the purpose of a loop.',
-            maxScore: 20,
-          },
-        ],
-        status: 'scheduled',
-        instructions: 'Answer all questions carefully. No external resources allowed.',
+        name: 'Introduction to Programming',
+        description: 'Fundamentals of programming concepts',
+        school: schools[0]._id,
+        classes: [classes[0]._id],
+        trades: [trades[0]._id],
+        teacher: teachers[0]._id,
+        credits: 3
       },
+      {
+        name: 'Web Development',
+        description: 'HTML, CSS and JavaScript basics',
+        school: schools[0]._id,
+        classes: [classes[0]._id],
+        trades: [trades[0]._id],
+        teacher: teachers[1]._id,
+        credits: 4
+      },
+      {
+        name: 'Database Management',
+        description: 'SQL and database design principles',
+        school: schools[0]._id,
+        classes: [classes[1]._id],
+        trades: [trades[1]._id],
+        teacher: teachers[0]._id,
+        credits: 3
+      },
+      {
+        name: 'Advanced Software Development',
+        description: 'Advanced concepts in software engineering',
+        school: schools[0]._id,
+        classes: [classes[2]._id],
+        trades: [trades[2]._id],
+        teacher: teachers[2]._id,
+        credits: 5
+      },
+      {
+        name: 'Network Security',
+        description: 'Cybersecurity and network protection',
+        school: schools[0]._id,
+        classes: [classes[1]._id],
+        trades: [trades[1]._id],
+        teacher: teachers[1]._id,
+        credits: 4
+      },
+      {
+        name: 'Programming Fundamentals',
+        description: 'Basic programming concepts',
+        school: schools[1]._id,
+        classes: [classes[3]._id],
+        trades: [trades[0]._id],
+        teacher: teachers[3]._id,
+        credits: 3
+      }
     ]);
-    examDoc = exams[0];
-    console.log('✅ Exam seeded:', examDoc.title,'Midterm Programming Exam');
-  } catch (err) {
-    console.error('❌ Exam error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    console.log('Subjects created');
 
-  // 13. Create Enrollment
-  let enrollmentDoc;
-  try {
-    enrollmentDoc = await Enrollment.create({
-      _id: enrollmentId,
-      student: studentId,
-      class: classId1,
-      term: termId,
-      school: schoolId,
-      isActive: true,
-      isDeleted: false,
+    // Update teachers with their subjects
+    await User.findByIdAndUpdate(teachers[0]._id, {
+      subjects: [subjects[0]._id, subjects[2]._id]
     });
-    console.log('✅ Enrollment seeded for', studentDoc.fullName);
-  } catch (err) {
-    console.error('❌ Enrollment error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    await User.findByIdAndUpdate(teachers[1]._id, {
+      subjects: [subjects[1]._id, subjects[4]._id]
+    });
+    await User.findByIdAndUpdate(teachers[2]._id, {
+      subjects: [subjects[3]._id]
+    });
+    await User.findByIdAndUpdate(teachers[3]._id, {
+      subjects: [subjects[5]._id]
+    });
+    console.log('Teachers updated with subjects');
 
-  // 14. Create Submission
-  try {
-    await Submission.create({
-      exam: examId,
-      student: studentId,
-      enrollment: enrollmentId,
-      answers: [
-        {
-          questionId: examDoc.questions[0]._id,
-          answer: 'A storage location with a name',
-          score: 10,
-          graded: true,
+    // Create students
+    const collection = mongoose.connection.collection('users');
+    const studentsToInsert = [];
+
+    // Students for BTC L3 SOD
+    for (let i = 1; i <= 8; i++) {
+      studentsToInsert.push({
+        fullName: `Student ${i} L3SOD`,
+        registrationNumber: `L3SOD${String(i).padStart(3, '0')}`,
+        passwordHash: bcrypt.hashSync('student123', 10),
+        role: 'student',
+        phoneNumber: '',
+        school: schools[0]._id,
+        classId: classes[0]._id,
+        preferences: {
+          notifications: { email: false, sms: true },
+          theme: 'light'
         },
-        {
-          questionId: examDoc.questions[1]._id,
-          answer: 'A loop allows repeated execution of code.',
-          score: 15,
-          graded: true,
-          feedback: 'Good, but could elaborate on types of loops.',
+        subjects: [],
+        profilePicture: null,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        emailVerificationToken: null,
+        emailVerified: true,
+        tokenVersion: 1,
+        isDeleted: false,
+        graduated: false,
+        isActive: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLogin: new Date()
+      });
+    }
+
+    // Students for BTC L4 NIT
+    for (let i = 1; i <= 6; i++) {
+      studentsToInsert.push({
+        fullName: `Student ${i} L4NIT`,
+        registrationNumber: `L4NIT${String(i).padStart(3, '0')}`,
+        passwordHash: bcrypt.hashSync('student123', 10),
+        role: 'student',
+        phoneNumber: '',
+        school: schools[0]._id,
+        classId: classes[1]._id,
+        preferences: {
+          notifications: { email: false, sms: true },
+          theme: 'light'
         },
-      ],
-      totalScore: 25,
-      percentage: 83.33, // (25 / 30) * 100
-      startedAt: new Date(Date.now() - 5400000), // 90 minutes ago
-      submittedAt: new Date(),
-      status: 'graded',
-      gradedBy: teacherId,
-      gradedAt: new Date(),
-      isDeleted: false,
-    });
-    console.log('✅ Submission seeded for exam:', examDoc.title);
-  } catch (err) {
-    console.error('❌ Submission error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+        subjects: [],
+        profilePicture: null,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        emailVerificationToken: null,
+        emailVerified: true,
+        tokenVersion: 1,
+        isDeleted: false,
+        graduated: false,
+        isActive: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLogin: new Date()
+      });
+    }
 
-  // 15. Create ReportCard
-  try {
-    await ReportCard.create({
-      student: studentId,
-      class: classId1,
-      academicYear: 2025,
-      term: termId,
-      school: schoolId,
-      results: [
-        {
-          subject: subjectId,
-          scores: {
-            assessment1: 12,
-            assessment2: 13,
-            test: 8,
-            exam: 50,
-          },
-          total: 83,
-          percentage: 83,
-          decision: 'Competent',
+    // Students for BTC L5 MMP
+    for (let i = 1; i <= 5; i++) {
+      studentsToInsert.push({
+        fullName: `Student ${i} L5MMP`,
+        registrationNumber: `L5MMP${String(i).padStart(3, '0')}`,
+        passwordHash: bcrypt.hashSync('student123', 10),
+        role: 'student',
+        phoneNumber: '',
+        school: schools[0]._id,
+        classId: classes[2]._id,
+        preferences: {
+          notifications: { email: false, sms: true },
+          theme: 'light'
         },
-      ],
-      totalScore: 83,
-      average: 83,
-      remarks: 'Excellent performance, keep it up!',
-      isDeleted: false,
-    });
-    console.log('✅ ReportCard seeded for', studentDoc.fullName);
-  } catch (err) {
-    console.error('❌ ReportCard error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+        subjects: [],
+        profilePicture: null,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        emailVerificationToken: null,
+        emailVerified: true,
+        tokenVersion: 1,
+        isDeleted: false,
+        graduated: false,
+        isActive: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLogin: new Date()
+      });
+    }
 
-  // 16. Create PromotionLog
-  try {
-    await PromotionLog.create({
-      student: studentId,
-      fromClass: classId1,
-      toClass: classId2,
-      academicYear: 2025,
-      status: 'promoted',
-      remarks: 'Promoted to L4 based on excellent performance',
-      school: schoolId,
-      promotionDate: new Date(),
-      manual: false,
-      isDeleted: false,
-    });
-    console.log('✅ PromotionLog seeded for', studentDoc.fullName);
-  } catch (err) {
-    console.error('❌ PromotionLog error:', err.message);
-    await mongoose.disconnect();
-    process.exit(1);
-  }
+    // Students for FTC L3 SOD
+    for (let i = 1; i <= 6; i++) {
+      studentsToInsert.push({
+        fullName: `FTC Student ${i} L3SOD`,
+        registrationNumber: `FTC-L3SOD${String(i).padStart(3, '0')}`,
+        passwordHash: bcrypt.hashSync('student123', 10),
+        role: 'student',
+        phoneNumber: '',
+        school: schools[1]._id,
+        classId: classes[3]._id,
+        preferences: {
+          notifications: { email: false, sms: true },
+          theme: 'light'
+        },
+        subjects: [],
+        profilePicture: null,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        emailVerificationToken: null,
+        emailVerified: true,
+        tokenVersion: 1,
+        isDeleted: false,
+        graduated: false,
+        isActive: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLogin: new Date()
+      });
+    }
 
-  try {
-    await mongoose.disconnect();
-    console.log('✅ Database seeding complete and disconnected.');
-  } catch (err) {
-    console.error('❌ Error disconnecting from MongoDB:', err.message);
-    process.exit(1);
+    // Students for FTC L4 ELT
+    for (let i = 1; i <= 7; i++) {
+      studentsToInsert.push({
+        fullName: `FTC Student ${i} L4ELT`,
+        registrationNumber: `FTC-L4ELT${String(i).padStart(3, '0')}`,
+        passwordHash: bcrypt.hashSync('student123', 10),
+        role: 'student',
+        phoneNumber: '',
+        school: schools[1]._id,
+        classId: classes[4]._id,
+        preferences: {
+          notifications: { email: false, sms: true },
+          theme: 'light'
+        },
+        subjects: [],
+        profilePicture: null,
+        twoFactorEnabled: false,
+        twoFactorSecret: null,
+        emailVerificationToken: null,
+        emailVerified: true,
+        tokenVersion: 1,
+        isDeleted: false,
+        graduated: false,
+        isActive: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastLogin: new Date()
+      });
+    }
+
+    await collection.insertMany(studentsToInsert);
+    console.log('Students created');
+
+    console.log('\n=== SEEDING COMPLETED SUCCESSFULLY ===');
+    console.log('\nLogin Credentials:');
+    console.log('System Admin: admin@example.com / admin123');
+    console.log('Headmaster (BTC): headmaster@btc.ac.bw / headmaster123');
+    console.log('Headmaster (FTC): headmaster@ftc.ac.bw / headmaster123');
+    console.log('Dean (BTC): dean@btc.ac.bw / dean123');
+    console.log('Dean (FTC): dean@ftc.ac.bw / dean123');
+    console.log('Teachers: david@btc.ac.bw, sarah@btc.ac.bw, michael@btc.ac.bw, grace@ftc.ac.bw / teacher123');
+    console.log('Students: Use registration numbers (e.g., L3SOD001, L4NIT001, etc.) / student123');
+    console.log('\nSchools created:');
+    console.log('- Botswana Technical College (BTC)');
+    console.log('- Francistown Technical College (FTC)');
+    console.log('\nTrades created: SOD, NIT, MMP, ELT, AUT');
+    console.log(`Total students created: ${studentsToInsert.length}`);
+
+  } catch (error) {
+    console.error('Error seeding database:', error);
   }
-})();
+};
+
+const runSeeder = async () => {
+  await connectDB();
+  await seedDatabase();
+  console.log('Seeding complete. Disconnecting...');
+  await mongoose.disconnect();
+  process.exit(0);
+};
+
+runSeeder();

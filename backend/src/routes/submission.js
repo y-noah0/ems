@@ -234,7 +234,7 @@ router.get(
 // @access  Teachers, Deans, Admins
 router.get(
   '/student/marks',
-  authMiddleware.isTeacherOrDeanOrAdmin,
+  authMiddleware.isTeacherOrDeanOrHeadmaster,
   [query('studentId', 'Please provide a valid student ID').isMongoId()],
   submissionController.getStudentMarksByID
 );
@@ -244,7 +244,7 @@ router.get(
 // @access  Teachers, Deans, Admins
 router.post(
   '/:submissionId/update-grades',
-  authMiddleware.isTeacherOrDeanOrAdmin,
+  authMiddleware.isTeacherOrDeanOrHeadmaster,
   [
     check('submissionId', 'Please provide a valid submission ID').isMongoId(),
     check('grades', 'Grades must be an array').isArray({ min: 1 }),

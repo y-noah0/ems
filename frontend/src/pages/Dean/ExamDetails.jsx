@@ -1,27 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
 import ExamContent from '../../components/exam/ExamContent';
 import ExamSidebar from '../../components/exam/ExamSidebar';
 import BackButton from '../../components/exam/BackButton';
 import examService from '../../services/examService';
+import deanService from '../../services/deanService';
+import { toast } from 'react-toastify';
 
 const DeanExamDetails = () => {
-  console.log('DeanExamDetails component is rendering');
   const { examId } = useParams();
-  console.log('DeanExamDetails: useParams examId:', examId);
+  const navigate = useNavigate();
   
   const [approvalStatus, setApprovalStatus] = useState('pending');
   const [examData, setExamData] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [feedback, setFeedback] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    console.log('DeanExamDetails: examId from params:', examId);
-    
     const fetchExamData = async () => {
       try {
+        setLoading(true);
         const exam = await examService.getExamById(examId);
-        console.log('DeanExamDetails: Found target exam:', exam ? exam.title : 'NOT FOUND');
         
         // Transform the exam data to match what ExamSidebar expects
         const transformedExamData = {
@@ -37,11 +39,14 @@ const DeanExamDetails = () => {
           status: exam.status || 'draft'
         };
         
-        console.log('DeanExamDetails: Transformed exam data:', transformedExamData);
         setExamData(transformedExamData);
         setQuestions(exam.questions || []);
+        setApprovalStatus(exam.status === 'approved' ? 'approved' : exam.status === 'rejected' ? 'rejected' : 'pending');
       } catch (error) {
-        console.error('DeanExamDetails: Error fetching exam data:', error);
+        console.error('Error fetching exam data:', error);
+        setError('Failed to load exam data');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -50,27 +55,63 @@ const DeanExamDetails = () => {
     }
   }, [examId]);
 
-  const handleApprove = () => {
-    setApprovalStatus('approved');
+  const handleApprove = async () => {
+    try {
+      await deanService.reviewExam(examId, 'approved', feedback);
+      setApprovalStatus('approved');
+      toast.success('Exam approved successfully');
+    } catch (error) {
+      console.error('Error approving exam:', error);
+      toast.error('Failed to approve exam');
+    }
   };
 
-  const handleReject = () => {
-    setApprovalStatus('rejected');
+  const handleReject = async () => {
+    if (!feedback) {
+      toast.error('Please provide feedback for rejection');
+      return;
+    }
+    
+    try {
+      await deanService.reviewExam(examId, 'rejected', feedback);
+      setApprovalStatus('rejected');
+      toast.success('Exam rejected with feedback');
+    } catch (error) {
+      console.error('Error rejecting exam:', error);
+      toast.error('Failed to reject exam');
+    }
   };
 
-  const handleRevokeApproval = () => {
-    setApprovalStatus('pending');
+  const handleRevokeApproval = async () => {
+    try {
+      await deanService.reviewExam(examId, 'pending', feedback);
+      setApprovalStatus('pending');
+      toast.success('Approval revoked');
+    } catch (error) {
+      console.error('Error revoking approval:', error);
+      toast.error('Failed to revoke approval');
+    }
   };
 
-  const handleResetStatus = () => {
-    setApprovalStatus('pending');
+  const handleFeedbackChange = (e) => {
+    setFeedback(e.target.value);
   };
 
-  if (!examData) {
+  if (loading) {
     return (
       <Layout>
         <div className="flex justify-center items-center h-full">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-full">
+          <div className="text-red-500">{error}</div>
         </div>
       </Layout>
     );
@@ -93,6 +134,22 @@ const DeanExamDetails = () => {
           <div className="flex-1 min-h-0">
             <ExamContent questions={questions} userRole="dean" />
           </div>
+          
+          {/* Feedback textarea */}
+          <div className="mt-4">
+            <label htmlFor="feedback" className="block text-sm font-medium text-gray-700">
+              Feedback/Comments
+            </label>
+            <textarea
+              id="feedback"
+              name="feedback"
+              rows={3}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Provide feedback about this exam"
+              value={feedback}
+              onChange={handleFeedbackChange}
+            />
+          </div>
         </div>
 
         {/* Sidebar - Dean can approve/reject */}
@@ -103,7 +160,6 @@ const DeanExamDetails = () => {
             onApprove={handleApprove}
             onReject={handleReject}
             onRevokeApproval={handleRevokeApproval}
-            onResetStatus={handleResetStatus}
             userRole="dean"
           />
         </div>

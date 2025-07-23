@@ -208,7 +208,7 @@ const register = async (req, res) => {
             from: process.env.EMAIL_USER,
             to: email,
             subject: 'Verify Your Email',
-            html: `<p>Please verify your email by clicking <a href="${process.env.APP_URL}/verify-email?token=${verificationToken}">here</a>.</p>`
+            html: `<p>Please verify your email by clicking <a href="${process.env.APP_URL}/verify-email?token=${verificationCode}">here</a>.</p>`
           });
           req.io.to(user.id).emit('notification', { message: 'Verification email sent' });
         } catch (emailErr) {
@@ -227,28 +227,28 @@ const register = async (req, res) => {
   }
 };
 
+// Verify email
 const verifyEmail = async (req, res) => {
   try {
     const { token } = req.body;
     const user = await User.findOne({ emailVerificationToken: token });
     if (!user) {
-      logger.warn('Invalid verification token', { token, ip: req.ip });
+      logger.warn('Invalid or expired verification token', { ip: req.ip });
       return res.status(400).json({ success: false, message: 'Invalid or expired token' });
     }
 
     user.emailVerificationToken = null;
     user.emailVerified = true;
     await user.save();
+    logger.info('Email verified', { userId: user.id, ip: req.ip });
 
     const payload = { id: user.id, role: user.role, tokenVersion: user.tokenVersion };
     const tokenJwt = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
-    req.io.to(user.id).emit('notification', { message: 'Email verified successfully' });
-    logger.info('Email verified', { userId: user.id });
     res.json({ success: true, token: tokenJwt, refreshToken });
   } catch (error) {
-    logger.error('Error in register', { error: error.message, stack: error.stack, ip: req.ip });
+    logger.error('Error in verifyEmail', { error: error.message, stack: error.stack, ip: req.ip });
     res.status(500).json({
       success: false,
       message: 'Server Error',
@@ -357,36 +357,6 @@ const logout = async (req, res) => {
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     logger.error('Error in logout', { error: error.message, stack: error.stack, ip: req.ip });
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// Verify email
-const verifyEmail = async (req, res) => {
-  try {
-    const { token } = req.body;
-    const user = await User.findOne({ emailVerificationToken: token });
-    if (!user) {
-      logger.warn('Invalid or expired verification token', { ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
-    }
-
-    user.emailVerificationToken = null;
-    user.emailVerified = true;
-    await user.save();
-    logger.info('Email verified', { userId: user.id, ip: req.ip });
-
-    const payload = { id: user.id, role: user.role, tokenVersion: user.tokenVersion };
-    const tokenJwt = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
-    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
-
-    res.json({ success: true, token: tokenJwt, refreshToken });
-  } catch (error) {
-    logger.error('Error in verifyEmail', { error: error.message, stack: error.stack, ip: req.ip });
     res.status(500).json({
       success: false,
       message: 'Server Error',

@@ -435,6 +435,14 @@ function App() {
                                 }
                             />
                             <Route
+                                path="/dean/class/:classId"
+                                element={
+                                    <ProtectedRoute allowedRoles={["dean"]}>
+                                        <ClassView />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
                                 path="/dean/class/:classId/reports"
                                 element={
                                     <ProtectedRoute allowedRoles={["dean"]}>

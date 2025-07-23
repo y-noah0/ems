@@ -8,12 +8,10 @@ import ClassPerformance from './ClassPerformance';
 import ExamsSection from './ExamsSection';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import ErrorMessage from '../ui/ErrorMessage';
-import adminService from '../../services/adminService';
+import deanService from '../../services/deanService';
 
 const DeanDashboard = () => {
   const { currentUser } = useAuth();
-
-  // Sidebar links based on role
   const [stats, setStats] = useState({
     classCount: 0,
     teacherCount: 0,
@@ -28,15 +26,15 @@ const DeanDashboard = () => {
       setLoading(true);
       try {
         // Fetch classes
-        const classesData = await adminService.getAllClasses();
-
+        const classesData = await deanService.getAllClasses();
+        
         // Fetch teachers
-        const teachersData = await adminService.getAllTeachers();
+        const teachersData = await deanService.getAllTeachers();
         
         // Calculate student count by fetching students for each class
         let totalStudents = 0;
         for (const classItem of classesData) {
-          const students = await adminService.getStudentsByClass(classItem._id);
+          const students = await deanService.getStudentsByClass(classItem._id);
           totalStudents += students.length;
         }
 
@@ -68,7 +66,6 @@ const DeanDashboard = () => {
         <>
           <WelcomeSection currentUser={currentUser} />
           <StatsCards stats={stats} />
-
           <div className="flex flex-col gap-6 px-2 sm:px-4 lg:flex-row">
             <div className="flex-1 min-w-0">
               <div className="grid grid-cols-1 gap-6 mb-6">
@@ -77,9 +74,7 @@ const DeanDashboard = () => {
               <ClassPerformance />
             </div>
             <div className="w-full flex-shrink-0 lg:w-[300px] xl:w-[350px] 2xl:w-[400px] mt-6 lg:mt-0">
-                
                 <ExamsSection />
-              
             </div>
           </div>
         </>

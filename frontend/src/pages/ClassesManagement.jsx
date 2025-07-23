@@ -5,6 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import DynamicTable from '../components/class/DynamicTable';
 import adminService from '../services/adminService';
+import deanService from '../services/deanService';
 
 const ClassesManagement = () => {
   const [classes, setClasses] = useState([]);
@@ -28,8 +29,21 @@ const ClassesManagement = () => {
   const fetchClasses = async () => {
     setLoading(true);
     try {
-      const classesData = await adminService.getAllClasses();
-      setClasses(classesData);
+      // Fetch classes
+      const classesData = await deanService.getAllClasses();
+      // Fetch student counts for each class
+      const classesWithCount = await Promise.all(
+        classesData.map(async classItem => {
+          try {
+            const students = await deanService.getStudentsByClass(classItem._id);
+            return { ...classItem, studentCount: students.length };
+          } catch (err) {
+            console.error(`Error fetching students for class ${classItem._id}:`, err);
+            return { ...classItem, studentCount: 0 };
+          }
+        })
+      );
+      setClasses(classesWithCount);
     } catch (error) {
       console.error('Error fetching classes:', error);
       setError('Failed to load classes');

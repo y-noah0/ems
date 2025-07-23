@@ -62,7 +62,7 @@ router.get(
 // @access  Teachers, Deans, Admins
 router.put(
   '/:examId',
-  authMiddleware.isTeacherOrDeanOrAdmin,
+  authMiddleware.isTeacherOrDeanOrHeadmaster,
   examController.validateUpdateExam,
   examController.updateExam
 );
@@ -72,7 +72,7 @@ router.put(
 // @access  Teachers, Deans, Admins
 router.delete(
   '/:examId',
-  authMiddleware.isTeacherOrDeanOrAdmin,
+  authMiddleware.isTeacherOrDeanOrHeadmaster,
   examController.validateExamIdParam,
   examController.deleteExam
 );

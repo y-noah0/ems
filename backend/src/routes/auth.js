@@ -137,5 +137,4 @@ router.put('/profile', authenticate, [
 // @access  Private
 router.get('/me', authenticate, getCurrentUser);
 
-
 module.exports = router;
