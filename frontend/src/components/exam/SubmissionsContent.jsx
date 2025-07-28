@@ -9,6 +9,7 @@ const SubmissionsContent = () => {
           <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Submissions Yet</h3>
           <p className="text-sm text-gray-500 max-w-sm">Student submissions will appear here once the exam is started.</p>
+          <h1>see</h1>
         </div>
       </div>
     </div>
