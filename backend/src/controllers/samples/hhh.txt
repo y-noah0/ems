@@ -1,0 +1,97 @@
+{
+  "role": "admin",
+  "fullName": "Frank Bahirwa",
+  "email": "frankbahirwa@gmail.com",
+  "password": "Frank123!",
+  "phoneNumber": "+250780123456",
+  "profilePicture": "https://example.com/avatar.jpg",
+  "preferences": {
+    "notifications": {
+      "email": true,
+      "sms": false
+    },
+    "theme": "dark"
+  }
+}
+
+
+
+{
+  "role": "headmaster",
+  "fullName": "Isai Rurangwa",
+  "email": "headmasters@example.com",
+  "password": "SecurePass123!",
+  "phoneNumber": "+250781234567",
+  "profilePicture": "https://example.com/images/headmaster.jpg",
+  "preferences": {
+    "notifications": {
+      "email": true,
+      "sms": true
+    },
+    "theme": "light"
+  },
+  "school": "64dfe5e63caaad8f82bca321" 
+}
+
+
+
+{
+  "role": "dean",
+  "fullName": "Jean Claude Uwimana",
+  "email": "dean@example.com",
+  "password": "SecurePass123!",
+  "phoneNumber": "+250789123456",
+  "profilePicture": "https://example.com/images/dean-profile.jpg",
+  "preferences": {
+    "notifications": {
+      "email": true,
+      "sms": true
+    },
+    "theme": "dark"
+  },
+  "schoolId": "687e0723882a3c4bb851e727"
+}
+
+
+
+{
+  "role": "student",
+  "fullName": "Aline Ingabiree",
+  "password": "SecurePass123!",
+  "classId": "687e1c22e565fc0d905981a7",
+  "termId": "687e1cbae565fc0d905981aa",
+  "schoolId": "687e0723882a3c4bb851e727",
+  "parentFullName": "Jacqueline Umutoni",
+  "parentPhoneNumber": "+250782345678",
+  "parentNationalId": "1199880001234567",
+  "phoneNumber": "+250788765432",
+  "preferences": {
+    "notifications": {
+      "email": false,
+      "sms": true
+    },
+    "theme": "light"
+  }
+}
+
+
+
+{
+  "role": "student",
+  "fullName": "Aline Ingabiree",
+  "password": "SecurePass123!",
+  "classId": "687e1c22e565fc0d905981a7",
+  "termId": "687e1cbae565fc0d905981aa",
+  "schoolId": "687e0723882a3c4bb851e727",
+  "parentFullName": "Jacqueline Umutoni",
+  "parentPhoneNumber": "+250782345678",
+  "parentNationalId": "1199880001234567",
+  "phoneNumber": "+250788765432",
+  "preferences": {
+    "notifications": {
+      "email": false,
+      "sms": true
+    },
+    "theme": "light"
+  }
+}

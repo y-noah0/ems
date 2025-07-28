@@ -14,16 +14,16 @@ const Notification = ({ message, type = 'success', onClose }) => {
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const bgColor = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' : 
-                  type === 'error' ? 'bg-red-100 border-red-400 text-red-700' :
-                  type === 'info' ? 'bg-blue-100 border-blue-400 text-blue-700' : 
-                  'bg-yellow-100 border-yellow-400 text-yellow-700';
+  const bgColor = type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
+    type === 'error' ? 'bg-red-100 border-red-400 text-red-700' :
+      type === 'info' ? 'bg-blue-100 border-blue-400 text-blue-700' :
+        'bg-yellow-100 border-yellow-400 text-yellow-700';
 
   return (
     <div className={`${bgColor} px-4 py-3 rounded relative mb-4 border`}>
       <span className="block sm:inline">{message}</span>
-      <button 
-        className="absolute top-0 right-0 px-4 py-3" 
+      <button
+        className="absolute top-0 right-0 px-4 py-3"
         onClick={onClose}
       >
         <span className="text-xl">&times;</span>
@@ -41,7 +41,7 @@ const SubmissionView = () => {
   const [notification, setNotification] = useState({ message: null, type: 'success' });
   const [editedAnswers, setEditedAnswers] = useState([]);
   const [saving, setSaving] = useState(false);
-  
+
   // Function to fetch submission data
   const fetchSubmissionData = async () => {
     try {
@@ -49,14 +49,14 @@ const SubmissionView = () => {
       // Fetch submission details
       const submissionData = await examService.getSubmissionById(submissionId);
       setSubmission(submissionData);
-      
+
       // Fetch exam details if we have it
       if (submissionData.exam) {
         const examData = await examService.getExamById(
           typeof submissionData.exam === 'object' ? submissionData.exam._id : submissionData.exam
         );
         setExam(examData);
-        
+
         // Initialize editedAnswers with current answers data
         if (submissionData.answers) {
           setEditedAnswers(submissionData.answers.map(answer => ({
@@ -67,13 +67,13 @@ const SubmissionView = () => {
           })));
         }
       }
-      
+
       setLoading(false);
     } catch (err) {
       console.error('Error fetching submission:', err);
-      setNotification({ 
-        message: err.message || 'Failed to load submission details. Please try again.', 
-        type: 'error' 
+      setNotification({
+        message: err.message || 'Failed to load submission details. Please try again.',
+        type: 'error'
       });
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const SubmissionView = () => {
   const handlePointsChange = (index, points) => {
     const newAnswers = [...editedAnswers];
     const maxPoints = exam?.questions[index]?.maxScore || exam?.questions[index]?.points || 0;
-    
+
     newAnswers[index] = {
       ...newAnswers[index],
       points: Math.min(Math.max(0, parseInt(points) || 0), maxPoints),
@@ -112,10 +112,10 @@ const SubmissionView = () => {
     try {
       setSaving(true);
       setNotification({ message: null, type: 'info' });
-      
+
       // Calculate total score
       const totalScore = editedAnswers.reduce((sum, answer) => sum + (parseInt(answer.points) || 0), 0);
-      
+
       // Prepare updated submission data
       const updatedSubmission = {
         ...submission,
@@ -123,26 +123,26 @@ const SubmissionView = () => {
         score: totalScore,
         status: 'graded'
       };
-      
+
       // Update the submission with grades
-      await examService.updateSubmissionGrades(submissionId, { submission: updatedSubmission });
-      
+      await examService.updateSubmissionGrades(submissionId, { grades });
+
       // Update local state
       setSubmission(updatedSubmission);
-      
+
       // Reset edited flag
       setEditedAnswers(editedAnswers.map(answer => ({ ...answer, isEdited: false })));
-      
-      setNotification({ 
-        message: 'Grades saved successfully!', 
-        type: 'success' 
+
+      setNotification({
+        message: 'Grades saved successfully!',
+        type: 'success'
       });
       setSaving(false);
     } catch (err) {
       console.error('Error saving grades:', err);
-      setNotification({ 
-        message: err.message || 'Failed to save grades. Please try again.', 
-        type: 'error' 
+      setNotification({
+        message: err.message || 'Failed to save grades. Please try again.',
+        type: 'error'
       });
       setSaving(false);
     }
@@ -154,16 +154,16 @@ const SubmissionView = () => {
   // Auto-grade multiple-choice questions
   const autoGradeMultipleChoice = () => {
     if (!exam || !editedAnswers.length) return;
-    
+
     const newAnswers = [...editedAnswers];
     let autoGradedCount = 0;
-    
+
     exam.questions.forEach((question, idx) => {
       // Check if the question is MCQ/multiple-choice type
       if ((question.type === 'MCQ' || question.type === 'multiple-choice') && idx < newAnswers.length) {
         let correctAnswer = '';
         let correctOption;
-        
+
         // Handle different exam question formats
         if (Array.isArray(question.options)) {
           if (typeof question.options[0] === 'object') {
@@ -173,26 +173,26 @@ const SubmissionView = () => {
             correctAnswer = question.correctAnswer;
           }
         }
-        
+
         if (!correctAnswer) return;
-        
+
         const studentAnswer = newAnswers[idx].answer || newAnswers[idx].text;
         const isCorrect = studentAnswer === correctAnswer;
-        
+
         newAnswers[idx] = {
           ...newAnswers[idx],
           points: isCorrect ? (question.points || question.maxScore || 0) : 0,
           isCorrect,
-          feedback: isCorrect 
-            ? 'Correct answer.' 
+          feedback: isCorrect
+            ? 'Correct answer.'
             : `Incorrect. The correct answer is: ${correctAnswer}`,
           isEdited: true
         };
-        
+
         autoGradedCount++;
       }
     });
-    
+
     setEditedAnswers(newAnswers);
     return autoGradedCount;
   };
@@ -245,16 +245,16 @@ const SubmissionView = () => {
             Submission Review
           </h1>
           <div className="flex flex-wrap gap-2">
-            <Button 
-              onClick={() => navigate('/teacher/submissions')} 
+            <Button
+              onClick={() => navigate('/teacher/submissions')}
               variant="secondary"
               className="text-sm"
             >
               All Submissions
             </Button>
             {submission.exam && (
-              <Button 
-                onClick={() => navigate(`/teacher/exams/${typeof submission.exam === 'object' ? submission.exam._id : submission.exam}/results`)} 
+              <Button
+                onClick={() => navigate(`/teacher/exams/${typeof submission.exam === 'object' ? submission.exam._id : submission.exam}/results`)}
                 variant="secondary"
                 className="text-sm"
               >
@@ -263,12 +263,12 @@ const SubmissionView = () => {
             )}
           </div>
         </div>
-        
+
         {notification.message && (
-          <Notification 
-            message={notification.message} 
-            type={notification.type} 
-            onClose={() => setNotification({ message: null, type: notification.type })} 
+          <Notification
+            message={notification.message}
+            type={notification.type}
+            onClose={() => setNotification({ message: null, type: notification.type })}
           />
         )}
 
@@ -276,8 +276,8 @@ const SubmissionView = () => {
           <div className="p-4">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-xl font-semibold">Student Information</h2>
-              <button 
-                onClick={fetchSubmissionData} 
+              <button
+                onClick={fetchSubmissionData}
                 className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
                 aria-label="Refresh submission data"
               >
@@ -295,10 +295,9 @@ const SubmissionView = () => {
               </div>
               <div>
                 <p><span className="font-medium">Submitted:</span> {new Date(submission.submittedAt).toLocaleString()}</p>
-                <p><span className="font-medium">Status:</span> 
-                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${
-                    submission.status === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                  }`}>
+                <p><span className="font-medium">Status:</span>
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-medium ${submission.status === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
                     {submission.status === 'graded' ? 'Graded' : 'Pending Review'}
                   </span>
                 </p>
@@ -314,8 +313,8 @@ const SubmissionView = () => {
           <div className="p-4">
             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4">
               <h2 className="text-xl font-semibold">Student Answers & Grading</h2>
-              
-              <Button 
+
+              <Button
                 onClick={() => {
                   const count = autoGradeMultipleChoice();
                   if (count > 0) {
@@ -339,7 +338,7 @@ const SubmissionView = () => {
                 Auto-grade Multiple Choice
               </Button>
             </div>
-            
+
             {!editedAnswers?.length ? (
               <div className="text-center py-8 text-gray-500">
                 No answers found in this submission.
@@ -347,8 +346,8 @@ const SubmissionView = () => {
             ) : (
               <div className="space-y-6">
                 {editedAnswers.map((answer, index) => (
-                  <div 
-                    key={answer._id || index} 
+                  <div
+                    key={answer._id || index}
                     className={`border rounded-lg p-4 ${answer.isEdited ? 'border-blue-300 bg-blue-50' : ''}`}
                   >
                     <div className="mb-2">
@@ -367,14 +366,14 @@ const SubmissionView = () => {
                       <p className="font-medium text-sm text-gray-600">Student Answer:</p>
                       <div className="mt-1 text-gray-800">{answer.answer || answer.text || 'No answer provided'}</div>
                     </div>
-                    
+
                     {exam?.questions[index]?.type === 'MCQ' && (
                       <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                         <p className="font-medium text-sm text-gray-600">Expected Answer:</p>
                         <div className="mt-1 text-gray-800">
-                          {exam.questions[index].correctAnswer || 
-                           (exam.questions[index].options?.find(option => 
-                             option.isCorrect)?.text) || 'Not specified'}
+                          {exam.questions[index].correctAnswer ||
+                            (exam.questions[index].options?.find(option =>
+                              option.isCorrect)?.text) || 'Not specified'}
                         </div>
                       </div>
                     )}
@@ -382,7 +381,7 @@ const SubmissionView = () => {
                     <div className="my-4">
                       <div className="flex flex-wrap items-center gap-3 mb-3">
                         <label htmlFor={`points-${index}`} className="font-medium">Points:</label>
-                        <input 
+                        <input
                           id={`points-${index}`}
                           type="number"
                           className="w-20 px-3 py-1 border rounded"
@@ -395,9 +394,9 @@ const SubmissionView = () => {
                           of {exam?.questions[index]?.maxScore || exam?.questions[index]?.points || 0} possible
                         </span>
                       </div>
-                      
+
                       <div>
-                        <label htmlFor={`feedback-${index}`} className="font-medium block mb-1">Feedback to student:</label>
+                        <label htmlFor={`feedback-${index}`} className="font-medium">Feedback:</label>
                         <textarea
                           id={`feedback-${index}`}
                           className="w-full px-3 py-2 border rounded"
@@ -412,7 +411,7 @@ const SubmissionView = () => {
                 ))}
               </div>
             )}
-            
+
             {/* Grade summary */}
             <div className="mt-6 p-4 bg-gray-50 rounded-lg mb-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -427,19 +426,19 @@ const SubmissionView = () => {
                 <div className="text-right">
                   <p className="text-gray-600">
                     Final percentage: <span className="font-semibold">
-                      {exam?.totalPoints ? 
-                        `${Math.round((editedAnswers.reduce((sum, answer) => sum + (parseInt(answer.points) || 0), 0) / exam.totalPoints) * 100)}%` 
+                      {exam?.totalPoints ?
+                        `${Math.round((editedAnswers.reduce((sum, answer) => sum + (parseInt(answer.points) || 0), 0) / exam.totalPoints) * 100)}%`
                         : 'N/A'}
                     </span>
                   </p>
                 </div>
               </div>
             </div>
-            
+
             {/* Save grades button */}
             <div className="flex justify-end">
-              <Button 
-                onClick={saveGrades} 
+              <Button
+                onClick={saveGrades}
                 disabled={saving || !hasUnsavedChanges}
                 className={`${hasUnsavedChanges ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'} px-6`}
               >

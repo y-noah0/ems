@@ -14,7 +14,7 @@ const ExamCreator = () => {
   const [success, setSuccess] = useState('');
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
-    // Exam form data
+  // Exam form data
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -26,7 +26,7 @@ const ExamCreator = () => {
     totalPoints: 100,
     passingPercentage: 50,
     questions: []
-  });  
+  });
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -34,7 +34,7 @@ const ExamCreator = () => {
         try {
           const subjectsData = await examService.getTeacherSubjects();
           setSubjects(subjectsData);
-            if (subjectsData.length > 0) {
+          if (subjectsData.length > 0) {
             setFormData(prev => ({
               ...prev,
               subjectId: subjectsData[0]._id.toString()
@@ -50,19 +50,19 @@ const ExamCreator = () => {
         try {
           const classesData = await adminService.getTeacherClasses();
           setClasses(classesData);
-            if (classesData.length > 0) {
+          if (classesData.length > 0) {
             setFormData(prev => ({
               ...prev,
               classId: classesData[0]._id.toString()
             }));
           } else {
-            setError(prevError => 
+            setError(prevError =>
               prevError ? `${prevError} No classes are available.` : 'No classes are available. Please contact your dean.'
             );
           }
         } catch (classError) {
           console.error('Error fetching classes:', classError);
-          setError(prevError => 
+          setError(prevError =>
             prevError ? `${prevError} Failed to load classes.` : 'Failed to load classes. Please try again later.'
           );
         }
@@ -71,12 +71,12 @@ const ExamCreator = () => {
         setError('Failed to load subjects');
       }
     }
-    
+
     fetchData();
   }, []);
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // If the field is an ID, ensure it's properly formatted
     if (name === 'subjectId' || name === 'classId') {
       setFormData(prev => ({
@@ -104,49 +104,48 @@ const ExamCreator = () => {
         { id: Date.now() + 4, text: '', isCorrect: false }
       ]
     };
-    
+
     setFormData(prev => ({
       ...prev,
       questions: [...prev.questions, newQuestion]
     }));
-  };  const handleSubmit = async (e) => {
+  }; const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
-    
+
     try {
       // Validate form data
       if (!formData.title.trim()) {
         throw new Error('Exam title is required');
       }
-      
       if (!formData.subjectId) {
         throw new Error('Please select a subject');
       }
-      
       if (!formData.classId) {
         throw new Error('Please select a class');
       }
-        // Prepare data - ensure IDs are properly formatted, no extra quotes
+
+      // Prepare data - ensure IDs are properly formatted, no extra quotes
       const examDataToSubmit = {
         ...formData,
-        // Ensure IDs are strings without extra quotes
         subjectId: formData.subjectId.toString().replace(/^"+|"+$/g, ''),
-        classId: formData.classId.toString().replace(/^"+|"+$/g, ''),
-        // If startTime is provided, create a proper schedule object
+        classIds: [formData.classId.toString().replace(/^"+|"+$/g, '')], // <-- Fix here
+        // Remove classId, use classIds array
         schedule: formData.startTime ? {
           start: new Date(formData.startTime),
           duration: parseInt(formData.duration)
         } : null,
         status: 'draft'
       };
-      
+      delete examDataToSubmit.classId; // Remove classId from payload
+
       console.log('Submitting exam data:', examDataToSubmit);
-      
+
       // Save exam as draft
       const examData = await examService.createExam(examDataToSubmit);
-      
+
       setSuccess('Exam created successfully!');
       setTimeout(() => {
         navigate(`/teacher/exams/${examData._id}/edit`);
@@ -164,19 +163,19 @@ const ExamCreator = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Create New Exam</h1>
       </div>
-      
+
       {error && (
         <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
           {error}
         </div>
       )}
-      
+
       {success && (
         <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
           {success}
         </div>
       )}
-        <Card>
+      <Card>
         <form onSubmit={handleSubmit} className="p-4">
           <div className="space-y-6">
             <div>
@@ -191,7 +190,7 @@ const ExamCreator = () => {
                 placeholder="Enter exam title"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Description
@@ -205,7 +204,7 @@ const ExamCreator = () => {
                 placeholder="Enter exam description"
               />
             </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Subject
@@ -228,7 +227,7 @@ const ExamCreator = () => {
                   )}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Class
@@ -252,7 +251,7 @@ const ExamCreator = () => {
                 </select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -271,7 +270,7 @@ const ExamCreator = () => {
                   <option value="practice">Practice Test</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Duration (minutes)
@@ -286,7 +285,7 @@ const ExamCreator = () => {
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button
                 type="button"

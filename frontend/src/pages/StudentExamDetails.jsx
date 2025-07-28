@@ -9,7 +9,7 @@ import submissionService from '../services/submissionService';
 const StudentExamDetails = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
-  
+
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,17 +18,27 @@ const StudentExamDetails = () => {
   useEffect(() => {
     const fetchExamDetails = async () => {
       setLoading(true);
+      setError('');
       try {
-        // Fetch exam data
         const examData = await examService.getExamById(examId);
+        // Calculate schedule.end
+        if (examData.schedule?.start && examData.schedule?.duration) {
+          const start = new Date(examData.schedule.start);
+          examData.schedule.end = new Date(start.getTime() + examData.schedule.duration * 60 * 1000);
+        }
         setExam(examData);
-        
-        // Fetch student's submissions for this exam if any
+
         const studentSubmissions = await submissionService.getStudentSubmissions();
         const examSubmissions = studentSubmissions.filter(
-          submission => submission.exam._id === examId || submission.exam === examId
+          submission => submission.exam?._id === examId || submission.exam === examId
         );
         setSubmissions(examSubmissions);
+
+        // Debug output
+        console.log('Exam status:', examData.status);
+        console.log('Exam schedule:', examData.schedule);
+        console.log('Current time:', new Date());
+        console.log('Submissions:', examSubmissions);
       } catch (error) {
         console.error('Error fetching exam details:', error);
         setError(error.message || 'Failed to load exam details');
@@ -40,21 +50,19 @@ const StudentExamDetails = () => {
     fetchExamDetails();
   }, [examId]);
 
-  // Format the date nicely
   const formatDate = (dateString) => {
     if (!dateString) return 'Not scheduled';
     const date = new Date(dateString);
     return date.toLocaleString();
   };
 
-  // Get the exam status label and color
   const getStatusInfo = (exam) => {
     if (!exam) return { label: 'Unknown', color: 'gray' };
-    
+
     const now = new Date();
     const start = exam.schedule?.start ? new Date(exam.schedule.start) : null;
     const end = exam.schedule?.end ? new Date(exam.schedule.end) : null;
-    
+
     if (exam.status === 'draft') {
       return { label: 'Draft', color: 'gray' };
     } else if (exam.status === 'scheduled') {
@@ -70,49 +78,37 @@ const StudentExamDetails = () => {
     } else if (exam.status === 'completed') {
       return { label: 'Completed', color: 'purple' };
     }
-    
+
     return { label: 'Unknown', color: 'gray' };
   };
 
-  // Check if the exam is available to take
   const isExamAvailable = () => {
     if (!exam) return false;
-    
+
     const now = new Date();
     const start = exam.schedule?.start ? new Date(exam.schedule.start) : null;
     const end = exam.schedule?.end ? new Date(exam.schedule.end) : null;
-    
+
     return (
-      exam.status === 'active' || 
-      (exam.status === 'scheduled' && 
-       start && start <= now &&
-       end && end >= now)
+      exam.status === 'active' ||
+      (exam.status === 'scheduled' &&
+        start && start <= now &&
+        end && end >= now)
     );
   };
 
-  // Check if student has already completed this exam
   const hasCompletedExam = () => {
-    return submissions.some(submission => 
-      submission.status === 'completed' || 
-      submission.status === 'graded'
-    );
+    return submissions.some(submission => submission.status === 'graded');
   };
 
-  // Handle take exam button click
   const handleTakeExam = () => {
     navigate(`/student/take-exam/${examId}`);
   };
 
-  // Handle view results button click
   const handleViewResults = () => {
-    // Find the completed submission
-    const completedSubmission = submissions.find(submission => 
-      submission.status === 'completed' || 
-      submission.status === 'graded'
-    );
-    
-    if (completedSubmission) {
-      navigate(`/student/results?submissionId=${completedSubmission._id}`);
+    const submission = submissions.find(s => s.status === 'graded');
+    if (submission) {
+      navigate(`/student/submissions/${submission._id}`);
     }
   };
 
@@ -120,7 +116,7 @@ const StudentExamDetails = () => {
     <Layout>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Exam Details</h1>
-        <Button 
+        <Button
           variant="secondary"
           className="mt-2"
           onClick={() => navigate('/student/exams')}
@@ -147,15 +143,15 @@ const StudentExamDetails = () => {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center">
                     <span className="text-gray-600 w-32">Subject:</span>
-                    <span className="font-medium">{exam.subject?.name}</span>
+                    <span className="font-medium">{exam.subject?.name || 'N/A'}</span>
                   </div>
                   <div className="flex items-center">
                     <span className="text-gray-600 w-32">Type:</span>
-                    <span className="font-medium">{exam.type}</span>
+                    <span className="font-medium">{exam.type || 'N/A'}</span>
                   </div>
                   <div className="flex items-center">
                     <span className="text-gray-600 w-32">Teacher:</span>
-                    <span className="font-medium">{exam.teacher?.fullName}</span>
+                    <span className="font-medium">{exam.teacher?.fullName || 'N/A'}</span>
                   </div>
                   <div className="flex items-center">
                     <span className="text-gray-600 w-32">Start Time:</span>
@@ -167,7 +163,7 @@ const StudentExamDetails = () => {
                   </div>
                   <div className="flex items-center">
                     <span className="text-gray-600 w-32">Duration:</span>
-                    <span className="font-medium">{exam.schedule?.duration || exam.duration} minutes</span>
+                    <span className="font-medium">{exam.schedule?.duration} minutes</span>
                   </div>
                   <div className="flex items-center">
                     <span className="text-gray-600 w-32">Total Points:</span>
@@ -183,14 +179,14 @@ const StudentExamDetails = () => {
                   </div>
                 </div>
 
-                {exam.description && (
+                {exam.instructions && (
                   <div className="mt-6">
-                    <h3 className="font-medium text-gray-900 mb-2">Description:</h3>
-                    <p className="text-gray-700">{exam.description}</p>
+                    <h3 className="font-medium text-gray-900 mb-2">Instructions:</h3>
+                    <div dangerouslySetInnerHTML={{ __html: exam.instructions }} />
                   </div>
                 )}
               </div>
-              
+
               <div className="flex flex-col gap-3">
                 {isExamAvailable() && !hasCompletedExam() && (
                   <Button
@@ -200,7 +196,7 @@ const StudentExamDetails = () => {
                     Take Exam
                   </Button>
                 )}
-                
+
                 {hasCompletedExam() && (
                   <Button
                     variant="secondary"
@@ -212,13 +208,7 @@ const StudentExamDetails = () => {
               </div>
             </div>
           </Card>
-          
-          {exam.instructions && (
-            <Card title="Exam Instructions">
-              <div dangerouslySetInnerHTML={{ __html: exam.instructions }} />
-            </Card>
-          )}
-          
+
           {submissions.length > 0 && (
             <Card title="Your Submissions">
               <div className="overflow-x-auto">
@@ -240,26 +230,20 @@ const StudentExamDetails = () => {
                     {submissions.map((submission) => (
                       <tr key={submission._id}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {new Date(submission.startTime).toLocaleString()}
+                          {new Date(submission.submittedAt).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-block px-2 py-1 text-xs rounded-full ${
-                              submission.status === 'graded'
-                                ? 'bg-green-100 text-green-800'
-                                : submission.status === 'completed'
-                                ? 'bg-blue-100 text-blue-800'
-                                : submission.status === 'in-progress'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}
+                            className={`inline-block px-2 py-1 text-xs rounded-full ${submission.status === 'graded'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'}`}
                           >
                             {submission.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.score !== undefined && submission.totalPoints
-                            ? `${submission.score}/${submission.totalPoints}`
+                          {submission.totalScore !== undefined
+                            ? `${submission.totalScore}/${exam.totalPoints || 100}`
                             : '-'}
                         </td>
                       </tr>

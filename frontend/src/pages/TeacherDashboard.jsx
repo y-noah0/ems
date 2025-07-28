@@ -74,7 +74,11 @@ const TeacherDashboard = () => {
                     <h3 className="font-medium">{exam.title}</h3>
                     <div className="mt-1 text-sm text-gray-500">
                       <p>Subject: {exam.subject.name}</p>
-                      <p>Class: {`${exam.class.level}${exam.class.trade}`}</p>
+                      <p>Class: {
+                        Array.isArray(exam.classes) && exam.classes.length > 0
+                          ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
+                          : 'No class assigned'
+                      }</p>
                       <p>Type: {exam.type.toUpperCase()}</p>
                     </div>
                     <div className="mt-3 flex space-x-2">
@@ -112,7 +116,11 @@ const TeacherDashboard = () => {
                     <h3 className="font-medium">{exam.title}</h3>
                     <div className="mt-1 text-sm text-gray-500">
                       <p>Subject: {exam.subject.name}</p>
-                      <p>Class: {`${exam.class.level}${exam.class.trade}`}</p>
+                      <p>Class: {
+                        Array.isArray(exam.classes) && exam.classes.length > 0
+                          ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
+                          : 'No class assigned'
+                      }</p>
                       <p>Scheduled: {new Date(exam.schedule.start).toLocaleString()}</p>
                       <p>Duration: {exam.schedule.duration} minutes</p>
                     </div>
@@ -153,17 +161,21 @@ const TeacherDashboard = () => {
                     </div>
                     <div className="mt-1 text-sm text-gray-500">
                       <p>Subject: {exam.subject.name}</p>
-                      <p>Class: {`${exam.class.level}${exam.class.trade}`}</p>
+                      <p>Class: {
+                        Array.isArray(exam.classes) && exam.classes.length > 0
+                          ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
+                          : 'No class assigned'
+                      }</p>
                       <p>Started: {new Date(exam.schedule.start).toLocaleString()}</p>
                     </div>
                     <div className="mt-3 flex space-x-2">                      <Button
-                        as={Link}
-                        to={`/teacher/exams/${exam._id}/results`}
-                        variant="primary"
-                        size="sm"
-                      >
-                        View Results
-                      </Button>
+                      as={Link}
+                      to={`/teacher/exams/${exam._id}/results`}
+                      variant="primary"
+                      size="sm"
+                    >
+                      View Results
+                    </Button>
                       <Button
                         onClick={() => examService.completeExam(exam._id)}
                         variant="warning"
@@ -189,17 +201,21 @@ const TeacherDashboard = () => {
                     <h3 className="font-medium">{exam.title}</h3>
                     <div className="mt-1 text-sm text-gray-500">
                       <p>Subject: {exam.subject.name}</p>
-                      <p>Class: {`${exam.class.level}${exam.class.trade}`}</p>
+                      <p>Class: {
+                        Array.isArray(exam.classes) && exam.classes.length > 0
+                          ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
+                          : 'No class assigned'
+                      }</p>
                       <p>Completed: {new Date(exam.updatedAt).toLocaleDateString()}</p>
                     </div>
                     <div className="mt-3">                      <Button
-                        as={Link}
-                        to={`/teacher/exams/${exam._id}/results`}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        View & Grade Results
-                      </Button>
+                      as={Link}
+                      to={`/teacher/exams/${exam._id}/results`}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      View & Grade Results
+                    </Button>
                     </div>
                   </div>
                 ))}

@@ -1,0 +1,444 @@
+# EMS System Workflow & Postman Testing Guide
+
+---
+
+## Table of Contents
+
+1. [System Workflow Overview](#system-workflow-overview)
+2. [API Endpoints & Postman Testing Guide](#api-endpoints--postman-testing-guide)
+   - [Authentication](#authentication)
+   - [Admin/Headmaster Endpoints](#adminheadmaster-endpoints)
+   - [Teacher Endpoints](#teacher-endpoints)
+   - [Student Endpoints](#student-endpoints)
+   - [Common/Reporting Endpoints](#commonreporting-endpoints)
+3. [Edge Cases & Soft-Delete Scenarios](#edge-cases--soft-delete-scenarios)
+4. [Seed Data for Testing](#seed-data-for-testing)
+
+---
+
+## System Workflow Overview
+
+### 1. School & User Creation
+
+- **System Admin** creates a School (with required fields: name, contactEmail, contactPhone, address, headmaster).
+- **Headmaster** (role: `headmaster`) is created and assigned to the School.
+- **Headmaster** creates:
+  - **Teachers** (role: `teacher`) and assigns them to the School.
+  - **Students** (role: `student`) and assigns them to Classes.
+
+### 2. Academic Structure
+
+- **Headmaster** creates Classes (level, trade, year, term, school).
+- **Headmaster** creates Subjects, assigns them to Classes, and assigns Teachers to Subjects.
+
+### 3. Exam Lifecycle
+
+- **Teacher** creates Exams for their assigned Subjects and Classes.
+  - Exam types: `assessment1`, `assessment2`, `exam`, `homework`, `quiz`
+  - Question types: `multiple-choice`, `true-false`, `short-answer`, `essay`
+  - Exams can be in `draft`, `scheduled`, `active`, `completed`, `graded` status.
+- **Teacher** schedules Exams (sets start time and duration).
+- **Teacher** activates Exams (moves from `scheduled` to `active`).
+
+### 4. Student Exam Flow
+
+- **Student** sees scheduled/active Exams for their Class.
+- **Student** starts an Exam (creates a Submission).
+- **Student** can auto-save answers during the Exam.
+- **Student** submits the Exam (status changes to `submitted`).
+
+### 5. Grading & Reporting
+
+- **MCQ/True-False**: Auto-graded.
+- **Short-answer/Essay**: Teacher grades via `/submissions/:id/grade`.
+- **Teacher** and **Headmaster** can view submissions and results.
+- **Students** can view their own results and marks.
+- **Admins/Headmasters** can generate reports by class, subject, or student.
+
+---
+
+## API Endpoints & Postman Testing Guide
+
+### Authentication
+
+#### 1. Login
+
+- **POST** `/api/auth/login`
+- **Body:**
+  ```json
+  { "identifier": "teacher@ems.edu", "password": "Teacher@123" }
+  ```
+- **Success:**
+  ```json
+  { "success": true, "token": "<JWT>", "user": { ... } }
+  ```
+- **Failure:** Invalid credentials, missing fields.
+
+#### 2. Register (Student)
+
+- **POST** `/api/auth/register`
+- **Body:**
+  ```json
+  {
+    "fullName": "Charlie Learner",
+    "email": "student@ems.edu",
+    "password": "Student@123",
+    "role": "student",
+    "registrationNumber": "S2024001"
+  }
+  ```
+- **Success:** User created.
+- **Failure:** Duplicate email/registrationNumber, weak password.
+
+---
+
+### Admin/Headmaster Endpoints
+
+#### 1. Create School
+
+- **POST** `/api/school`
+- **Headers:** `Authorization: Bearer <admin_token>`
+- **Body:**
+  ```json
+  {
+    "name": "Rwanda Coding Academy",
+    "address": "123 Education Street, Kigali",
+    "contactEmail": "info@rca.edu",
+    "contactPhone": "+250789123456",
+    "headmaster": "<headmaster_user_id>"
+  }
+  ```
+- **Success:** School created.
+- **Failure:** Missing required fields.
+
+#### 2. Create Class
+
+- **POST** `/api/admin/classes`
+- **Headers:** `Authorization: Bearer <headmaster_token>`
+- **Body:**
+  ```json
+  {
+    "level": "L3",
+    "trade": "SOD",
+    "year": 2024,
+    "term": 1,
+    "school": "<school_id>"
+  }
+  ```
+- **Success:** Class created.
+- **Failure:** Duplicate, invalid level/trade/term.
+
+#### 3. Create Subject
+
+- **POST** `/api/admin/subjects`
+- **Headers:** `Authorization: Bearer <headmaster_token>`
+- **Body:**
+  ```json
+  {
+    "name": "Web Development",
+    "code": "WEB101",
+    "description": "Intro to web tech",
+    "credits": 5,
+    "class": "<class_id>",
+    "teacher": "<teacher_id>",
+    "school": "<school_id>"
+  }
+  ```
+- **Success:** Subject created.
+- **Failure:** Nonexistent class/teacher, duplicate code.
+
+#### 4. Create Teacher
+
+- **POST** `/api/system-admin/staff`
+- **Headers:** `Authorization: Bearer <admin_token>`
+- **Body:**
+  ```json
+  {
+    "email": "teacher@ems.edu",
+    "password": "Teacher@123",
+    "fullName": "Prof. Alice Educator",
+    "role": "teacher"
+  }
+  ```
+- **Success:** Teacher created.
+- **Failure:** Duplicate email, weak password.
+
+#### 5. Create Student
+
+- **POST** `/api/admin/students`
+- **Headers:** `Authorization: Bearer <headmaster_token>`
+- **Body:**
+  ```json
+  {
+    "fullName": "Charlie Learner",
+    "email": "student@ems.edu",
+    "registrationNumber": "S2024001",
+    "class": "<class_id>",
+    "school": "<school_id>"
+  }
+  ```
+- **Success:** Student created.
+- **Failure:** Duplicate email/registrationNumber.
+
+---
+
+### Teacher Endpoints
+
+#### 1. Create Exam
+
+- **POST** `/api/exams`
+- **Headers:** `Authorization: Bearer <teacher_token>`
+- **Body:**
+  ```json
+  {
+    "title": "Web Dev Midterm",
+    "type": "assessment1",
+    "classIds": ["<class_id>"],
+    "subjectId": "<subject_id>",
+    "teacherId": "<teacher_id>",
+    "schedule": { "start": "2025-07-15T09:00:00.000Z", "duration": 60 },
+    "questions": [
+      {
+        "type": "multiple-choice",
+        "text": "Which is a JS framework?",
+        "options": [
+          { "text": "Django", "isCorrect": false },
+          { "text": "React", "isCorrect": true }
+        ],
+        "maxScore": 5
+      },
+      {
+        "type": "essay",
+        "text": "Explain MVC.",
+        "maxScore": 10
+      }
+    ],
+    "instructions": "Answer all questions."
+  }
+  ```
+- **Success:** Exam created.
+- **Failure:** Not assigned to subject/class, invalid question format.
+
+#### 2. Schedule Exam
+
+- **PUT** `/api/exams/:examId/schedule`
+- **Headers:** `Authorization: Bearer <teacher_token>`
+- **Body:**
+  ```json
+  { "start": "2025-07-15T09:00:00.000Z", "duration": 60 }
+  ```
+- **Success:** Exam scheduled.
+- **Failure:** Not exam owner, invalid schedule.
+
+#### 3. Activate Exam
+
+- **PUT** `/api/exams/:examId/activate`
+- **Headers:** `Authorization: Bearer <teacher_token>`
+- **Success:** Exam activated.
+- **Failure:** Not scheduled, not exam owner.
+
+#### 4. Grade Open Questions
+
+- **POST** `/api/submissions/:submissionId/grade`
+- **Headers:** `Authorization: Bearer <teacher_token>`
+- **Body:**
+  ```json
+  {
+    "grades": [
+      { "questionId": "<question_id>", "score": 8, "feedback": "Good explanation." }
+    ]
+  }
+  ```
+- **Success:** Submission graded.
+- **Failure:** Not exam owner, invalid score.
+
+---
+
+### Student Endpoints
+
+#### 1. Start Exam
+
+- **POST** `/api/submissions/start`
+- **Headers:** `Authorization: Bearer <student_token>`
+- **Body:**
+  ```json
+  { "examId": "<exam_id>" }
+  ```
+- **Success:** Submission created.
+- **Failure:** Not enrolled, already started, exam not active.
+
+#### 2. Save Answers
+
+- **POST** `/api/submissions/save`
+- **Headers:** `Authorization: Bearer <student_token>`
+- **Body:**
+  ```json
+  {
+    "submissionId": "<submission_id>",
+    "answers": [
+      { "questionId": "<question_id>", "answer": "React", "timeSpent": 45 }
+    ]
+  }
+  ```
+- **Success:** Answers saved.
+- **Failure:** Submission not in progress.
+
+#### 3. Submit Exam
+
+- **POST** `/api/submissions/submit`
+- **Headers:** `Authorization: Bearer <student_token>`
+- **Body:**
+  ```json
+  {
+    "submissionId": "<submission_id>",
+    "answers": [
+      { "questionId": "<question_id>", "answer": "React", "timeSpent": 300 }
+    ]
+  }
+  ```
+- **Success:** Exam submitted.
+- **Failure:** Submission not in progress.
+
+#### 4. View Results
+
+- **GET** `/api/submissions/student/results?termId=<term_id>`
+- **Headers:** `Authorization: Bearer <student_token>`
+- **Success:** List of results.
+- **Failure:** Not enrolled, no results.
+
+---
+
+### Common/Reporting Endpoints
+
+#### 1. Get Exam by ID
+
+- **GET** `/api/exams/:examId`
+- **Headers:** `Authorization: Bearer <token>`
+- **Success:** Exam details (no correct answers for students).
+- **Failure:** Not found, unauthorized.
+
+#### 2. Get All Exams for Teacher
+
+- **GET** `/api/exams/teacher`
+- **Headers:** `Authorization: Bearer <teacher_token>`
+- **Success:** List of exams.
+
+#### 3. Get All Exams for Student's Class
+
+- **GET** `/api/exams/student/class`
+- **Headers:** `Authorization: Bearer <student_token>`
+- **Success:** List of scheduled/active exams.
+
+#### 4. Get Results by Assessment Type
+
+- **GET** `/api/submissions/results/assessment1`
+- **GET** `/api/submissions/results/assessment2`
+- **GET** `/api/submissions/results/exam`
+- **GET** `/api/submissions/results/homework`
+- **GET** `/api/submissions/results/quiz`
+- **GET** `/api/submissions/results/combined`
+- **Headers:** `Authorization: Bearer <token>`
+- **Success:** Results grouped by type.
+
+---
+
+## Edge Cases & Soft-Delete Scenarios
+
+- **Soft-deleted Class/Subject:** Attempting to create exams or submissions referencing a soft-deleted class/subject will fail with a 404 or validation error.
+- **Unauthorized Access:** Teachers cannot grade or view submissions for exams they do not own. Students cannot access others' submissions.
+- **Invalid Data:** Submitting malformed JSON, missing required fields, or invalid IDs will result in 400 errors.
+- **Exam Status:** Cannot activate or schedule an exam that is already active/completed; cannot submit an exam that is not in progress.
+
+---
+
+## Seed Data for Testing
+
+Use the following data for quick testing (matches the examples above):
+
+```json
+{
+  "school": {
+    "name": "Rwanda Coding Academy",
+    "address": "123 Education Street, Kigali",
+    "contactEmail": "info@rca.edu",
+    "contactPhone": "+250789123456"
+  },
+  "users": [
+    {
+      "role": "headmaster",
+      "email": "headmaster@ems.edu",
+      "password": "Headmaster@123",
+      "fullName": "Dr. John Principal"
+    },
+    {
+      "role": "teacher",
+      "email": "teacher@ems.edu",
+      "password": "Teacher@123",
+      "fullName": "Prof. Alice Educator"
+    },
+    {
+      "role": "student",
+      "email": "student@ems.edu",
+      "password": "Student@123",
+      "fullName": "Charlie Learner",
+      "registrationNumber": "S2024001"
+    }
+  ],
+  "class": {
+    "level": "L3",
+    "trade": "SOD",
+    "year": 2024,
+    "term": 1
+  },
+  "subject": {
+    "name": "Web Development",
+    "code": "WEB101",
+    "description": "Intro to web tech",
+    "credits": 5
+  },
+  "exam": {
+    "title": "Web Dev Midterm",
+    "type": "assessment1",
+    "schedule": { "start": "2025-07-15T09:00:00.000Z", "duration": 60 },
+    "questions": [
+      {
+        "type": "multiple-choice",
+        "text": "Which is a JS framework?",
+        "options": [
+          { "text": "Django", "isCorrect": false },
+          { "text": "React", "isCorrect": true }
+        ],
+        "maxScore": 5
+      },
+      {
+        "type": "essay",
+        "text": "Explain MVC.",
+        "maxScore": 10
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Roles & Endpoint Grouping
+
+### Admin/Headmaster
+- School, class, subject, teacher, and student creation
+- All reporting endpoints
+
+### Teacher
+- Exam creation, scheduling, activation
+- Grading submissions
+- Viewing own exam results
+
+### Student
+- Exam participation (start, save, submit)
+- Viewing own results
+
+---
+
+**This document is designed for developers and QA testers to quickly understand and test the EMS backend using Postman. For any endpoint, always check required roles and soft-delete logic.**
+
+---
