@@ -192,7 +192,7 @@ const StudentDashboard = () => {
                 as={Link}
                 to="/student/profile"
                 variant="secondary"
-              >
+               >
                 Edit Profile
               </Button>
             </div>
