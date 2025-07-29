@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-// import useFullscreen from './hooks/useFullscreen';
+import useFullscreen from './hooks/useFullscreen';
 
 // Pages imports
 import LoginPage from './pages/LoginPage';
@@ -82,75 +82,75 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 };
 
 // // Global Exam Protection Wrapper (now applies to ALL routes)
-// const GlobalExamProtection = ({ children }) => {
-//   const location = useLocation();
-//   const isFullscreen = useFullscreen();
+const GlobalExamProtection = ({ children }) => {
+  const location = useLocation();
+  const isFullscreen = useFullscreen();
 
-//   const [windowSize, setWindowSize] = useState({
-//     width: window.innerWidth,
-//     height: window.innerHeight,
-//   });
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
 
-//   useEffect(() => {
-//     function handleResize() {
-//       setWindowSize({
-//         width: window.innerWidth,
-//         height: window.innerHeight,
-//       });
-//     }
-//     window.addEventListener('resize', handleResize);
-//     return () => window.removeEventListener('resize', handleResize);
-//   }, []);
+  useEffect(() => {
+    function handleResize() {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-//   useEffect(() => {
-//     if (!isFullscreen) {
-//       playAlert();
-//     }
-//   }, [isFullscreen]);
+  useEffect(() => {
+    if (!isFullscreen) {
+      playAlert();
+    }
+  }, [isFullscreen]);
 
-//   const playAlert = () => {
-//     const audio = new Audio('/alert.mp3'); // Ensure alert.mp3 is in your public folder
-//     audio.play();
-//   };
+  const playAlert = () => {
+    const audio = new Audio('/alert.mp3'); // Ensure alert.mp3 is in your public folder
+    audio.play();
+  };
 
-//   const enterFullscreen = () => {
-//     if (document.documentElement.requestFullscreen) {
-//       document.documentElement.requestFullscreen();
-//     } else if (document.documentElement.mozRequestFullScreen) {
-//       document.documentElement.mozRequestFullScreen();
-//     } else if (document.documentElement.webkitRequestFullscreen) {
-//       document.documentElement.webkitRequestFullscreen();
-//     } else if (document.documentElement.msRequestFullscreen) {
-//       document.documentElement.msRequestFullscreen();
-//     }
-//   };
+  const enterFullscreen = () => {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    } else if (document.documentElement.mozRequestFullScreen) {
+      document.documentElement.mozRequestFullScreen();
+    } else if (document.documentElement.webkitRequestFullscreen) {
+      document.documentElement.webkitRequestFullscreen();
+    } else if (document.documentElement.msRequestFullscreen) {
+      document.documentElement.msRequestFullscreen();
+    }
+  };
 
-//   // Global checks: small screen and fullscreen
-//   if (windowSize.width < 800 || windowSize.height < 600) {
-//     return (
-//       <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col justify-center items-center p-4 text-center">
-//         <h1 className="text-white text-3xl font-bold mb-4">Screen size too small!</h1>
-//         <p className="text-white mb-4">Please use a larger device.</p>
-//       </div>
-//     );
-//   }
+  // Global checks: small screen and fullscreen
+  if (windowSize.width < 800 || windowSize.height < 600) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col justify-center items-center p-4 text-center">
+        <h1 className="text-white text-3xl font-bold mb-4">Screen size too small!</h1>
+        <p className="text-white mb-4">Please use a larger device.</p>
+      </div>
+    );
+  }
 
-//   if (!isFullscreen) {
-//     return (
-//       <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col justify-center items-center p-4 text-center">
-//         <h1 className="text-white text-3xl font-bold mb-4">Please enter fullscreen to continue</h1>
-//         <button
-//           onClick={enterFullscreen}
-//           className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded text-lg"
-//         >
-//           Enter Fullscreen
-//         </button>
-//       </div>
-//     );
-//   }
+  if (!isFullscreen) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col justify-center items-center p-4 text-center">
+        <h1 className="text-white text-3xl font-bold mb-4">Please enter fullscreen to continue</h1>
+        <button
+          onClick={enterFullscreen}
+          className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded text-lg"
+        >
+          Enter Fullscreen
+        </button>
+      </div>
+    );
+  }
 
-//   return children;
-// };
+  return children;
+};
 
 function App() {
   return (
