@@ -45,7 +45,7 @@ const createClass = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Class already exists in this school' });
         }
 
-        const newClass = new Class({ level, trade, year, school, capacity, subjects });
+        const newClass = new Class({ level, trade, year, school: schoolId, capacity, subjects });
         await newClass.save();
 
         logger.info('Class created', { classId: newClass._id, school });
@@ -58,6 +58,11 @@ const createClass = async (req, res) => {
 
 // Get all classes (filtered by schoolId in body)
 const getClasses = async (req, res) => {
+    const { schoolId } = req.query;
+    if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'schoolId is required in query' });
+    }
+
     try {
         const { schoolId } = req.body;
 
@@ -85,6 +90,11 @@ const getClasses = async (req, res) => {
 
 // Get class by ID (filtered by schoolId in body)
 const getClassById = async (req, res) => {
+    const { schoolId } = req.query;
+    if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'schoolId is required in query' });
+    }
+
     try {
         const { schoolId } = req.body;
 
@@ -119,6 +129,12 @@ const updateClass = async (req, res) => {
     if (!isDeanOrAdmin(req)) {
         return res.status(403).json({ success: false, message: 'Access denied' });
     }
+
+    const { schoolId } = req.body;
+    if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'schoolId is required in request body' });
+    }
+
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -148,17 +164,17 @@ const updateClass = async (req, res) => {
             level,
             trade,
             year,
-            school,
+            school: schoolId,
             isDeleted: false
         });
         if (duplicate) {
+            return res.status(400).json({ success: false, message: 'Another class with same attributes exists in this school' });
             return res.status(400).json({ success: false, message: 'Another class with same attributes exists in this school' });
         }
 
         classDoc.level = level;
         classDoc.trade = trade;
         classDoc.year = year;
-        classDoc.school = school;
         classDoc.capacity = capacity;
         classDoc.subjects = subjects;
         await classDoc.save();

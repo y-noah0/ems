@@ -28,7 +28,7 @@ const DeanDashboard = () => {
       setLoading(true);
       try {
         // Fetch classes
-        const classesData = await adminService.getAllClasses();
+        const classesData = await adminService.getAllClasses(currentUser.school);
 
         // Fetch teachers
         const teachersData = await adminService.getAllTeachers();
