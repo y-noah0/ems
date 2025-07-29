@@ -1,8 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
+const {
+    createTerm,
+    getTerms,
+    getTermById,
+    updateTerm,
+    deleteTerm
+} = require('../controllers/termController');
+const {
+    authenticate,
+    requireRoles
+} = require('../middlewares/authMiddleware');
 
-const termController = require('../controllers/termController');
+// Roles
+const deanOrAdmin = requireRoles(['dean', 'admin']);
 
 // Validation rules
 const termValidationRules = [
@@ -13,22 +25,48 @@ const termValidationRules = [
     body('endDate').isISO8601().toDate().withMessage('End date must be a valid date')
 ];
 
-// Create term
-router.post('/', termValidationRules, termController.createTerm);
+// Create term (only dean or admin)
+router.post('/', authenticate, deanOrAdmin, termValidationRules, createTerm);
 
-// Get all terms
-router.get('/', termController.getTerms);
+// Get all terms (authenticated users)
+router.get(
+    '/',
+    authenticate,
+    [body('schoolId').isMongoId().withMessage('Valid schoolId is required in request body')],
+    getTerms
+);
 
-// Get term by ID
-router.get('/:id', param('id').isMongoId().withMessage('Invalid Term ID'), termController.getTermById);
+// Get term by ID (authenticated users)
+router.get(
+    '/:id',
+    authenticate,
+    [param('id').isMongoId().withMessage('Invalid Term ID'),
+    body('schoolId').isMongoId().withMessage('Valid schoolId is required in request body')],
+    getTermById
+);
 
-// Update term by ID
-router.put('/:id', [
-    param('id').isMongoId().withMessage('Invalid Term ID'),
-    ...termValidationRules
-], termController.updateTerm);
+// Update term by ID (only dean or admin)
+router.put(
+    '/:id',
+    authenticate,
+    deanOrAdmin,
+    [
+        param('id').isMongoId().withMessage('Invalid Term ID'),
+        ...termValidationRules
+    ],
+    updateTerm
+);
 
-// Delete (soft delete) term by ID
-router.delete('/:id', param('id').isMongoId().withMessage('Invalid Term ID'), termController.deleteTerm);
+// Delete (soft delete) term by ID (only dean or admin)
+router.delete(
+    '/:id',
+    authenticate,
+    deanOrAdmin,
+    [
+        param('id').isMongoId().withMessage('Invalid Term ID'),
+        body('schoolId').isMongoId().withMessage('Valid schoolId is required in request body')
+    ],
+    deleteTerm
+);
 
 module.exports = router;

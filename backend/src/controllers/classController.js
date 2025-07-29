@@ -1,9 +1,9 @@
-// classController.js
 const Class = require('../models/Class');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
+const mongoose = require('mongoose');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -12,10 +12,14 @@ const logger = winston.createLogger({
     transports: [new winston.transports.File({ filename: 'class.log' })]
 });
 
-// Middleware-based role check (Dean and Admin full access)
+// Middleware-based role check (Dean and Admin full access, others restricted to their school)
 const isDeanOrAdmin = (req) => req.user && ['dean', 'admin'].includes(req.user.role);
+const isAuthorizedForSchool = (req, schoolId) => {
+    if (isDeanOrAdmin(req)) return true;
+    return req.user && req.user.school && req.user.school.toString() === schoolId;
+};
 
-// Create Class (only dean or admin)
+// Create Class (only dean or admin, restricted to school)
 const createClass = async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -25,15 +29,26 @@ const createClass = async (req, res) => {
         }
 
         const { level, trade, year, school, capacity, subjects } = req.body;
+
+        // Validate schoolId
+        if (!school || !mongoose.isValidObjectId(school)) {
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
+        }
+
+        // Check if user is authorized for the school
+        if (!isAuthorizedForSchool(req, school)) {
+            return res.status(403).json({ success: false, message: 'Access denied for this school' });
+        }
+
         const existing = await Class.findOne({ level, trade, year, school, isDeleted: false });
         if (existing) {
-            return res.status(400).json({ success: false, message: 'Class already exists' });
+            return res.status(400).json({ success: false, message: 'Class already exists in this school' });
         }
 
         const newClass = new Class({ level, trade, year, school, capacity, subjects });
         await newClass.save();
 
-        logger.info('Class created', { classId: newClass._id });
+        logger.info('Class created', { classId: newClass._id, school });
         res.status(201).json({ success: true, class: newClass });
     } catch (error) {
         logger.error('Error in createClass', { error: error.message, ip: req.ip });
@@ -41,10 +56,22 @@ const createClass = async (req, res) => {
     }
 };
 
-// Get all classes
+// Get all classes (filtered by schoolId in body)
 const getClasses = async (req, res) => {
     try {
-        const classes = await Class.find({ isDeleted: false })
+        const { schoolId } = req.body;
+
+        // Validate schoolId
+        if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required in request body' });
+        }
+
+        // Check if user is authorized for the school
+        if (!isAuthorizedForSchool(req, schoolId)) {
+            return res.status(403).json({ success: false, message: 'Access denied for this school' });
+        }
+
+        const classes = await Class.find({ school: schoolId, isDeleted: false })
             .populate('trade', 'code name')
             .populate('school', 'name')
             .populate('subjects', 'name');
@@ -56,16 +83,28 @@ const getClasses = async (req, res) => {
     }
 };
 
-// Get class by ID
+// Get class by ID (filtered by schoolId in body)
 const getClassById = async (req, res) => {
     try {
-        const classDoc = await Class.findById(req.params.id)
+        const { schoolId } = req.body;
+
+        // Validate schoolId
+        if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required in request body' });
+        }
+
+        // Check if user is authorized for the school
+        if (!isAuthorizedForSchool(req, schoolId)) {
+            return res.status(403).json({ success: false, message: 'Access denied for this school' });
+        }
+
+        const classDoc = await Class.findOne({ _id: req.params.id, school: schoolId, isDeleted: false })
             .populate('trade', 'code name')
             .populate('school', 'name')
             .populate('subjects', 'name');
 
-        if (!classDoc || classDoc.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Class not found' });
+        if (!classDoc) {
+            return res.status(404).json({ success: false, message: 'Class not found in this school' });
         }
 
         res.json({ success: true, class: classDoc });
@@ -75,7 +114,7 @@ const getClassById = async (req, res) => {
     }
 };
 
-// Update class (only dean or admin)
+// Update class (only dean or admin, restricted to school)
 const updateClass = async (req, res) => {
     if (!isDeanOrAdmin(req)) {
         return res.status(403).json({ success: false, message: 'Access denied' });
@@ -87,12 +126,23 @@ const updateClass = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const classDoc = await Class.findById(req.params.id);
-        if (!classDoc || classDoc.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Class not found' });
+        const { level, trade, year, school, capacity, subjects } = req.body;
+
+        // Validate schoolId
+        if (!school || !mongoose.isValidObjectId(school)) {
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
         }
 
-        const { level, trade, year, school, capacity, subjects } = req.body;
+        // Check if user is authorized for the school
+        if (!isAuthorizedForSchool(req, school)) {
+            return res.status(403).json({ success: false, message: 'Access denied for this school' });
+        }
+
+        const classDoc = await Class.findOne({ _id: req.params.id, school, isDeleted: false });
+        if (!classDoc) {
+            return res.status(404).json({ success: false, message: 'Class not found in this school' });
+        }
+
         const duplicate = await Class.findOne({
             _id: { $ne: classDoc._id },
             level,
@@ -102,7 +152,7 @@ const updateClass = async (req, res) => {
             isDeleted: false
         });
         if (duplicate) {
-            return res.status(400).json({ success: false, message: 'Another class with same attributes exists' });
+            return res.status(400).json({ success: false, message: 'Another class with same attributes exists in this school' });
         }
 
         classDoc.level = level;
@@ -113,7 +163,7 @@ const updateClass = async (req, res) => {
         classDoc.subjects = subjects;
         await classDoc.save();
 
-        logger.info('Class updated', { classId: classDoc._id });
+        logger.info('Class updated', { classId: classDoc._id, school });
         res.json({ success: true, class: classDoc });
     } catch (error) {
         logger.error('Error in updateClass', { error: error.message, ip: req.ip });
@@ -121,21 +171,33 @@ const updateClass = async (req, res) => {
     }
 };
 
-// Soft delete class (only dean or admin)
+// Soft delete class (only dean or admin, restricted to school)
 const deleteClass = async (req, res) => {
     if (!isDeanOrAdmin(req)) {
         return res.status(403).json({ success: false, message: 'Access denied' });
     }
     try {
-        const classDoc = await Class.findById(req.params.id);
-        if (!classDoc || classDoc.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Class not found' });
+        const { schoolId } = req.body;
+
+        // Validate schoolId
+        if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required in request body' });
+        }
+
+        // Check if user is authorized for the school
+        if (!isAuthorizedForSchool(req, schoolId)) {
+            return res.status(403).json({ success: false, message: 'Access denied for this school' });
+        }
+
+        const classDoc = await Class.findOne({ _id: req.params.id, school: schoolId, isDeleted: false });
+        if (!classDoc) {
+            return res.status(404).json({ success: false, message: 'Class not found in this school' });
         }
 
         classDoc.isDeleted = true;
         await classDoc.save();
 
-        logger.info('Class soft deleted', { classId: classDoc._id });
+        logger.info('Class soft deleted', { classId: classDoc._id, school: schoolId });
         res.json({ success: true, message: 'Class deleted' });
     } catch (error) {
         logger.error('Error in deleteClass', { error: error.message, ip: req.ip });

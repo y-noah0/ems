@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const speakeasy = require('speakeasy');
-const nodemailer = require('nodemailer');
 const { validationResult } = require('express-validator');
 const mongoSanitize = require('express-mongo-sanitize');
 const winston = require('winston');
@@ -10,6 +9,8 @@ const School = require('../models/school');
 const Enrollment = require('../models/enrollment');
 const Class = require('../models/Class');
 const Term = require('../models/term');
+const { sendEmail } = require('../services/emailService');
+const { sendSMS } = require('../services/twilioService');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -18,14 +19,122 @@ const logger = winston.createLogger({
   transports: [new winston.transports.File({ filename: 'auth.log' })]
 });
 
-// Nodemailer transporter
-const transporter = nodemailer.createTransport({
-  service: 'Gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
+// Simple in-memory rate limiter for notifications
+const notificationRateLimit = new Map();
+const NOTIFICATION_LIMIT = 5; // Max 5 notifications per user in 10 minutes
+const NOTIFICATION_WINDOW = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+const checkNotificationRateLimit = (userId) => {
+  const now = Date.now();
+  const userNotifications = notificationRateLimit.get(userId) || { count: 0, startTime: now };
+
+  if (now - userNotifications.startTime > NOTIFICATION_WINDOW) {
+    userNotifications.count = 0;
+    userNotifications.startTime = now;
   }
-});
+
+  if (userNotifications.count >= NOTIFICATION_LIMIT) {
+    return false;
+  }
+
+  userNotifications.count += 1;
+  notificationRateLimit.set(userId, userNotifications);
+  return true;
+};
+
+// HTML email template with blue color scheme
+const emailTemplate = (userFullName, message, subject) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f9ff; color: #333333;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f9ff; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="background-color: #007bff; padding: 30px 20px; text-align: center; border-top-left-radius: 10px; border-top-right-radius: 10px;">
+              <h1 style="color: #ffffff; font-size: 26px; margin: 0; font-weight: 500;">Education Management System</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px; font-size: 16px; line-height: 1.6; color: #333333;">
+              <p style="margin: 0 0 15px; font-weight: bold;">Dear ${userFullName},</p>
+              <p style="margin: 0 0 20px;">${message}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 20px; text-align: center; color: #666666; font-size: 13px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;">
+              <p style="margin: 0 0 8px;">Education Management System &copy; ${new Date().getFullYear()}</p>
+              <p style="margin: 0;">Need help? Contact us at <a href="mailto:support@ems.com" style="color: #007bff; text-decoration: none; font-weight: bold;">support@ems.com</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+// Send notification (email, SMS, and socket.io)
+const sendNotification = async (user, message, subject, req) => {
+  // Only send notifications for deans, headmasters, or teachers
+  const notifyRoles = ['dean', 'headmaster', 'teacher'];
+  if (!notifyRoles.includes(user.role)) {
+    logger.info('Notification skipped: User role not in target roles', { userId: user._id, role: user.role, ip: req.ip });
+    return true; // Skip silently but return true to avoid blocking the action
+  }
+
+  if (!checkNotificationRateLimit(user._id)) {
+    logger.warn('Notification rate limit exceeded', { userId: user._id, ip: req.ip });
+    return false;
+  }
+
+  const results = { email: false, sms: false, socket: false };
+  const { email, sms } = user.preferences.notifications;
+
+  // Convert HTML message to plain text for SMS and email fallback
+  const plainTextMessage = message.replace(/<[^>]+>/g, '');
+
+  // Socket.io notification
+  try {
+    req.io.to(user._id).emit('notification', { message: plainTextMessage });
+    results.socket = true;
+    logger.info('Socket notification sent', { userId: user._id, message: plainTextMessage, ip: req.ip });
+  } catch (error) {
+    logger.error('Error sending socket notification', { userId: user._id, error: error.message, ip: req.ip });
+  }
+
+  // Email notification
+  if (email && user.email) {
+    try {
+      const htmlContent = emailTemplate(user.fullName, message, subject);
+      await sendEmail(user.email, subject, plainTextMessage, htmlContent);
+      results.email = true;
+      logger.info('Email notification sent', { userId: user._id, email: user.email, subject, ip: req.ip });
+    } catch (error) {
+      logger.error('Error sending email notification', { userId: user._id, email: user.email, error: error.message, ip: req.ip });
+    }
+  }
+
+  // SMS notification (fallback if email fails or not enabled)
+  if (sms && user.phoneNumber && (!email || !results.email)) {
+    try {
+      await sendSMS(user.phoneNumber, plainTextMessage);
+      results.sms = true;
+      logger.info('SMS notification sent', { userId: user._id, phoneNumber: user.phoneNumber, message: plainTextMessage, ip: req.ip });
+    } catch (error) {
+      logger.error('Error sending SMS notification', { userId: user._id, phoneNumber: user.phoneNumber, error: error.message, ip: req.ip });
+    }
+  }
+
+  return results.email || results.sms || results.socket;
+};
 
 // Generate unique registration number for students (e.g., STU2025002)
 const generateRegistrationNumber = async () => {
@@ -36,7 +145,7 @@ const generateRegistrationNumber = async () => {
   let attempts = 0;
 
   while (!isUnique && attempts < maxAttempts) {
-    const randomNum = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
     registrationNumber = `STU${year}${randomNum}`;
     const existingUser = await User.findOne({ registrationNumber });
     if (!existingUser) {
@@ -54,14 +163,12 @@ const generateRegistrationNumber = async () => {
 // Register a new user
 const register = async (req, res) => {
   try {
-    // Validate request body
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       logger.warn('Validation errors in register', { errors: errors.array(), ip: req.ip });
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    // Sanitize inputs
     mongoSanitize.sanitize(req.body);
 
     const {
@@ -80,7 +187,6 @@ const register = async (req, res) => {
       parentPhoneNumber
     } = req.body;
 
-    // Validate schoolId for student, teacher, dean
     if (['student', 'teacher', 'dean'].includes(role)) {
       if (!schoolId) {
         logger.warn('Missing school ID for required role', { role, ip: req.ip });
@@ -93,7 +199,6 @@ const register = async (req, res) => {
       }
     }
 
-    // Check email uniqueness for non-student roles
     if (email && role !== 'student') {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
@@ -102,7 +207,6 @@ const register = async (req, res) => {
       }
     }
 
-    // Generate registration number for students
     let registrationNumber;
     if (role === 'student') {
       registrationNumber = await generateRegistrationNumber();
@@ -111,7 +215,6 @@ const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Registration number is only allowed for students' });
     }
 
-    // Validate subjects
     if (role === 'student' && subjects?.length) {
       logger.warn('Subjects provided for student', { role, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Students cannot have subjects' });
@@ -122,13 +225,11 @@ const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Subjects are only allowed for teachers' });
     }
 
-    // Generate 6-digit verification code for non-students
     const verificationCode = role !== 'student' ? Math.floor(100000 + Math.random() * 900000).toString() : undefined;
 
-    // Create user
     const user = new User({
       fullName,
-      passwordHash: password, // Schema will hash
+      passwordHash: password,
       role,
       school: ['student', 'teacher', 'dean'].includes(role) ? schoolId : null,
       registrationNumber,
@@ -143,31 +244,29 @@ const register = async (req, res) => {
       parentPhoneNumber: role === 'student' ? parentPhoneNumber : undefined
     });
 
-    // Save user
     await user.save();
-    logger.info('User registered', { userId: user.id, role, ip: req.ip });
+    logger.info('User registered', { userId: user._id, role, ip: req.ip });
 
-    // Enroll student
     if (role === 'student') {
       if (!classId || !termId) {
-        logger.warn('Missing classId or termId for student enrollment', { userId: user.id, ip: req.ip });
+        logger.warn('Missing classId or termId for student enrollment', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'classId and termId are required for student enrollment' });
       }
 
       const classDoc = await Class.findById(classId);
       if (!classDoc) {
-        logger.warn('Invalid class ID', { classId, userId: user.id, ip: req.ip });
+        logger.warn('Invalid class ID', { classId, userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid class ID' });
       }
 
       const termDoc = await Term.findById(termId);
       if (!termDoc) {
-        logger.warn('Invalid term ID', { termId, userId: user.id, ip: req.ip });
+        logger.warn('Invalid term ID', { termId, userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid term ID' });
       }
 
       if (classDoc.school.toString() !== schoolId) {
-        logger.warn('Class does not belong to specified school', { classId, schoolId, userId: user.id, ip: req.ip });
+        logger.warn('Class does not belong to specified school', { classId, schoolId, userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Class does not belong to the specified school' });
       }
 
@@ -180,30 +279,25 @@ const register = async (req, res) => {
       });
 
       await enrollment.save();
-      logger.info('Student enrolled', { enrollmentId: enrollment._id, userId: user.id, ip: req.ip });
+      logger.info('Student enrolled', { enrollmentId: enrollment._id, userId: user._id, ip: req.ip });
     }
 
-    // Send verification email for non-students with the 6-digit code
     if (role !== 'student' && email) {
-      try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: 'Verify Your Email',
-          html: `<p>Your verification code is: <strong>${user.emailVerificationToken}</strong></p><p>Please enter this code in the application to verify your email.</p>`
-        });
-        req.io.to(user.id).emit('notification', { message: 'Verification email sent' });
-        logger.info('Verification email sent', { userId: user.id, email, ip: req.ip });
-      } catch (emailError) {
-        logger.error('Error sending verification email', { error: emailError.message, userId: user.id, ip: req.ip });
-        return res.status(500).json({ success: false, message: 'User registered, but failed to send verification email', userId: user.id });
+      const message = `Welcome to the EMS! Your account has been successfully registered. Your verification code is: <strong>${user.emailVerificationToken}</strong>. Please use this code to verify your email in the EMS application.`;
+      const sent = await sendNotification(user, message, 'EMS Account Registration', req);
+      if (!sent) {
+        logger.error('Failed to send registration notification', { userId: user._id, ip: req.ip });
+        return res.status(500).json({ success: false, message: 'User registered, but failed to send registration notification', userId: user._id });
       }
+    } else if (role === 'student') {
+      const message = `Welcome, ${user.fullName}! Your registration number is ${registrationNumber}.`;
+      await sendNotification(user, message, 'Welcome to EMS', req); // Skipped due to role check
     }
 
     res.status(201).json({
       success: true,
       message: 'User registered. Verify email if applicable.',
-      userId: user.id,
+      userId: user._id,
       registrationNumber: role === 'student' ? registrationNumber : undefined
     });
   } catch (error) {
@@ -246,19 +340,19 @@ const login = async (req, res) => {
     } else {
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-        logger.warn('Invalid password', { userId: user.id, ip: req.ip });
+        logger.warn('Invalid password', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid credentials' });
       }
     }
 
     if (!user.emailVerified && user.role !== 'student') {
-      logger.warn('Email not verified', { userId: user.id, ip: req.ip });
+      logger.warn('Email not verified', { userId: user._id, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Email not verified' });
     }
 
     if (user.twoFactorEnabled) {
       if (!twoFactorCode) {
-        logger.warn('2FA code required', { userId: user.id, ip: req.ip });
+        logger.warn('2FA code required', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: '2FA code required' });
       }
       const verified = speakeasy.totp.verify({
@@ -267,26 +361,26 @@ const login = async (req, res) => {
         token: twoFactorCode
       });
       if (!verified) {
-        logger.warn('Invalid 2FA code', { userId: user.id, ip: req.ip });
+        logger.warn('Invalid 2FA code', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid 2FA code' });
       }
     }
 
     await user.updateLastLogin();
 
-    const payload = { id: user.id, role: user.role, tokenVersion: user.tokenVersion };
+    const payload = { id: user._id, role: user.role, tokenVersion: user.tokenVersion };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
-    req.io.to(user.id).emit('notification', { message: `Logged in at ${new Date().toISOString()}` });
-    logger.info('User logged in', { userId: user.id, ip: req.ip });
+    await sendNotification(user, `You logged in at ${new Date().toISOString()}`, 'EMS Login Notification', req);
+    logger.info('User logged in', { userId: user._id, ip: req.ip });
 
     res.json({
       success: true,
       token,
       refreshToken,
       user: {
-        id: user.id,
+        id: user._id,
         fullName: user.fullName,
         email: user.email,
         role: user.role,
@@ -311,8 +405,8 @@ const login = async (req, res) => {
 const logout = async (req, res) => {
   try {
     await req.user.invalidateTokens();
-    req.io.to(req.user.id).emit('notification', { message: 'Logged out successfully' });
-    logger.info('User logged out', { userId: req.user.id, ip: req.ip });
+    await sendNotification(req.user, 'You have been logged out successfully', 'EMS Logout Notification', req);
+    logger.info('User logged out', { userId: req.user._id, ip: req.ip });
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     logger.error('Error in logout', { error: error.message, stack: error.stack, ip: req.ip });
@@ -337,9 +431,11 @@ const verifyEmail = async (req, res) => {
     user.emailVerificationToken = null;
     user.emailVerified = true;
     await user.save();
-    logger.info('Email verified', { userId: user.id, ip: req.ip });
 
-    const payload = { id: user.id, role: user.role, tokenVersion: user.tokenVersion };
+    await sendNotification(user, 'Your email has been successfully verified for your EMS account.', 'EMS Email Verification', req);
+    logger.info('Email verified', { userId: user._id, ip: req.ip });
+
+    const payload = { id: user._id, role: user.role, tokenVersion: user.tokenVersion };
     const tokenJwt = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
@@ -367,11 +463,13 @@ const refreshToken = async (req, res) => {
     }
 
     const newToken = jwt.sign(
-      { id: user.id, role: user.role, tokenVersion: user.tokenVersion },
+      { id: user._id, role: user.role, tokenVersion: user.tokenVersion },
       process.env.JWT_SECRET,
       { expiresIn: '12h' }
     );
-    logger.info('Token refreshed', { userId: user.id, ip: req.ip });
+
+    await sendNotification(user, 'Your session token has been refreshed', 'EMS Token Refresh Notification', req);
+    logger.info('Token refreshed', { userId: user._id, ip: req.ip });
 
     res.json({ success: true, token: newToken });
   } catch (error) {
@@ -399,16 +497,15 @@ const requestPasswordReset = async (req, res) => {
     user.emailVerified = false;
     await user.save();
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: 'Password Reset Request',
-      html: `<p>Reset your password by clicking <a href="${process.env.APP_URL}/reset-password?token=${resetToken}">here</a>. This link expires in 1 hour.</p>`
-    });
+    const message = `A password reset request has been made for your EMS account. Use this link to reset your password: <a href="${process.env.APP_URL}/reset-password?token=${resetToken}">Reset Password</a>. This link expires in 1 hour.`;
+    const sent = await sendNotification(user, message, 'EMS Password Reset Request', req);
+    if (!sent) {
+      logger.error('Failed to send password reset notification', { userId: user._id, ip: req.ip });
+      return res.status(500).json({ success: false, message: 'Failed to send password reset notification' });
+    }
 
-    req.io.to(user.id).emit('notification', { message: 'Password reset email sent' });
-    logger.info('Password reset email sent', { userId: user.id, ip: req.ip });
-    res.json({ success: true, message: 'Password reset email sent' });
+    logger.info('Password reset request processed', { userId: user._id, ip: req.ip });
+    res.json({ success: true, message: 'Password reset notification sent' });
   } catch (error) {
     logger.error('Error in requestPasswordReset', { error: error.message, stack: error.stack, ip: req.ip });
     res.status(500).json({
@@ -429,10 +526,12 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid or expired token' });
     }
 
-    user.passwordHash = newPassword; // Schema will hash
+    user.passwordHash = newPassword;
     user.emailVerificationToken = null;
     await user.save();
-    logger.info('Password reset successful', { userId: user.id, ip: req.ip });
+
+    await sendNotification(user, 'Your password has been successfully reset for your EMS account.', 'EMS Password Reset Confirmation', req);
+    logger.info('Password reset successful', { userId: user._id, ip: req.ip });
 
     res.json({ success: true, message: 'Password reset successful' });
   } catch (error) {
@@ -448,9 +547,9 @@ const resetPassword = async (req, res) => {
 // Enable 2FA
 const enable2FA = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if (user.twoFactorEnabled) {
-      logger.warn('2FA already enabled', { userId: user.id, ip: req.ip });
+      logger.warn('2FA already enabled', { userId: user._id, ip: req.ip });
       return res.status(400).json({ success: false, message: '2FA already enabled' });
     }
 
@@ -458,7 +557,9 @@ const enable2FA = async (req, res) => {
     user.twoFactorSecret = secret.base32;
     user.twoFactorEnabled = true;
     await user.save();
-    logger.info('2FA enabled', { userId: user.id, ip: req.ip });
+
+    await sendNotification(user, 'Two-factor authentication has been successfully enabled for your EMS account.', 'EMS 2FA Enabled', req);
+    logger.info('2FA enabled', { userId: user._id, ip: req.ip });
 
     res.json({ success: true, message: '2FA enabled', secret: secret.otpauth_url });
   } catch (error) {
@@ -474,9 +575,9 @@ const enable2FA = async (req, res) => {
 // Update user profile
 const updateProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
     if (!user) {
-      logger.warn('User not found', { userId: req.user.id, ip: req.ip });
+      logger.warn('User not found', { userId: req.user._id, ip: req.ip });
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
@@ -488,7 +589,9 @@ const updateProfile = async (req, res) => {
 
     Object.assign(user, updates);
     await user.save();
-    logger.info('Profile updated', { userId: user.id, ip: req.ip });
+
+    await sendNotification(user, 'Your profile has been successfully updated for your EMS account.', 'EMS Profile Update', req);
+    logger.info('Profile updated', { userId: user._id, ip: req.ip });
 
     res.json({ success: true, message: 'Profile updated', user });
   } catch (error) {
