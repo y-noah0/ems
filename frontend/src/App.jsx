@@ -156,7 +156,6 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <GlobalExamProtection>
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
@@ -431,7 +430,6 @@ function App() {
             {/* 404 Route */}
             <Route path="*" element={<h1>Page not found</h1>} />
           </Routes>
-        </GlobalExamProtection>
       </AuthProvider>
     </Router>
   );
