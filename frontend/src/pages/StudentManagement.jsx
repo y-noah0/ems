@@ -14,7 +14,7 @@ const StudentManagement = () => {
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState('');
-  
+
   // Form data for adding a single student
   const [formData, setFormData] = useState({
     fullName: '',
@@ -28,14 +28,14 @@ const StudentManagement = () => {
       try {
         const classesData = await adminService.getAllClasses();
         setClasses(classesData);
-        
+
         if (classesData.length > 0) {
           setSelectedClassId(classesData[0]._id);
           setFormData(prev => ({
             ...prev,
             classId: classesData[0]._id
           }));
-          
+
           // Load students from the first class
           const studentsData = await adminService.getStudentsByClass(classesData[0]._id);
           setStudents(studentsData);
@@ -45,7 +45,7 @@ const StudentManagement = () => {
         console.error(err);
       }
     };
-    
+
     fetchClasses();
   }, []);
 
@@ -64,7 +64,7 @@ const StudentManagement = () => {
       ...prev,
       classId
     }));
-    
+
     try {
       setLoading(true);
       const studentsData = await adminService.getStudentsByClass(classId);
@@ -82,11 +82,11 @@ const StudentManagement = () => {
     setLoading(true);
     setError('');
     setSuccess('');
-    
+
     try {
       await adminService.createStudent(formData);
       setSuccess('Student added successfully!');
-      
+
       // Clear form
       setFormData({
         fullName: '',
@@ -94,7 +94,7 @@ const StudentManagement = () => {
         registrationNumber: '',
         classId: selectedClassId
       });
-      
+
       // Refresh student list
       const updatedStudents = await adminService.getStudentsByClass(selectedClassId);
       setStudents(updatedStudents);
@@ -114,26 +114,26 @@ const StudentManagement = () => {
           Add new students or manage existing ones
         </p>
       </div>
-      
+
       {/* Display success/error messages */}
       {success && (
         <div className="mb-4 bg-green-50 border-l-4 border-green-400 p-4 text-green-700">
           {success}
         </div>
       )}
-      
+
       {error && (
         <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4 text-red-700">
           {error}
         </div>
       )}
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Add Student Form */}
         <Card>
           <div className="p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Add New Student</h2>
-            
+
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div>
@@ -147,7 +147,7 @@ const StudentManagement = () => {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Email Address
@@ -160,22 +160,7 @@ const StudentManagement = () => {
                     required
                   />
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Registration Number
-                  </label>
-                  <Input
-                    name="registrationNumber"
-                    value={formData.registrationNumber}
-                    onChange={handleChange}
-                    required
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    This will also be used as the initial password
-                  </p>
-                </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Class
@@ -195,7 +180,7 @@ const StudentManagement = () => {
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="pt-2">
                   <Button
                     type="submit"
@@ -210,7 +195,7 @@ const StudentManagement = () => {
             </form>
           </div>
         </Card>
-        
+
         {/* Import Students Section */}
         <Card>
           <div className="p-6">
@@ -219,7 +204,7 @@ const StudentManagement = () => {
               Import multiple students at once using a CSV file.
               Format: fullName,email,registrationNumber
             </p>
-            
+
             <Button
               onClick={() => navigate('/import-students')}
               variant="secondary"
@@ -230,12 +215,12 @@ const StudentManagement = () => {
           </div>
         </Card>
       </div>
-      
+
       {/* Students List */}
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-800">Students</h2>
-          
+
           <select
             value={selectedClassId}
             onChange={handleClassChange}
@@ -248,7 +233,7 @@ const StudentManagement = () => {
             ))}
           </select>
         </div>
-        
+
         {loading ? (
           <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
