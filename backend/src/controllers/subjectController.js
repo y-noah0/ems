@@ -1,8 +1,8 @@
 // subjectController.js
 const Subject = require('../models/Subject');
-const School = require('../models/School');
+const School = require('../models/school');
 const Class = require('../models/Class');
-const Trade = require('../models/Trade');
+const Trade = require('../models/trade');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
@@ -82,22 +82,28 @@ const getSubjects = async (req, res) => {
 const getSubjectById = async (req, res) => {
     try {
         const subject = await validateEntity(Subject, req.params.id, 'Subject');
+
         await subject
             .populate('school', 'name')
             .populate('trades', 'name')
             .populate('teacher', 'fullName email');
 
-        res.json({ success: true, subject });
-    } catch (validationError) {
-        return res.status(validationError.statusCode || 400).json({
-            success: false,
-            message: validationError.message
-        });
+        return res.json({ success: true, subject });
     } catch (error) {
+        if (error?.statusCode) {
+            // This is likely a validation error from validateEntity
+            return res.status(error.statusCode).json({
+                success: false,
+                message: error.message
+            });
+        }
+
+        // Generic server error
         logger.error('Error in getSubjectById', { error: error.message, ip: req.ip });
-        res.status(500).json({ success: false, message: 'Server Error' });
+        return res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
+
 
 // Update subject by ID
 const updateSubject = async (req, res) => {
@@ -107,8 +113,6 @@ const updateSubject = async (req, res) => {
             logger.warn('Validation failed in updateSubject', { errors: errors.array(), ip: req.ip });
             return res.status(400).json({ success: false, errors: errors.array() });
         }
-
-        const { name, description, school, trades, teacher, credits } = req.body;
         const subject = await Subject.findById(req.params.id);
         if (!subject || subject.isDeleted) {
             return res.status(404).json({ success: false, message: 'Subject not found' });
