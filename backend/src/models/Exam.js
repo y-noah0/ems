@@ -64,43 +64,55 @@ const ExamSchema = new Schema(
     },
     type: {
       type: String,
-      enum: ['ass1', 'ass2', 'hw', 'exam', 'midterm', 'final', 'quiz', 'practice'],
+      enum: ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'],
       required: true,
+      default: 'quiz'
     },
     schedule: {
       start: {
         type: Date,
         required: function () {
-          return this.status === 'scheduled' || this.status === 'active';
-        },
+          return this.status !== 'draft';
+        }
       },
       duration: {
         type: Number, // in minutes
         required: function () {
-          return this.status === 'scheduled' || this.status === 'active';
+          return this.status !== 'draft';
         },
-        min: 5,
-      },
+        min: 5
+      }
     },
     questions: [QuestionSchema],
+    totalScore: {
+      type: Number,
+      default: function () {
+        return this.questions.reduce((sum, q) => sum + q.maxScore, 0);
+      }
+    },
     totalPoints: {
       type: Number,
-      default: 0,
+      default: 0
     },
     status: {
       type: String,
       enum: ['draft', 'scheduled', 'active', 'completed'],
-      default: 'draft',
+      default: 'draft'
     },
     instructions: {
       type: String,
-      default: 'Read all questions carefully before answering.',
-    },
-  },
-  {
-    timestamps: true,
+      default: 'Read all questions carefully before answering.'
+    }
+  }, {
+  timestamps: true
+});
+
+// Calculate total score when questions array changes
+ExamSchema.pre('save', function (next) {
+  if (this.isModified('questions')) {
+    this.totalScore = this.questions.reduce((sum, q) => sum + q.maxScore, 0);
   }
-);
+});
 
 // Pre-save hook to calculate totalPoints
 ExamSchema.pre('save', function (next) {

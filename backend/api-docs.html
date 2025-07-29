@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - Educational Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        pre {
+            background-color: #1f2937;
+            color: #e5e7eb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        body.dark pre {
+            background-color: #374151;
+            color: #f9fafb;
+        }
+
+        body {
+            background-color: #f3f4f6;
+            color: #111827;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.dark {
+            background-color: #111827;
+            color: #f9fafb;
+        }
+
+        body.dark a {
+            color: #60a5fa;
+        }
+
+        body.dark #toc,
+        body.dark #toc-mobile {
+            background-color: #1f2937;
+        }
+
+        @media (max-width: 768px) {
+            #toc {
+                display: none;
+            }
+
+            #toc-mobile {
+                display: block;
+            }
+        }
+
+        @media (min-width: 769px) {
+            #toc-mobile {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body class="font-sans">
+    <header class="p-4 bg-blue-600 text-white  flex justify-between items-center">
+        <h1 class="text-2xl font-bold">API Documentation</h1>
+        <button id="dark-mode-toggle" class="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">Toggle Dark
+            Mode</button>
+    </header>
+
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Sidebar for Table of Contents (Desktop) -->
+        <aside id="toc" class="w-full md:w-64 bg-white shadow-md p-6 md:fixed md:h-screen md:overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-4">Table of Contents</h2>
+            <ul class="space-y-2">
+                <li><a href="#authentication" class="text-blue-600 hover:underline">Authentication</a></li>
+                <li><a href="#enrollment" class="text-blue-600 hover:underline">Enrollment</a></li>
+                <li><a href="#class" class="text-blue-600 hover:underline">Class</a></li>
+                <li><a href="#exam" class="text-blue-600 hover:underline">Exam</a></li>
+                <li><a href="#promotion" class="text-blue-600 hover:underline">Promotion</a></li>
+                <li><a href="#report" class="text-blue-600 hover:underline">Report</a></li>
+                <li><a href="#school" class="text-blue-600 hover:underline">School</a></li>
+                <li><a href="#subject" class="text-blue-600 hover:underline">Subject</a></li>
+                <li><a href="#submission" class="text-blue-600 hover:underline">Submission</a></li>
+            </ul>
+        </aside>
+
+        <!-- Mobile Table of Contents -->
+        <div id="toc-mobile" class="p-4 bg-white shadow-md md:hidden">
+            <button onclick="document.getElementById('toc-content').classList.toggle('hidden')"
+                class="text-blue-600 font-bold">Toggle Table of Contents</button>
+            <ul id="toc-content" class="hidden space-y-2 mt-2">
+                <li><a href="#authentication" class="text-blue-600 hover:underline">Authentication</a></li>
+                <li><a href="#enrollment" class="text-blue-600 hover:underline">Enrollment</a></li>
+                <li><a href="#class" class="text-blue-600 hover:underline">Class</a></li>
+                <li><a href="#exam" class="text-blue-600 hover:underline">Exam</a></li>
+                <li><a href="#promotion" class="text-blue-600 hover:underline">Promotion</a></li>
+                <li><a href="#report" class="text-blue-600 hover:underline">Report</a></li>
+                <li><a href="#school" class="text-blue-600 hover:underline">School</a></li>
+                <li><a href="#subject" class="text-blue-600 hover:underline">Subject</a></li>
+                <li><a href="#submission" class="text-blue-600 hover:underline">Submission</a></li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 md:ml-64">
+            <h1 class="text-3xl font-bold mb-6">API Documentation for Educational Management System</h1>
+            <p class="mb-4">This document details all API endpoints for managing an educational system. To access
+                private endpoints, include a JWT token in the Authorization header:
+                <code>Authorization: Bearer &lt;token&gt;</code>.
+            </p>
+
+            <!-- Authentication Section -->
+            <section id="authentication" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Authentication</h2>
+                <p class="mb-4">Manages user authentication, profile updates, and security features like 2FA.</p>
+
+                <h3 class="text-xl font-semibold mb-2">POST /auth/register</h3>
+                <p><strong>Description</strong>: Registers a new user, allowing them to access the system based on their
+                    role (e.g., student, teacher).</p>
+                <p><strong>Access</strong>: Public</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "fullName": "string",
+  "password": "string",
+  "email": "string",
+  "role": "string", // student, teacher, dean, admin, headmaster
+  "schoolId": "string", // MongoDB ID, required for student/teacher/dean
+  "classId": "string", // MongoDB ID, required for student
+  "termId": "string", // MongoDB ID, required for student
+  "phoneNumber": "string", // Optional, format: +1234567890
+  "profilePicture": "string", // Optional, URL (png/jpg/jpeg/svg/gif)
+  "subjects": ["string"], // Optional, MongoDB IDs, for teachers
+  "parentFullName": "string", // Optional, for students
+  "parentNationalId": "string", // Optional, for students
+  "parentPhoneNumber": "string" // Optional, for students, format: +1234567890
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>201 Created</strong>:
+                        <pre>
+{
+  "message": "User registered successfully",
+  "user": {
+    "_id": "string",
+    "fullName": "string",
+    "email": "string",
+    "role": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Validation error: Full name is required" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /auth/verify-email</h3>
+                <p><strong>Description</strong>: Verifies a user’s email to activate their account using a code sent
+                    post-registration.</p>
+                <p><strong>Access</strong>: Public</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "token": "string" // 6-digit numeric code
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Email verified successfully" }</pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Invalid or expired verification code" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /auth/login</h3>
+                <p><strong>Description</strong>: Authenticates a user, providing access tokens for secure API
+                    interactions.</p>
+                <p><strong>Access</strong>: Public</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "identifier": "string", // Email or student ID
+  "password": "string",
+  "twoFactorCode": "string" // Optional, 6-digit code
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "message": "Login successful",
+  "token": "string",
+  "refreshToken": "string",
+  "user": {
+    "_id": "string",
+    "fullName": "string",
+    "role": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>401 Unauthorized</strong>:
+                        <pre>{ "message": "Invalid credentials" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /auth/logout</h3>
+                <p><strong>Description</strong>: Logs out a user, invalidating their current session token.</p>
+                <p><strong>Access</strong>: Private (Requires JWT)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Logged out successfully" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /auth/refresh-token</h3>
+                <p><strong>Description</strong>: Refreshes an expired JWT using a refresh token for continued access.
+                </p>
+                <p><strong>Access</strong>: Public</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "refreshToken": "string"
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "token": "string",
+  "refreshToken": "string"
+}
+            </pre>
+                    </li>
+                    <li><strong>401 Unauthorized</strong>:
+                        <pre>{ "message": "Invalid refresh token" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /auth/request-password-reset</h3>
+                <p><strong>Description</strong>: Initiates a password reset by sending a reset code to the user’s email.
+                </p>
+                <p><strong>Access</strong>: Public</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "email": "string"
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Password reset code sent" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Email not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /auth/reset-password</h3>
+                <p><strong>Description</strong>: Resets the user’s password using the reset code.</p>
+                <p><strong>Access</strong>: Public</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "email": "string",
+  "token": "string", // Reset code
+  "newPassword": "string"
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Password reset successfully" }</pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Invalid or expired token" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /auth/enable-2fa</h3>
+                <p><strong>Description</strong>: Enables two-factor authentication for enhanced account security.</p>
+                <p><strong>Access</strong>: Private (Requires JWT)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "message": "2FA enabled",
+  "secret": "string" // For QR code setup
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "2FA already enabled" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">PUT /auth/profile</h3>
+                <p><strong>Description</strong>: Updates the authenticated user’s profile information.</p>
+                <p><strong>Access</strong>: Private (Requires JWT)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "fullName": "string", // Optional
+  "email": "string", // Optional
+  "phoneNumber": "string" // Optional, format: +1234567890
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "message": "Profile updated",
+  "user": {
+    "_id": "string",
+    "fullName": "string",
+    "email": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Invalid email format" }</pre>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Enrollment Section -->
+            <section id="enrollment" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Enrollment</h2>
+                <p class="mb-4">Handles student enrollment into classes and terms, tracking their academic status.</p>
+
+                <h3 class="text-xl font-semibold mb-2">POST /enrollments</h3>
+                <p><strong>Description</strong>: Enrolls a student in a class for a specific term, managed by a dean.
+                </p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "student": "string", // MongoDB ID
+  "class": "string", // MongoDB ID
+  "term": "string", // MongoDB ID
+  "school": "string", // MongoDB ID
+  "promotionStatus": "string", // Optional: eligible, repeat, expelled, onLeave, withdrawn
+  "isActive": "boolean", // Optional
+  "transferredFromSchool": "string" // Optional, MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>201 Created</strong>:
+                        <pre>
+{
+  "message": "Enrollment created successfully",
+  "enrollment": {
+    "_id": "string",
+    "student": "string",
+    "class": "string",
+    "term": "string",
+    "school": "string",
+    "promotionStatus": "string",
+    "isActive": "boolean"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Valid student ID required" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /enrollments</h3>
+                <p><strong>Description</strong>: Retrieves a list of all enrollments, useful for administrative
+                    oversight.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "enrollments": [
+    {
+      "_id": "string",
+      "student": "string",
+      "class": "string",
+      "term": "string",
+      "school": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /enrollments/:id</h3>
+                <p><strong>Description</strong>: Fetches details of a specific enrollment by ID for review.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the enrollment</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "enrollment": {
+    "_id": "string",
+    "student": "string",
+    "class": "string",
+    "term": "string",
+    "school": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Enrollment not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">PUT /enrollments/:id</h3>
+                <p><strong>Description</strong>: Updates an enrollment’s details, such as status or class assignment.
+                </p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the enrollment</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "promotionStatus": "string", // Optional
+  "isActive": "boolean" // Optional
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "message": "Enrollment updated",
+  "enrollment": {
+    "_id": "string",
+    "student": "string",
+    "class": "string",
+    "term": "string",
+    "school": "string",
+    "promotionStatus": "string",
+    "isActive": "boolean"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Enrollment not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">DELETE /enrollments/:id</h3>
+                <p><strong>Description</strong>: Removes an enrollment record, typically when a student leaves.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the enrollment</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Enrollment deleted" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Enrollment not found" }</pre>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Class Section -->
+            <section id="class" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Class</h2>
+                <p class="mb-4">Manages class creation and details for organizing students and subjects.</p>
+
+                <h3 class="text-xl font-semibold mb-2">GET /classes</h3>
+                <p><strong>Description</strong>: Lists all classes, aiding in scheduling and enrollment planning.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "classes": [
+    {
+      "_id": "string",
+      "name": "string",
+      "school": "string",
+      "subjects": ["string"]
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /classes/:id</h3>
+                <p><strong>Description</strong>: Retrieves details of a specific class by ID.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the class</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "class": {
+    "_id": "string",
+    "name": "string",
+    "school": "string",
+    "subjects": ["string"]
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Class not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /classes</h3>
+                <p><strong>Description</strong>: Creates a new class for grouping students and assigning subjects.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "name": "string",
+  "school": "string", // MongoDB ID
+  "subjects": ["string"] // MongoDB IDs
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>201 Created</strong>:
+                        <pre>
+{
+  "message": "Class created",
+  "class": {
+    "_id": "string",
+    "name": "string",
+    "school": "string",
+    "subjects": ["string"]
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Name is required" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">PUT /classes/:id</h3>
+                <p><strong>Description</strong>: Updates class details, such as name or subject assignments.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the class</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "name": "string", // Optional
+  "subjects": ["string"] // Optional
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "message": "Class updated",
+  "class": {
+    "_id": "string",
+    "name": "string",
+    "school": "string",
+    "subjects": ["string"]
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Class not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">DELETE /classes/:id</h3>
+                <p><strong>Description</strong>: Deletes a class, typically when it’s no longer active.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the class</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Class deleted" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Class not found" }</pre>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Exam Section -->
+            <section id="exam" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Exam</h2>
+                <p class="mb-4">Manages exam creation, scheduling, and retrieval for teachers and students.</p>
+
+                <h3 class="text-xl font-semibold mb-2">POST /api/exams</h3>
+                <p><strong>Description</strong>: Creates a new exam for a class or subject, set by a teacher.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "title": "string",
+  "classId": "string", // MongoDB ID
+  "subjectId": "string", // MongoDB ID
+  "date": "string", // ISO 8601 format
+  "duration": "number" // Minutes
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>201 Created</strong>:
+                        <pre>
+{
+  "message": "Exam created",
+  "exam": {
+    "_id": "string",
+    "title": "string",
+    "classId": "string",
+    "subjectId": "string",
+    "date": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Title is required" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/exams/teacher</h3>
+                <p><strong>Description</strong>: Lists all exams created by the authenticated teacher.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "exams": [
+    {
+      "_id": "string",
+      "title": "string",
+      "classId": "string",
+      "subjectId": "string",
+      "date": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/exams/subjects/teacher</h3>
+                <p><strong>Description</strong>: Retrieves exams for subjects taught by the teacher.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "exams": [
+    {
+      "_id": "string",
+      "title": "string",
+      "subjectId": "string",
+      "date": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/exams/classes</h3>
+                <p><strong>Description</strong>: Lists exams for all classes, typically for administrative use.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "exams": [
+    {
+      "_id": "string",
+      "title": "string",
+      "classId": "string",
+      "date": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/exams/:examId</h3>
+                <p><strong>Description</strong>: Fetches details of a specific exam by ID.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher or Student role)</p>
+                <p><strong>Parameters</strong>: <code>examId</code> (path): MongoDB ID of the exam</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "exam": {
+    "_id": "string",
+    "title": "string",
+    "classId": "string",
+    "subjectId": "string",
+    "date": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Exam not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">PUT /api/exams/:examId</h3>
+                <p><strong>Description</strong>: Updates exam details, such as date or duration.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Parameters</strong>: <code>examId</code> (path): MongoDB ID of the exam</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "title": "string", // Optional
+  "date": "string", // Optional, ISO 8601
+  "duration": "number" // Optional, minutes
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "message": "Exam updated",
+  "exam": {
+    "_id": "string",
+    "title": "string",
+    "classId": "string",
+    "subjectId": "string",
+    "date": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Exam not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">DELETE /api/exams/:examId</h3>
+                <p><strong>Description</strong>: Deletes an exam, used when it’s canceled or obsolete.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Parameters</strong>: <code>examId</code> (path): MongoDB ID of the exam</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Exam deleted" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Exam not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/exams/student/upcoming</h3>
+                <p><strong>Description</strong>: Lists upcoming exams for the authenticated student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "exams": [
+    {
+      "_id": "string",
+      "title": "string",
+      "classId": "string",
+      "date": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/exams/student/class</h3>
+                <p><strong>Description</strong>: Retrieves exams for the student’s current class.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "exams": [
+    {
+      "_id": "string",
+      "title": "string",
+      "classId": "string",
+      "date": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                    </ MarkDown>
+
+                    <h3 class="text-xl font-semibold mb-2">PUT /api/exams/:examId/activate</h3>
+                    <p><strong>Description</strong>: Activates an exam, making it available for submissions.</p>
+                    <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                    <p><strong>Parameters</strong>: <code>examId</code> (path): MongoDB ID of the exam</p>
+                    <p><strong>Response</strong>:</p>
+                    <ul class="list-disc ml-6">
+                        <li><strong>200 OK</strong>:
+                            <pre>{ "message": "Exam activated" }</pre>
+                        </li>
+                        <li><strong>404 Not Found</strong>:
+                            <pre>{ "message": "Exam not found" }</pre>
+                        </li>
+                    </ul>
+
+                    <h3 class="text-xl font-semibold mb-2">PUT /api/exams/:examId/complete</h3>
+                    <p><strong>Description</strong>: Marks an exam as completed, closing submissions.</p>
+                    <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                    <p><strong>Parameters</strong>: <code>examId</code> (path): MongoDB ID of the exam</p>
+                    <p><strong>Response</strong>:</p>
+                    <ul class="list-disc ml-6">
+                        <li><strong>200 OK</strong>:
+                            <pre>{ "message": "Exam completed" }</pre>
+                        </li>
+                        <li><strong>404 Not Found</strong>:
+                            <pre>{ "message": "Exam not found" }</pre>
+                        </li>
+                    </ul>
+
+                    <h3 class="text-xl font-semibold mb-2">PUT /api/exams/:examId/schedule</h3>
+                    <p><strong>Description</strong>: Reschedules an exam to a new date or time.</p>
+                    <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                    <p><strong>Parameters</strong>: <code>examId</code> (path): MongoDB ID of the exam</p>
+                    <p><strong>Request Body</strong>:</p>
+                    <pre>
+{
+  "date": "string" // ISO 8601 format
+}
+        </pre>
+                    <p><strong>Response</strong>:</p>
+                    <ul class="list-disc ml-6">
+                        <li><strong>200 OK</strong>:
+                            <pre>{ "message": "Exam rescheduled" }</pre>
+                        </li>
+                        <li><strong>404 Not Found</strong>:
+                            <pre>{ "message": "Exam not found" }</pre>
+                        </li>
+                    </ul>
+
+                    <h3 class="text-xl font-semibold mb-2">GET /api/exams/school</h3>
+                    <p><strong>Description</strong>: Lists all exams across the school for administrative review.</p>
+                    <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                    <p><strong>Response</strong>:</p>
+                    <ul class="list-disc ml-6">
+                        <li><strong>200 OK</strong>:
+                            <pre>
+{
+  "exams": [
+    {
+      "_id": "string",
+      "title": "string",
+      "classId": "string",
+      "date": "string"
+    }
+  ]
+}
+            </pre>
+                        </li>
+                    </ul>
+            </section>
+
+            <!-- Promotion Section -->
+            <section id="promotion" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Promotion</h2>
+                <p class="mb-4">Handles student promotion and transitions between academic levels.</p>
+
+                <h3 class="text-xl font-semibold mb-2">POST /promotions/promote</h3>
+                <p><strong>Description</strong>: Promotes students to the next class or level based on performance.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "studentIds": ["string"], // MongoDB IDs
+  "newClassId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Students promoted" }</pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Invalid student IDs" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /promotions/transition</h3>
+                <p><strong>Description</strong>: Transitions students to a new term or academic phase.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "studentIds": ["string"], // MongoDB IDs
+  "newTermId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Students transitioned" }</pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Invalid term ID" }</pre>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Report Section -->
+            <section id="report" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Report</h2>
+                <p class="mb-4">Generates various reports for performance analysis and administrative purposes.</p>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/create</h3>
+                <p><strong>Description</strong>: Creates a custom report based on specified criteria.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "type": "string", // e.g., "student", "class"
+  "filters": { "termId": "string" } // Optional
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>201 Created</strong>:
+                        <pre>
+{
+  "message": "Report created",
+  "reportId": "string"
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Invalid type" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/assessment/generate</h3>
+                <p><strong>Description</strong>: Generates a report on student assessments.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Assessment report generated" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/student/generate</h3>
+                <p><strong>Description</strong>: Creates a performance report for a specific student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "studentId": "string", // MongoDB ID
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Student report generated" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/class/generate</h3>
+                <p><strong>Description</strong>: Generates a report for an entire class’s performance.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "classId": "string", // MongoDB ID
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Class report generated" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/term/generate</h3>
+                <p><strong>Description</strong>: Produces a report summarizing a term’s activities.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Term report generated" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/school/generate</h3>
+                <p><strong>Description</strong>: Creates a comprehensive report for the entire school.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Headmaster role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "schoolId": "string", // MongoDB ID
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "School report generated" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/subject/generate</h3>
+                <p><strong>Description</strong>: Generates a report on a specific subject’s performance.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "subjectId": "string", // MongoDB ID
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Subject report generated" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/trade/generate</h3>
+                <p><strong>Description</strong>: Produces a report for trade-specific courses or programs.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "tradeId": "string", // MongoDB ID
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Trade report generated" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/promotion/generate</h3>
+                <p><strong>Description</strong>: Creates a report on student promotion eligibility.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Promotion report generated" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /reports/teacher/generate</h3>
+                <p><strong>Description</strong>: Generates a report on a teacher’s performance or class outcomes.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "teacherId": "string", // MongoDB ID
+  "termId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Teacher report generated" }</pre>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- School Section -->
+            <section id="school" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">School</h2>
+                <p class="mb-4">Manages school entities within the system for administrative control.</p>
+
+                <h3 class="text-xl font-semibold mb-2">POST /school</h3>
+                <p><strong>Description</strong>: Creates a new school entity, foundational for system setup.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Admin role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "name": "string",
+  "address": "string"
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>201 Created</strong>:
+                        <pre>
+{
+  "message": "School created",
+  "school": {
+    "_id": "string",
+    "name": "string",
+    "address": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Name is required" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /school</h3>
+                <p><strong>Description</strong>: Lists all school for system-wide oversight.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Admin role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "school": [
+    {
+      "_id": "string",
+      "name": "string",
+      "address": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /school/:id</h3>
+                <p><strong>Description</strong>: Retrieves details of a specific school by ID.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Admin role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the school</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "school": {
+    "_id": "string",
+    "name": "string",
+    "address": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "School not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">PUT /school/:id</h3>
+                <p><strong>Description</strong>: Updates school details, such as name or address.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Admin role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the school</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "name": "string", // Optional
+  "address": "string" // Optional
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "message": "School updated",
+  "school": {
+    "_id": "string",
+    "name": "string",
+    "address": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "School not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">DELETE /school/:id</h3>
+                <p><strong>Description</strong>: Deletes a school entity, used during system cleanup.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Admin role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the school</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "School deleted" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "School not found" }</pre>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Subject Section -->
+            <section id="subject" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Subject</h2>
+                <p class="mb-4">Manages subjects taught within classes for curriculum organization.</p>
+
+                <h3 class="text-xl font-semibold mb-2">POST /subjects</h3>
+                <p><strong>Description</strong>: Adds a new subject to the curriculum.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "name": "string",
+  "school": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>201 Created</strong>:
+                        <pre>
+{
+  "message": "Subject created",
+  "subject": {
+    "_id": "string",
+    "name": "string",
+    "school": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Name is required" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /subjects</h3>
+                <p><strong>Description</strong>: Lists all subjects for curriculum planning.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "subjects": [
+    {
+      "_id": "string",
+      "name": "string",
+      "school": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /subjects/:id</h3>
+                <p><strong>Description</strong>: Retrieves details of a specific subject by ID.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the subject</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "subject": {
+    "_id": "string",
+    "name": "string",
+    "school": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Subject not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">PUT /subjects/:id</h3>
+                <p><strong>Description</strong>: Updates subject details, such as its name.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the subject</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "name": "string" // Optional
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "message": "Subject updated",
+  "subject": {
+    "_id": "string",
+    "name": "string",
+    "school": "string"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Subject not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">DELETE /subjects/:id</h3>
+                <p><strong>Description</strong>: Removes a subject from the curriculum.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Dean role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the subject</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Subject deleted" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Subject not found" }</pre>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- Submission Section -->
+            <section id="submission" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Submission</h2>
+                <p class="mb-4">Manages exam submissions, grading, and result retrieval for students and teachers.</p>
+
+                <h3 class="text-xl font-semibold mb-2">POST /api/submissions/start</h3>
+                <p><strong>Description</strong>: Starts an exam submission session for a student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "examId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>201 Created</strong>:
+                        <pre>
+{
+  "message": "Submission started",
+  "submissionId": "string"
+}
+            </pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Exam not active" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /api/submissions/save</h3>
+                <p><strong>Description</strong>: Saves a student’s exam answers during the session.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "submissionId": "string", // MongoDB ID
+  "answers": { "questionId": "answer" }
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Answers saved" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Submission not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /api/submissions/submit</h3>
+                <p><strong>Description</strong>: Submits a student’s completed exam for grading.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "submissionId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Exam submitted" }</pre>
+                    </li>
+                    <li><strong>400 Bad Request</strong>:
+                        <pre>{ "message": "Submission already completed" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /api/submissions/auto-submit</h3>
+                <p><strong>Description</strong>: Automatically submits an exam when time expires.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "submissionId": "string" // MongoDB ID
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Exam auto-submitted" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Submission not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /api/submissions/log-violation</h3>
+                <p><strong>Description</strong>: Logs a violation (e.g., cheating) during an exam.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "submissionId": "string", // MongoDB ID
+  "violation": "string"
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Violation logged" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Submission not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/student</h3>
+                <p><strong>Description</strong>: Lists all submissions for the authenticated student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "submissions": [
+    {
+      "_id": "string",
+      "examId": "string",
+      "status": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/teacher</h3>
+                <p><strong>Description</strong>: Retrieves all submissions for exams set by the teacher.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "submissions": [
+    {
+      "_id": "string",
+      "examId": "string",
+      "studentId": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/exam/:examId</h3>
+                <p><strong>Description</strong>: Lists submissions for a specific exam.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Parameters</strong>: <code>examId</code> (path): MongoDB ID of the exam</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "submissions": [
+    {
+      "_id": "string",
+      "studentId": "string",
+      "status": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Exam not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/monitor/:examId</h3>
+                <p><strong>Description</strong>: Monitors ongoing submissions for an exam in real-time.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Parameters</strong>: <code>examId</code> (path): MongoDB ID of the exam</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "submissions": [
+    {
+      "_id": "string",
+      "studentId": "string",
+      "progress": "number" // Percentage
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /api/submissions/:submissionId/grade</h3>
+                <p><strong>Description</strong>: Grades a student’s exam submission.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Parameters</strong>: <code>submissionId</code> (path): MongoDB ID of the submission</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "grade": "number",
+  "comments": "string" // Optional
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Submission graded" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Submission not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/student/results</h3>
+                <p><strong>Description</strong>: Retrieves all exam results for the authenticated student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/:id</h3>
+                <p><strong>Description</strong>: Fetches details of a specific submission by ID.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student or Teacher role)</p>
+                <p><strong>Parameters</strong>: <code>id</code> (path): MongoDB ID of the submission</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "submission": {
+    "_id": "string",
+    "examId": "string",
+    "studentId": "string",
+    "grade": "number"
+  }
+}
+            </pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Submission not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/results/homework</h3>
+                <p><strong>Description</strong>: Lists homework submission results for the student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/results/quiz</h3>
+                <p><strong>Description</strong>: Retrieves quiz submission results for the student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/results/by-type</h3>
+                <p><strong>Description</strong>: Lists results filtered by submission type (e.g., exam, quiz).</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Query Parameters</strong>: <code>type</code>: Submission type</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "type": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/results/detailed</h3>
+                <p><strong>Description</strong>: Provides detailed results including answers and comments.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "grade": "number",
+      "comments": "string"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/results/assessment1</h3>
+                <p><strong>Description</strong>: Retrieves results for the first assessment period.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/results/assessment2</h3>
+                <p><strong>Description</strong>: Retrieves results for the second assessment period.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/results/exam</h3>
+                <p><strong>Description</strong>: Lists final exam results for the student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/results/combined</h3>
+                <p><strong>Description</strong>: Provides a combined view of all submission results.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "type": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/student/assessment-results</h3>
+                <p><strong>Description</strong>: Retrieves all assessment results for the student.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "results": [
+    {
+      "examId": "string",
+      "grade": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/student/marks</h3>
+                <p><strong>Description</strong>: Lists all marks received by the student across submissions.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "marks": [
+    {
+      "examId": "string",
+      "mark": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">POST /api/submissions/:submissionId/update-grades</h3>
+                <p><strong>Description</strong>: Updates grades for a submission, allowing corrections.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Teacher role)</p>
+                <p><strong>Parameters</strong>: <code>submissionId</code> (path): MongoDB ID of the submission</p>
+                <p><strong>Request Body</strong>:</p>
+                <pre>
+{
+  "grade": "number"
+}
+        </pre>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>{ "message": "Grades updated" }</pre>
+                    </li>
+                    <li><strong>404 Not Found</strong>:
+                        <pre>{ "message": "Submission not found" }</pre>
+                    </li>
+                </ul>
+
+                <h3 class="text-xl font-semibold mb-2">GET /api/submissions/my-marks</h3>
+                <p><strong>Description</strong>: Retrieves the student’s marks for all submissions.</p>
+                <p><strong>Access</strong>: Private (Requires JWT, Student role)</p>
+                <p><strong>Response</strong>:</p>
+                <ul class="list-disc ml-6">
+                    <li><strong>200 OK</strong>:
+                        <pre>
+{
+  "marks": [
+    {
+      "examId": "string",
+      "mark": "number"
+    }
+  ]
+}
+            </pre>
+                    </li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleButton = document.getElementById('dark-mode-toggle');
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme) {
+                document.body.classList.add(currentTheme);
+            }
+            toggleButton.addEventListener('click', () => {
+                document.body.classList.toggle('dark');
+                const theme = document.body.classList.contains('dark') ? 'dark' : '';
+                localStorage.setItem('theme', theme);
+            });
+        });
+    </script>
+</body>
+
+</html>

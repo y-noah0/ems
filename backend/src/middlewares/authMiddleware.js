@@ -1,103 +1,154 @@
 const jwt = require('jsonwebtoken');
+const { check } = require('express-validator');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+const winston = require('winston');
 const User = require('../models/User');
 
-const authMiddleware = {};
+// Set up logger
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [new winston.transports.File({ filename: 'auth.log' })]
+});
 
-// Middleware to check if user is authenticated
-authMiddleware.authenticate = async (req, res, next) => {
+// Middleware to authenticate user
+const authenticate = async (req, res, next) => {
   try {
-    // Get token from header
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
     if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'No authentication token, access denied'
-      });
+      logger.warn('No token provided', { ip: req.ip });
+      return res.status(401).json({ success: false, message: 'No authentication token, access denied' });
     }
 
-    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Find user
     const user = await User.findById(decoded.id).select('-passwordHash');
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token is not valid'
-      });
+
+    if (!user || user.isDeleted) {
+      logger.warn('User not found or deleted', { userId: decoded.id, ip: req.ip });
+      return res.status(401).json({ success: false, message: 'Token is not valid' });
     }
 
-    // Set user in request
+    if (user.tokenVersion !== decoded.tokenVersion) {
+      logger.warn('Invalid token version', { userId: decoded.id, ip: req.ip });
+      return res.status(401).json({ success: false, message: 'Token is not valid' });
+    }
+
     req.user = user;
     next();
   } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Token is not valid'
-    });
+    logger.error('Authentication error', { error: error.message, ip: req.ip });
+    return res.status(401).json({ success: false, message: 'Token is not valid' });
   }
 };
 
-// Middleware to check if user is admin
-authMiddleware.isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
-    next();
-  } else {
+// Generalized role-based middleware
+const requireRoles = (roles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  if (!roles.includes(req.user.role)) {
     return res.status(403).json({
       success: false,
-      message: 'Access denied: System administrator privileges required'
+      message: `Access denied: Requires one of ${roles.join(', ')} roles`
     });
   }
+  next();
 };
 
-// Middleware to check if user is admin/dean
-authMiddleware.isDean = (req, res, next) => {
-  if (req.user && (req.user.role === 'dean' || req.user.role === 'admin')) {
-    next();
-  } else {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied: Dean privileges required'
-    });
-  }
-};
+// Specific roles
+const isAdmin = requireRoles(['admin']);
+const isDean = requireRoles(['dean', 'admin']);
+const isTeacher = requireRoles(['teacher', 'dean', 'admin']);
+const isStudent = requireRoles(['student']);
+const isStudentOrTeacher = requireRoles(['student', 'teacher']);
+const isTeacherOrDeanOrAdmin = requireRoles(['teacher', 'dean', 'admin']);
+const isTeacherOrDeanOrHeadmaster = requireRoles(['teacher', 'dean', 'headmaster']); // Add this missing function
 
-// Middleware to check if user is teacher
-authMiddleware.isTeacher = (req, res, next) => {
-  if (req.user && (req.user.role === 'teacher' || req.user.role === 'dean')) {
-    next();
-  } else {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied: Teacher privileges required'
-    });
-  }
-};
+// Login validation
+const loginValidation = [
+  check('identifier').notEmpty().withMessage('Identifier is required'),
+  check('password').notEmpty().withMessage('Password is required'),
+  check('twoFactorCode').optional().isLength({ min: 6, max: 6 }).withMessage('2FA code must be 6 digits')
+];
 
-// Middleware to check if user is student
-authMiddleware.isStudent = (req, res, next) => {
-  if (req.user && req.user.role === 'student') {
-    next();
-  } else {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied: Student privileges required'
-    });
-  }
-};
+// Registration validation
+const registerValidation = [
+  check('fullName').notEmpty().withMessage('Full name is required'),
+  check('password')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(.*[@$!%*?&])?[A-Za-z\d@$!%*?&]{8,}$/)
+    .withMessage('Password must be at least 8 characters with uppercase, lowercase, and number'),
+  check('role').isIn(['student', 'teacher', 'dean', 'admin', 'headmaster']).withMessage('Invalid role'),
+  check('schoolId')
+    .if((value, { req }) => ['student', 'teacher', 'dean'].includes(req.body.role))
+    .isMongoId().withMessage('Invalid school ID'),
+  check('email')
+    .if((value, { req }) => req.body.role !== 'student')
+    .isEmail().withMessage('Invalid email')
+    .notEmpty().withMessage('Email is required for non-student roles'),
+  check('email')
+    .if((value, { req }) => req.body.role === 'student')
+    .optional()
+    .isEmail().withMessage('Invalid email'),
+  check('registrationNumber')
+    .if((value, { req }) => req.body.role === 'student')
+    .notEmpty().withMessage('Registration number is required for students'),
+  check('subjects')
+    .if((value, { req }) => req.body.role !== 'teacher')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+        return true;
+      }
+      throw new Error('Subjects are only allowed for teachers');
+    }),
+  check('classId')
+    .if((value, { req }) => req.body.role === 'student')
+    .isMongoId().withMessage('Invalid class ID'),
+  check('termId')
+    .if((value, { req }) => req.body.role === 'student')
+    .isMongoId().withMessage('Invalid term ID'),
+  check('phoneNumber')
+    .optional()
+    .matches(/^\+?\d{10,15}$/)
+    .withMessage('Invalid phone number'),
+  check('profilePicture')
+    .optional()
+    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
+    .withMessage('Invalid image URL'),
+  check('parentFullName')
+    .if((value, { req }) => req.body.role === 'student')
+    .optional()
+    .notEmpty().withMessage('Parent full name must not be empty if provided'),
+  check('parentNationalId')
+    .if((value, { req }) => req.body.role === 'student')
+    .optional()
+    .notEmpty().withMessage('Parent national ID must not be empty if provided'),
+  check('parentPhoneNumber')
+    .if((value, { req }) => req.body.role === 'student')
+    .optional()
+    .matches(/^\+?\d{10,15}$/)
+    .withMessage('Invalid parent phone number')
+];
 
-// Middleware to check if user is either student or teacher
-authMiddleware.isStudentOrTeacher = (req, res, next) => {
-  if (req.user && (req.user.role === 'student' || req.user.role === 'teacher')) {
-    next();
-  } else {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied: Student or teacher privileges required'
-    });
-  }
-};
+// Rate limiter middleware
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: 'Too many requests from this IP, please try again later.'
+});
 
-module.exports = authMiddleware;
+module.exports = {
+  authenticate,
+  requireRoles,
+  isAdmin,
+  isDean,
+  isTeacher,
+  isStudent,
+  isStudentOrTeacher,
+  isTeacherOrDeanOrAdmin,
+  isTeacherOrDeanOrHeadmaster, // Add this to exports
+  loginValidation,
+  registerValidation,
+  limiter
+};
