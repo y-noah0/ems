@@ -13,7 +13,7 @@ router.use('/admin', adminRoutes);
 router.use('/exams', examRoutes);
 router.use('/submissions', submissionRoutes);
 router.use('/system-admin', systemAdminRoutes);
-router.use('/notifications', notificationRoutes);
+router.use('/notifications', notificationRoutes);          
 
 // Special case for subjects under exams controller
 const examController = require('../controllers/examController');

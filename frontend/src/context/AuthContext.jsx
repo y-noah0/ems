@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await authService.login(identifier, password);
       setCurrentUser(data.user);
+      console.log(data.user,"thisisthedatast")
       return data.user;
     } catch (error) {
       setError(error.message || 'Login failed');
