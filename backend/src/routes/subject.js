@@ -8,8 +8,6 @@ const validateSubjectCreateUpdate = [
     body('name').notEmpty().withMessage('Name is required').isString().trim(),
     body('description').optional().isString().trim(),
     body('school').notEmpty().withMessage('School is required').isMongoId(),
-    body('classes').optional().isArray(),
-    body('classes.*').isMongoId(),
     body('trades').optional().isArray(),
     body('trades.*').isMongoId(),
     body('teacher').optional().isMongoId(),

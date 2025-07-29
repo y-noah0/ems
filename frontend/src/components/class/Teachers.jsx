@@ -1,26 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Search, CheckCircle2 } from 'lucide-react';
 import { Dialog, Transition } from '@headlessui/react';
-
-// Dummy data for initial testing
-const dummyTeachers = [
-  { _id: '1', fullName: 'John Doe', email: 'john.doe@example.com', phone: '123-456-7890', regNo: 'T001', subjects: 'Math, Physics', status: 'Active' },
-  { _id: '2', fullName: 'Jane Smith', email: 'jane.smith@example.com', phone: '234-567-8901', regNo: 'T002', subjects: 'English, Literature', status: 'Active' },
-  { _id: '3', fullName: 'Emily Johnson', email: 'emily.j@example.com', phone: '345-678-9012', regNo: 'T003', subjects: 'Chemistry, Biology', status: 'Inactive' },
-  { _id: '4', fullName: 'Michael Brown', email: 'michael.b@example.com', phone: '456-789-0123', regNo: 'T004', subjects: 'History, Geography', status: 'Active' },
-];
+import authService from '../../services/authService';
+import axios from 'axios';
 
 const TeacherManagement = () => {
-  const [teachersData, setTeachersData] = useState(dummyTeachers);
+  const [teachersData, setTeachersData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
+    role: 'teacher',
     fullName: '',
     email: '',
-    phone: '',
-    regNo: '',
-    subjects: '',
+    phoneNumber: '',
+    school: '',
+    password: '',
+    preferences: { notifications: { email: true, sms: false }, theme: 'light' },
     status: 'Active',
   });
   const [formErrors, setFormErrors] = useState({});
@@ -28,33 +24,49 @@ const TeacherManagement = () => {
   const [sortField, setSortField] = useState('fullName');
   const [sortOrder, setSortOrder] = useState('asc');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [schools, setSchools] = useState([]);
   const [notification, setNotification] = useState(null);
 
+  // Fetch teachers from API
   const fetchTeachers = async () => {
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      setTeachersData(dummyTeachers);
+      const response = await authService.api.get('/teachers');
+      setTeachersData(response.data);
     } catch (error) {
-      console.error('Error fetching teachers:', error);
+      console.error('Error fetching teachers:', error.response?.data || error.message);
       setNotification({ type: 'error', message: 'Failed to fetch teachers.' });
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch schools for select field
+  const fetchSchools = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/schools');
+      setSchools(response.data);
+    } catch (error) {
+      console.error('Error fetching schools:', error.response?.data || error.message);
+      setSchools([{ _id: '507f1f77bcf86cd799439011', name: 'Default School' }]); // Fallback
+    }
+  };
+
   useEffect(() => {
     fetchTeachers();
+    fetchSchools();
   }, []);
 
   const validateForm = () => {
     const errors = {};
     if (!formData.fullName.trim()) errors.fullName = 'Full name is required';
     if (!formData.email.trim()) errors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = 'Invalid email format';
-    if (formData.phone && !/^\d{3}-\d{3}-\d{4}$/.test(formData.phone))
-      errors.phone = 'Phone must be in format 123-456-7890';
-    if (!formData.regNo.trim()) errors.regNo = 'Registration number is required';
+    else if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(formData.email))
+      errors.email = 'Invalid email format';
+    if (formData.phoneNumber && !/^\+?\d{10,15}$/.test(formData.phoneNumber))
+      errors.phoneNumber = 'Invalid phone number format';
+    if (!formData.school) errors.school = 'School is required for teachers';
+    if (!formData.password) errors.password = 'Password is required';
     return errors;
   };
 
@@ -62,8 +74,18 @@ const TeacherManagement = () => {
     setSelectedTeacher(teacher);
     setFormData(
       teacher
-        ? { ...teacher }
-        : { fullName: '', email: '', phone: '', regNo: '', subjects: '', status: 'Active' }
+        ? { ...teacher, password: '' } // Clear password for security
+        : {
+          role: 'teacher',
+          fullName: '',
+          email: '',
+          phoneNumber: '',
+          school: '',
+          password: '',
+          profilePicture: '',
+          preferences: { notifications: { email: true, sms: false }, theme: 'light' },
+          status: 'Active',
+        }
     );
     setFormErrors({});
     setIsModalOpen(true);
@@ -84,31 +106,39 @@ const TeacherManagement = () => {
     }
 
     try {
+      const payload = {
+        ...formData,
+        school: formData.school || null,
+        profilePicture: formData.profilePicture || null,
+      };
       if (selectedTeacher) {
+        await authService.api.put(`/teachers/${selectedTeacher._id}`, payload);
         setTeachersData(
           teachersData.map((t) =>
-            t._id === selectedTeacher._id ? { ...formData, _id: selectedTeacher._id } : t
+            t._id === selectedTeacher._id ? { ...payload, _id: selectedTeacher._id } : t
           )
         );
         setNotification({ type: 'success', message: 'Teacher updated successfully!' });
       } else {
-        setTeachersData([...teachersData, { ...formData, _id: `${Date.now()}` }]);
+        const response = await authService.register(payload);
+        setTeachersData([...teachersData, response.user]); // Use response.user as per authService.register
         setNotification({ type: 'success', message: 'Teacher added successfully!' });
       }
       closeModal();
     } catch (error) {
-      console.error('Error saving teacher:', error);
-      setNotification({ type: 'error', message: 'Failed to save teacher.' });
+      console.error('Error saving teacher:', error.response?.data || error.message);
+      setNotification({ type: 'error', message: error.response?.data?.message || 'Failed to save teacher.' });
     }
   };
 
   const handleDelete = async (teacherId) => {
     if (window.confirm('Are you sure you want to delete this teacher?')) {
       try {
+        await authService.api.delete(`/teachers/${teacherId}`);
         setTeachersData(teachersData.filter((t) => t._id !== teacherId));
         setNotification({ type: 'success', message: 'Teacher deleted successfully!' });
       } catch (error) {
-        console.error('Error deleting teacher:', error);
+        console.error('Error deleting teacher:', error.response?.data || error.message);
         setNotification({ type: 'error', message: 'Failed to delete teacher.' });
       }
     }
@@ -120,8 +150,7 @@ const TeacherManagement = () => {
         (filterStatus === 'All' || teacher.status === filterStatus) &&
         (teacher.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          teacher.regNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          teacher.subjects.toLowerCase().includes(searchTerm.toLowerCase()))
+          teacher.phoneNumber.toString().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
       const fieldA = a[sortField]?.toString().toLowerCase() || '';
@@ -180,7 +209,7 @@ const TeacherManagement = () => {
             >
               <option value="fullName">Name</option>
               <option value="email">Email</option>
-              <option value="regNo">Registration No</option>
+              <option value="phoneNumber">Phone</option>
               <option value="status">Status</option>
             </select>
           </div>
@@ -243,27 +272,26 @@ const TeacherManagement = () => {
                 <div className="space-y-2">
                   <p><span className="font-medium text-gray-600">Name:</span> <span className="text-gray-700">{teacher.fullName}</span></p>
                   <p><span className="font-medium text-gray-600">Email:</span> <span className="text-gray-700">{teacher.email}</span></p>
-                  <p><span className="font-medium text-gray-600">Phone:</span> <span className="text-gray-700">{teacher.phone}</span></p>
-                  <p><span className="font-medium text-gray-600">Reg No:</span> <span className="text-gray-700">{teacher.regNo}</span></p>
-                  <p><span className="font-medium text-gray-600">Subjects:</span> <span className="text-gray-700">{teacher.subjects}</span></p>
+                  <p><span className="font-medium text-gray-600">Phone:</span> <span className="text-gray-700">{teacher.phoneNumber}</span></p>
+                  <p><span className="font-medium text-gray-600">School:</span> <span className="text-gray-700">{schools.find(s => s._id === teacher.school)?.name || 'Unknown'}</span></p>
                   <p><span className="font-medium text-gray-600">Status:</span> <span className={teacher.status === 'Active' ? 'text-emerald-500' : 'text-gray-500'}>{teacher.status}</span></p>
                 </div>
                 <div className="flex justify-end gap-3 mt-4">
                   <button
                     onClick={() => openModal(teacher)}
-                    className="text-emerald-500 hover:text-emerald-600 transform hover:scale-110 transition-all duration-200"
+                    className="text-emerald-500 hover:text-emerald-600 p-2 transform hover:scale-110 transition-all duration-200"
                     aria-label={`Edit ${teacher.fullName}`}
                     title="Edit"
                   >
-                    <Pencil size={16} />
+                    <Pencil size={24} />
                   </button>
                   <button
                     onClick={() => handleDelete(teacher._id)}
-                    className="text-red-500 hover:text-red-600 transform hover:scale-110 transition-all duration-200"
+                    className="text-red-500 hover:text-red-600 p-2 transform hover:scale-110 transition-all duration-200"
                     aria-label={`Delete ${teacher.fullName}`}
                     title="Delete"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={24} />
                   </button>
                 </div>
               </div>
@@ -334,40 +362,65 @@ const TeacherManagement = () => {
                     <div>
                       <input
                         type="text"
-                        placeholder="Phone (123-456-7890)"
-                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 ${formErrors.phone ? 'border-red-500' : ''
+                        placeholder="Phone Number"
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 ${formErrors.phoneNumber ? 'border-red-500' : ''
                           }`}
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        value={formData.phoneNumber}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phoneNumber: e.target.value })
+                        }
                         aria-label="Phone number"
                       />
-                      {formErrors.phone && (
-                        <p className="text-red-500 text-sm mt-1">{formErrors.phone}</p>
+                      {formErrors.phoneNumber && (
+                        <p className="text-red-500 text-sm mt-1">{formErrors.phoneNumber}</p>
+                      )}
+                    </div>
+                    <div>
+                      <select
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200"
+                        value={formData.school}
+                        onChange={(e) => setFormData({ ...formData, school: e.target.value })}
+                        aria-label="School"
+                        required
+                      >
+                        <option value="">Select a School</option>
+                        {schools.map((school) => (
+                          <option key={school._id} value={school._id}>
+                            {school.name}
+                          </option>
+                        ))}
+                      </select>
+                      {formErrors.school && (
+                        <p className="text-red-500 text-sm mt-1">{formErrors.school}</p>
                       )}
                     </div>
                     <div>
                       <input
-                        type="text"
-                        placeholder="Registration Number"
-                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 ${formErrors.regNo ? 'border-red-500' : ''
+                        type="password"
+                        placeholder="Password"
+                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200 ${formErrors.password ? 'border-red-500' : ''
                           }`}
-                        value={formData.regNo}
-                        onChange={(e) => setFormData({ ...formData, regNo: e.target.value })}
-                        aria-label="Registration number"
+                        value={formData.password}
+                        onChange={(e) =>
+                          setFormData({ ...formData, password: e.target.value })
+                        }
+                        aria-label="Password"
                         required
                       />
-                      {formErrors.regNo && (
-                        <p className="text-red-500 text-sm mt-1">{formErrors.regNo}</p>
+                      {formErrors.password && (
+                        <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>
                       )}
                     </div>
                     <div>
                       <input
                         type="text"
-                        placeholder="Subjects (comma-separated)"
+                        placeholder="Profile Picture URL"
                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200"
-                        value={formData.subjects}
-                        onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
-                        aria-label="Subjects"
+                        value={formData.profilePicture}
+                        onChange={(e) =>
+                          setFormData({ ...formData, profilePicture: e.target.value })
+                        }
+                        aria-label="Profile picture"
                       />
                     </div>
                     <div>
