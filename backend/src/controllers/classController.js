@@ -1,4 +1,3 @@
-// classController.js
 const Class = require('../models/Class');
 const Subject = require('../models/Subject');
 const User = require('../models/User');
@@ -12,7 +11,7 @@ const logger = winston.createLogger({
     transports: [new winston.transports.File({ filename: 'class.log' })]
 });
 
-// Middleware-based role check (Dean and Admin full access)
+// Middleware-based role check
 const isDeanOrAdmin = (req) => req.user && ['dean', 'admin'].includes(req.user.role);
 
 // Create Class (only dean or admin)
@@ -24,13 +23,18 @@ const createClass = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { level, trade, year, school, capacity, subjects } = req.body;
-        const existing = await Class.findOne({ level, trade, year, school, isDeleted: false });
-        if (existing) {
-            return res.status(400).json({ success: false, message: 'Class already exists' });
+        const { level, trade, year, schoolId, capacity, subjects } = req.body;
+
+        if (!schoolId) {
+            return res.status(400).json({ success: false, message: 'schoolId is required in request body' });
         }
 
-        const newClass = new Class({ level, trade, year, school, capacity, subjects });
+        const existing = await Class.findOne({ level, trade, year, school: schoolId, isDeleted: false });
+        if (existing) {
+            return res.status(400).json({ success: false, message: 'Class already exists for this school' });
+        }
+
+        const newClass = new Class({ level, trade, year, school: schoolId, capacity, subjects });
         await newClass.save();
 
         logger.info('Class created', { classId: newClass._id });
@@ -41,10 +45,15 @@ const createClass = async (req, res) => {
     }
 };
 
-// Get all classes
+// Get all classes by school
 const getClasses = async (req, res) => {
+    const { schoolId } = req.query;
+    if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'schoolId is required in query' });
+    }
+
     try {
-        const classes = await Class.find({ isDeleted: false })
+        const classes = await Class.find({ school: schoolId, isDeleted: false })
             .populate('trade', 'code name')
             .populate('school', 'name')
             .populate('subjects', 'name');
@@ -56,16 +65,21 @@ const getClasses = async (req, res) => {
     }
 };
 
-// Get class by ID
+// Get class by ID and school
 const getClassById = async (req, res) => {
+    const { schoolId } = req.query;
+    if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'schoolId is required in query' });
+    }
+
     try {
-        const classDoc = await Class.findById(req.params.id)
+        const classDoc = await Class.findOne({ _id: req.params.id, school: schoolId, isDeleted: false })
             .populate('trade', 'code name')
             .populate('school', 'name')
             .populate('subjects', 'name');
 
-        if (!classDoc || classDoc.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Class not found' });
+        if (!classDoc) {
+            return res.status(404).json({ success: false, message: 'Class not found for this school' });
         }
 
         res.json({ success: true, class: classDoc });
@@ -75,11 +89,17 @@ const getClassById = async (req, res) => {
     }
 };
 
-// Update class (only dean or admin)
+// Update class by ID and school
 const updateClass = async (req, res) => {
     if (!isDeanOrAdmin(req)) {
         return res.status(403).json({ success: false, message: 'Access denied' });
     }
+
+    const { schoolId } = req.body;
+    if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'schoolId is required in request body' });
+    }
+
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -87,28 +107,28 @@ const updateClass = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const classDoc = await Class.findById(req.params.id);
-        if (!classDoc || classDoc.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Class not found' });
+        const classDoc = await Class.findOne({ _id: req.params.id, school: schoolId, isDeleted: false });
+        if (!classDoc) {
+            return res.status(404).json({ success: false, message: 'Class not found for this school' });
         }
 
-        const { level, trade, year, school, capacity, subjects } = req.body;
+        const { level, trade, year, capacity, subjects } = req.body;
+
         const duplicate = await Class.findOne({
             _id: { $ne: classDoc._id },
             level,
             trade,
             year,
-            school,
+            school: schoolId,
             isDeleted: false
         });
         if (duplicate) {
-            return res.status(400).json({ success: false, message: 'Another class with same attributes exists' });
+            return res.status(400).json({ success: false, message: 'Another class with same attributes exists in this school' });
         }
 
         classDoc.level = level;
         classDoc.trade = trade;
         classDoc.year = year;
-        classDoc.school = school;
         classDoc.capacity = capacity;
         classDoc.subjects = subjects;
         await classDoc.save();
@@ -121,15 +141,21 @@ const updateClass = async (req, res) => {
     }
 };
 
-// Soft delete class (only dean or admin)
+// Soft delete class by ID and school
 const deleteClass = async (req, res) => {
     if (!isDeanOrAdmin(req)) {
         return res.status(403).json({ success: false, message: 'Access denied' });
     }
+
+    const { schoolId } = req.query;
+    if (!schoolId) {
+        return res.status(400).json({ success: false, message: 'schoolId is required in query' });
+    }
+
     try {
-        const classDoc = await Class.findById(req.params.id);
-        if (!classDoc || classDoc.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Class not found' });
+        const classDoc = await Class.findOne({ _id: req.params.id, school: schoolId, isDeleted: false });
+        if (!classDoc) {
+            return res.status(404).json({ success: false, message: 'Class not found for this school' });
         }
 
         classDoc.isDeleted = true;

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import useFullscreen from './hooks/useFullscreen';
+// import useFullscreen from './hooks/useFullscreen';
 
 // Pages imports
 import LoginPage from './pages/LoginPage';
@@ -81,355 +81,355 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   return children;
 };
 
-// Global Exam Protection Wrapper (now applies to ALL routes)
-const GlobalExamProtection = ({ children }) => {
-  const location = useLocation();
-  const isFullscreen = useFullscreen();
+// // Global Exam Protection Wrapper (now applies to ALL routes)
+// const GlobalExamProtection = ({ children }) => {
+//   const location = useLocation();
+//   const isFullscreen = useFullscreen();
 
-  const [windowSize, setWindowSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  });
+//   const [windowSize, setWindowSize] = useState({
+//     width: window.innerWidth,
+//     height: window.innerHeight,
+//   });
 
-  useEffect(() => {
-    function handleResize() {
-      setWindowSize({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    }
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+//   useEffect(() => {
+//     function handleResize() {
+//       setWindowSize({
+//         width: window.innerWidth,
+//         height: window.innerHeight,
+//       });
+//     }
+//     window.addEventListener('resize', handleResize);
+//     return () => window.removeEventListener('resize', handleResize);
+//   }, []);
 
-  useEffect(() => {
-    if (!isFullscreen) {
-      playAlert();
-    }
-  }, [isFullscreen]);
+//   useEffect(() => {
+//     if (!isFullscreen) {
+//       playAlert();
+//     }
+//   }, [isFullscreen]);
 
-  const playAlert = () => {
-    const audio = new Audio('/alert.mp3'); // Ensure alert.mp3 is in your public folder
-    audio.play();
-  };
+//   const playAlert = () => {
+//     const audio = new Audio('/alert.mp3'); // Ensure alert.mp3 is in your public folder
+//     audio.play();
+//   };
 
-  const enterFullscreen = () => {
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen();
-    } else if (document.documentElement.mozRequestFullScreen) {
-      document.documentElement.mozRequestFullScreen();
-    } else if (document.documentElement.webkitRequestFullscreen) {
-      document.documentElement.webkitRequestFullscreen();
-    } else if (document.documentElement.msRequestFullscreen) {
-      document.documentElement.msRequestFullscreen();
-    }
-  };
+//   const enterFullscreen = () => {
+//     if (document.documentElement.requestFullscreen) {
+//       document.documentElement.requestFullscreen();
+//     } else if (document.documentElement.mozRequestFullScreen) {
+//       document.documentElement.mozRequestFullScreen();
+//     } else if (document.documentElement.webkitRequestFullscreen) {
+//       document.documentElement.webkitRequestFullscreen();
+//     } else if (document.documentElement.msRequestFullscreen) {
+//       document.documentElement.msRequestFullscreen();
+//     }
+//   };
 
-  // Global checks: small screen and fullscreen
-  if (windowSize.width < 800 || windowSize.height < 600) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col justify-center items-center p-4 text-center">
-        <h1 className="text-white text-3xl font-bold mb-4">Screen size too small!</h1>
-        <p className="text-white mb-4">Please use a larger device.</p>
-      </div>
-    );
-  }
+//   // Global checks: small screen and fullscreen
+//   if (windowSize.width < 800 || windowSize.height < 600) {
+//     return (
+//       <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col justify-center items-center p-4 text-center">
+//         <h1 className="text-white text-3xl font-bold mb-4">Screen size too small!</h1>
+//         <p className="text-white mb-4">Please use a larger device.</p>
+//       </div>
+//     );
+//   }
 
-  if (!isFullscreen) {
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col justify-center items-center p-4 text-center">
-        <h1 className="text-white text-3xl font-bold mb-4">Please enter fullscreen to continue</h1>
-        <button
-          onClick={enterFullscreen}
-          className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded text-lg"
-        >
-          Enter Fullscreen
-        </button>
-      </div>
-    );
-  }
+//   if (!isFullscreen) {
+//     return (
+//       <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col justify-center items-center p-4 text-center">
+//         <h1 className="text-white text-3xl font-bold mb-4">Please enter fullscreen to continue</h1>
+//         <button
+//           onClick={enterFullscreen}
+//           className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded text-lg"
+//         >
+//           Enter Fullscreen
+//         </button>
+//       </div>
+//     );
+//   }
 
-  return children;
-};
+//   return children;
+// };
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<LoginPage />} />
 
-            {/* Redirect root to appropriate dashboard based on role */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <RoleBasedRedirect />
-                </ProtectedRoute>
-              }
-            />
+          {/* Redirect root to appropriate dashboard based on role */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <RoleBasedRedirect />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Student Routes */}
-            <Route
-              path="/student/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/take-exam/:examId"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <TakeExam />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/profile"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentProfile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/results"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentResults />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/exams"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentExams />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/student/exams/:examId"
-              element={
-                <ProtectedRoute allowedRoles={['student']}>
-                  <StudentExamDetails />
-                </ProtectedRoute>
-              }
-            />
+          {/* Student Routes */}
+          <Route
+            path="/student/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/take-exam/:examId"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <TakeExam />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/profile"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/results"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentResults />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/exams"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentExams />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/exams/:examId"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentExamDetails />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Teacher Routes */}
-            <Route
-              path="/teacher/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <TeacherDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/exams"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <ExamsListPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/exams/create"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <ExamCreator />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/exams/:examId"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <ExamView />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/exams/:examId/edit"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <ExamEditor />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/exams/:examId/schedule"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <ExamSchedule />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/exams/:examId/results"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <ExamResults />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/submissions"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <SubmissionsListPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/teacher/submissions/:submissionId/view"
-              element={
-                <ProtectedRoute allowedRoles={['teacher']}>
-                  <SubmissionView />
-                </ProtectedRoute>
-              }
-            />
+          {/* Teacher Routes */}
+          <Route
+            path="/teacher/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <TeacherDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/exams"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <ExamsListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/exams/create"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <ExamCreator />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/exams/:examId"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <ExamView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/exams/:examId/edit"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <ExamEditor />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/exams/:examId/schedule"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <ExamSchedule />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/exams/:examId/results"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <ExamResults />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/submissions"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <SubmissionsListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher/submissions/:submissionId/view"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <SubmissionView />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Dean Routes */}
-            <Route
-              path="/dean/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <DeanDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/classes"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <ClassesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/performance"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <PerformancePage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/teachers"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <TeacherPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/subjects"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <SubjectsManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/users"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <UsersManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/import-students"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <ImportStudents />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/classes/:classId"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <ClassView />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/students/:studentId"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <StudentProfile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/students/:studentId/results"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <StudentResults />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/students"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <StudentPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dean/exams"
-              element={
-                <ProtectedRoute allowedRoles={['dean']}>
-                  <ExamManagement />
-                </ProtectedRoute>
-              }
-            />
+          {/* Dean Routes */}
+          <Route
+            path="/dean/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <DeanDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/classes"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <ClassesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/performance"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <PerformancePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/teachers"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <TeacherPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/subjects"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <SubjectsManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/users"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <UsersManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/import-students"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <ImportStudents />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/classes/:classId"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <ClassView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/students/:studentId"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <StudentProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/students/:studentId/results"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <StudentResults />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/students"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <StudentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dean/exams"
+            element={
+              <ProtectedRoute allowedRoles={['dean']}>
+                <ExamManagement />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* Admin Routes */}
-            <Route
-              path="/admin/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <UserManagement />
-                </ProtectedRoute>
-              }
-            />
-           
-            <Route
-              path="/admin/settings"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <SystemSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/logs"
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <SystemLogs />
-                </ProtectedRoute>
-              }
-            />
+          {/* Admin Routes */}
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <UserManagement />
+              </ProtectedRoute>
+            }
+          />
 
-            {/* 404 Route */}
-            <Route path="*" element={<h1>Page not found</h1>} />
-          </Routes>
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <SystemSettings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/logs"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <SystemLogs />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 404 Route */}
+          <Route path="*" element={<h1>Page not found</h1>} />
+        </Routes>
       </AuthProvider>
     </Router>
   );

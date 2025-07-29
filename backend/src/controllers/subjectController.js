@@ -1,8 +1,8 @@
 // subjectController.js
 const Subject = require('../models/Subject');
-const School = require('../models/School');
+const School = require('../models/school');
 const Class = require('../models/Class');
-const Trade = require('../models/Trade');
+const Trade = require('../models/trade');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
@@ -89,13 +89,13 @@ const getSubjectById = async (req, res) => {
 
         res.json({ success: true, subject });
     } catch (validationError) {
+        logger.error('Error in getSubjectById', { error: error.message, ip: req.ip });
+        res.status(500).json({ success: false, message: 'Server Error' });
         return res.status(validationError.statusCode || 400).json({
             success: false,
             message: validationError.message
         });
-    } catch (error) {
-        logger.error('Error in getSubjectById', { error: error.message, ip: req.ip });
-        res.status(500).json({ success: false, message: 'Server Error' });
+
     }
 };
 
@@ -113,8 +113,6 @@ const updateSubject = async (req, res) => {
         if (!subject || subject.isDeleted) {
             return res.status(404).json({ success: false, message: 'Subject not found' });
         }
-
-        const { name, description, school, classes, trades, teacher, credits } = req.body;
 
         if (school) await ensureActiveEntity(School, school, 'School');
         if (classes) await Promise.all(classes.map(id => ensureActiveEntity(Class, id, 'Class')));

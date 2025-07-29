@@ -95,3 +95,23 @@
     "theme": "light"
   }
 }
+{
+  "role": "teacher",
+  "fullName": "Immaculée Uwimana",
+  "email": "uwimana.immaculee@schooldomain.rw",
+  "passwordHash": "SecurePass987!",
+  "phoneNumber": "+250784123456",
+  "school": "64fa12ab23d45678abcde123",
+  "profilePicture": "https://example.com/images/teacher.png",
+  "preferences": {
+    "notifications": {
+      "email": true,
+      "sms": true
+    },
+    "theme": "dark"
+  },
+  "twoFactorEnabled": false,
+  "emailVerified": true,
+  "isActive": true
+}
+
