@@ -315,67 +315,86 @@ const login = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      logger.warn('Validation errors in login', { errors: errors.array(), ip: req.ip });
+      logger?.warn?.('Validation errors in login', { errors: errors.array(), ip: req.ip });
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
     const { identifier, password, twoFactorCode } = req.body;
-
     let user = await User.findOne({ email: identifier.toLowerCase(), isDeleted: false });
 
     if (!user) {
       const candidates = await User.find({ fullName: identifier, isDeleted: false });
       for (const candidate of candidates) {
-        const match = await candidate.comparePassword(password);
-        if (match) {
+        if (await candidate.comparePassword(password)) {
           user = candidate;
           break;
         }
       }
 
       if (!user) {
-        logger.warn('Invalid credentials', { identifier, ip: req.ip });
+        logger?.warn?.('Invalid credentials: no match found', { identifier, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid credentials' });
       }
     } else {
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-        logger.warn('Invalid password', { userId: user._id, ip: req.ip });
+        logger?.warn?.('Invalid password', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid credentials' });
       }
     }
 
     if (!user.emailVerified && user.role !== 'student') {
-      logger.warn('Email not verified', { userId: user._id, ip: req.ip });
+      logger?.warn?.('Email not verified', { userId: user._id, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Email not verified' });
     }
 
     if (user.twoFactorEnabled) {
       if (!twoFactorCode) {
-        logger.warn('2FA code required', { userId: user._id, ip: req.ip });
+        logger?.warn?.('2FA code required', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: '2FA code required' });
       }
+
       const verified = speakeasy.totp.verify({
         secret: user.twoFactorSecret,
         encoding: 'base32',
-        token: twoFactorCode
+        token: twoFactorCode,
       });
+
       if (!verified) {
-        logger.warn('Invalid 2FA code', { userId: user._id, ip: req.ip });
+        logger?.warn?.('Invalid 2FA code', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid 2FA code' });
       }
     }
 
-    await user.updateLastLogin();
+    // Ensure updateLastLogin doesn't throw
+    if (user.updateLastLogin) {
+      await user.updateLastLogin();
+    }
 
-    const payload = { id: user._id, role: user.role, tokenVersion: user.tokenVersion };
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
-    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
+    const payload = {
+      id: user._id,
+      role: user.role,
+      tokenVersion: user.tokenVersion || 0,
+    };
 
-    await sendNotification(user, `You logged in at ${new Date().toISOString()}`, 'EMS Login Notification', req);
-    logger.info('User logged in', { userId: user._id, ip: req.ip });
+    const token = jwt.sign(payload, process.env.JWT_SECRET || 'your_jwt_secret', {
+      expiresIn: '12h',
+    });
 
-    res.json({
+    const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET || 'your_refresh_secret', {
+      expiresIn: '7d',
+    });
+
+    // sendNotification should not break login
+    try {
+      await sendNotification(user, `You logged in at ${new Date().toISOString()}`, 'EMS Login Notification', req);
+    } catch (notifyErr) {
+      logger?.warn?.('Notification error during login', { userId: user._id, error: notifyErr.message });
+    }
+
+    logger?.info?.('User logged in', { userId: user._id, ip: req.ip });
+
+    return res.json({
       success: true,
       token,
       refreshToken,
@@ -388,15 +407,21 @@ const login = async (req, res) => {
         school: user.school,
         phoneNumber: user.phoneNumber,
         profilePicture: user.profilePicture,
-        preferences: user.preferences
-      }
+        preferences: user.preferences,
+      },
     });
+
   } catch (error) {
-    logger.error('Error in login', { error: error.message, stack: error.stack, ip: req.ip });
-    res.status(500).json({
+    logger?.error?.('Error in login', {
+      error: error.message,
+      stack: error.stack,
+      ip: req.ip,
+    });
+
+    return res.status(500).json({
       success: false,
-      message: 'Server Error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Server iraturitse shn 😓',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 };

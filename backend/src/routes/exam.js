@@ -131,12 +131,11 @@ router.put(
 // @access  Deans, Headmasters
 router.get(
   '/school',
-  authMiddleware.authenticate,
   (req, res, next) => {
     if (!['dean', 'headmaster'].includes(req.user.role)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Access denied. Dean or Headmaster role required.' 
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Dean or Headmaster role required.'
       });
     }
     next();

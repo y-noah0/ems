@@ -1,7 +1,7 @@
-// enrollmentController.js
 const Enrollment = require('../models/enrollment');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
+const mongoose = require('mongoose');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -19,22 +19,27 @@ const createEnrollment = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { student, class: classId, term, school, promotionStatus, isActive, transferredFromSchool } = req.body;
+        const { student, class: classId, term, schoolId, promotionStatus, isActive, transferredFromSchool } = req.body;
 
-        const existing = await Enrollment.findOne({ student, term, isDeleted: false });
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Invalid schoolId' });
+        }
+
+        const existing = await Enrollment.findOne({ student, term, school: schoolId, isDeleted: false });
         if (existing) {
-            return res.status(400).json({ success: false, message: 'Student already enrolled for this term' });
+            return res.status(400).json({ success: false, message: 'Student already enrolled for this term in this school' });
         }
 
         const enrollment = new Enrollment({
             student,
             class: classId,
             term,
-            school,
+            school: schoolId,
             promotionStatus,
             isActive,
             transferredFromSchool
         });
+
         await enrollment.save();
 
         logger.info('Enrollment created', { enrollmentId: enrollment._id });
@@ -45,10 +50,16 @@ const createEnrollment = async (req, res) => {
     }
 };
 
-// Get all enrollments
+// Get all enrollments for a school
 const getEnrollments = async (req, res) => {
     try {
-        const enrollments = await Enrollment.find({ isDeleted: false })
+        const { schoolId } = req.query;
+
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Invalid schoolId' });
+        }
+
+        const enrollments = await Enrollment.find({ isDeleted: false, school: schoolId })
             .populate('student', 'fullName registrationNumber')
             .populate('class', 'level trade year')
             .populate('term', 'name year')
@@ -61,17 +72,24 @@ const getEnrollments = async (req, res) => {
     }
 };
 
-// Get enrollment by ID
+// Get enrollment by ID with school isolation
 const getEnrollmentById = async (req, res) => {
     try {
-        const enrollment = await Enrollment.findById(req.params.id)
+        const { schoolId } = req.query;
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Invalid schoolId' });
+        }
+
+        const enrollment = await Enrollment.findOne({ _id: id, school: schoolId, isDeleted: false })
             .populate('student', 'fullName registrationNumber')
             .populate('class', 'level trade year')
             .populate('term', 'name year')
             .populate('school', 'name');
 
-        if (!enrollment || enrollment.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Enrollment not found' });
+        if (!enrollment) {
+            return res.status(404).json({ success: false, message: 'Enrollment not found for this school' });
         }
 
         res.json({ success: true, enrollment });
@@ -81,7 +99,7 @@ const getEnrollmentById = async (req, res) => {
     }
 };
 
-// Update enrollment
+// Update enrollment with school isolation
 const updateEnrollment = async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -90,33 +108,45 @@ const updateEnrollment = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { student, class: classId, term, school, promotionStatus, isActive, transferredFromSchool } = req.body;
-        const enrollment = await Enrollment.findById(req.params.id);
+        const { student, class: classId, term, schoolId, promotionStatus, isActive, transferredFromSchool } = req.body;
+        const { id } = req.params;
 
-        if (!enrollment || enrollment.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Enrollment not found' });
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Invalid schoolId' });
         }
 
-        // Check for duplicate enrollment if student or term is updated
-        if (student && term && (student !== enrollment.student.toString() || term !== enrollment.term.toString())) {
+        const enrollment = await Enrollment.findOne({ _id: id, school: schoolId, isDeleted: false });
+
+        if (!enrollment) {
+            return res.status(404).json({ success: false, message: 'Enrollment not found for this school' });
+        }
+
+        // Check for duplicate if student/term is changing
+        if (student && term &&
+            (student !== enrollment.student.toString() || term !== enrollment.term.toString())) {
             const existing = await Enrollment.findOne({
                 student,
                 term,
+                school: schoolId,
                 isDeleted: false,
                 _id: { $ne: enrollment._id }
             });
+
             if (existing) {
-                return res.status(400).json({ success: false, message: 'Student already enrolled for this term' });
+                return res.status(400).json({ success: false, message: 'Student already enrolled for this term in this school' });
             }
         }
 
         enrollment.student = student || enrollment.student;
         enrollment.class = classId || enrollment.class;
         enrollment.term = term || enrollment.term;
-        enrollment.school = school || enrollment.school;
+        enrollment.school = schoolId || enrollment.school;
         enrollment.promotionStatus = promotionStatus || enrollment.promotionStatus;
         enrollment.isActive = isActive !== undefined ? isActive : enrollment.isActive;
-        enrollment.transferredFromSchool = transferredFromSchool !== undefined ? transferredFromSchool : enrollment.transferredFromSchool;
+        enrollment.transferredFromSchool = transferredFromSchool !== undefined
+            ? transferredFromSchool
+            : enrollment.transferredFromSchool;
+
         await enrollment.save();
 
         logger.info('Enrollment updated', { enrollmentId: enrollment._id });
@@ -127,12 +157,20 @@ const updateEnrollment = async (req, res) => {
     }
 };
 
-// Soft delete enrollment
+// Soft delete enrollment with school isolation
 const deleteEnrollment = async (req, res) => {
     try {
-        const enrollment = await Enrollment.findById(req.params.id);
-        if (!enrollment || enrollment.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Enrollment not found' });
+        const { schoolId } = req.body;
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ success: false, message: 'Invalid schoolId' });
+        }
+
+        const enrollment = await Enrollment.findOne({ _id: id, school: schoolId, isDeleted: false });
+
+        if (!enrollment) {
+            return res.status(404).json({ success: false, message: 'Enrollment not found for this school' });
         }
 
         enrollment.isDeleted = true;
