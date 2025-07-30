@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Search, CheckCircle2 } from 'lucide-react';
 import { Dialog, Transition } from '@headlessui/react';
-import authService from '../../services/authService';
-import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
+import teacherService from '../../services/teacherService';
 
 const TeacherManagement = () => {
+  const { currentUser } = useAuth();
   const [teachersData, setTeachersData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState(null);
@@ -14,7 +15,6 @@ const TeacherManagement = () => {
     fullName: '',
     email: '',
     phoneNumber: '',
-    school: '',
     password: '',
     preferences: { notifications: { email: true, sms: false }, theme: 'light' },
     status: 'Active',
@@ -27,35 +27,47 @@ const TeacherManagement = () => {
   const [schools, setSchools] = useState([]);
   const [notification, setNotification] = useState(null);
 
-  // Fetch teachers from API
   const fetchTeachers = async () => {
+    if (!currentUser?.school) {
+      setNotification({ type: 'error', message: 'No school associated with your account.' });
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const response = await authService.api.get('/teachers');
-      setTeachersData(response.data);
+      const teachers = await teacherService.fetchTeachers(currentUser.school);
+      setTeachersData(teachers);
     } catch (error) {
-      console.error('Error fetching teachers:', error.response?.data || error.message);
-      setNotification({ type: 'error', message: 'Failed to fetch teachers.' });
+      const errorMessage = error.errors
+        ? error.errors.map(e => e.msg).join(', ')
+        : error.message || 'Failed to fetch teachers.';
+      console.error('Error fetching teachers:', errorMessage);
+      setNotification({ type: 'error', message: errorMessage });
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch schools for select field
   const fetchSchools = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/schools');
-      setSchools(response.data);
+      const schoolsData = await teacherService.fetchSchools();
+      setSchools(Array.isArray(schoolsData) ? schoolsData : []);
     } catch (error) {
-      console.error('Error fetching schools:', error.response?.data || error.message);
-      setSchools([{ _id: '507f1f77bcf86cd799439011', name: 'Default School' }]); // Fallback
+      console.error('Error fetching schools:', error.message);
+      setSchools([{ _id: '507f1f77bcf86cd799439011', name: 'Default School' }]);
     }
   };
 
   useEffect(() => {
-    fetchTeachers();
-    fetchSchools();
-  }, []);
+    if (!currentUser) {
+      setNotification({ type: 'error', message: 'Please log in to view teachers.' });
+      return;
+    }
+    if (currentUser.school) {
+      fetchTeachers();
+      fetchSchools();
+    }
+  }, [currentUser]);
 
   const validateForm = () => {
     const errors = {};
@@ -65,8 +77,7 @@ const TeacherManagement = () => {
       errors.email = 'Invalid email format';
     if (formData.phoneNumber && !/^\+?\d{10,15}$/.test(formData.phoneNumber))
       errors.phoneNumber = 'Invalid phone number format';
-    if (!formData.school) errors.school = 'School is required for teachers';
-    if (!formData.password) errors.password = 'Password is required';
+    if (!selectedTeacher && !formData.password) errors.password = 'Password is required';
     return errors;
   };
 
@@ -74,13 +85,13 @@ const TeacherManagement = () => {
     setSelectedTeacher(teacher);
     setFormData(
       teacher
-        ? { ...teacher, password: '' } // Clear password for security
+        ? { ...teacher, password: '' }
         : {
           role: 'teacher',
           fullName: '',
           email: '',
           phoneNumber: '',
-          school: '',
+          school: currentUser?.school || '',
           password: '',
           profilePicture: '',
           preferences: { notifications: { email: true, sms: false }, theme: 'light' },
@@ -107,12 +118,22 @@ const TeacherManagement = () => {
 
     try {
       const payload = {
-        ...formData,
-        school: formData.school || null,
+        role: formData.role,
+        fullName: formData.fullName,
+        email: formData.email,
+        phoneNumber: formData.phoneNumber,
+        schoolId: currentUser.school, // Use currentUser.school
+        password: formData.password,
         profilePicture: formData.profilePicture || null,
+        preferences: formData.preferences,
+        status: formData.status,
       };
       if (selectedTeacher) {
-        await authService.api.put(`/teachers/${selectedTeacher._id}`, payload);
+        await teacherService.api.put(`/teachers`, {
+          ...payload,
+          schoolId: currentUser.school,
+          teacherId: selectedTeacher._id
+        });
         setTeachersData(
           teachersData.map((t) =>
             t._id === selectedTeacher._id ? { ...payload, _id: selectedTeacher._id } : t
@@ -120,26 +141,32 @@ const TeacherManagement = () => {
         );
         setNotification({ type: 'success', message: 'Teacher updated successfully!' });
       } else {
-        const response = await authService.register(payload);
-        setTeachersData([...teachersData, response.user]); // Use response.user as per authService.register
+        const response = await teacherService.register(payload);
+        setTeachersData([...teachersData, response.user]);
         setNotification({ type: 'success', message: 'Teacher added successfully!' });
       }
       closeModal();
     } catch (error) {
-      console.error('Error saving teacher:', error.response?.data || error.message);
-      setNotification({ type: 'error', message: error.response?.data?.message || 'Failed to save teacher.' });
+      const errorMessage = error.errors
+        ? error.errors.map(e => e.msg).join(', ')
+        : error.message || 'Failed to save teacher.';
+      console.error('Error saving teacher:', errorMessage);
+      setNotification({ type: 'error', message: errorMessage });
     }
   };
 
   const handleDelete = async (teacherId) => {
     if (window.confirm('Are you sure you want to delete this teacher?')) {
       try {
-        await authService.api.delete(`/teachers/${teacherId}`);
+        await teacherService.api.delete(`/teachers`, { data: { schoolId: currentUser.school, teacherId } });
         setTeachersData(teachersData.filter((t) => t._id !== teacherId));
         setNotification({ type: 'success', message: 'Teacher deleted successfully!' });
       } catch (error) {
-        console.error('Error deleting teacher:', error.response?.data || error.message);
-        setNotification({ type: 'error', message: 'Failed to delete teacher.' });
+        const errorMessage = error.errors
+          ? error.errors.map(e => e.msg).join(', ')
+          : error.message || 'Failed to delete teacher.';
+        console.error('Error deleting teacher:', errorMessage);
+        setNotification({ type: 'error', message: errorMessage });
       }
     }
   };
@@ -150,7 +177,7 @@ const TeacherManagement = () => {
         (filterStatus === 'All' || teacher.status === filterStatus) &&
         (teacher.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          teacher.phoneNumber.toString().includes(searchTerm.toLowerCase()))
+          teacher.phoneNumber?.toString().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
       const fieldA = a[sortField]?.toString().toLowerCase() || '';
@@ -273,7 +300,7 @@ const TeacherManagement = () => {
                   <p><span className="font-medium text-gray-600">Name:</span> <span className="text-gray-700">{teacher.fullName}</span></p>
                   <p><span className="font-medium text-gray-600">Email:</span> <span className="text-gray-700">{teacher.email}</span></p>
                   <p><span className="font-medium text-gray-600">Phone:</span> <span className="text-gray-700">{teacher.phoneNumber}</span></p>
-                  <p><span className="font-medium text-gray-600">School:</span> <span className="text-gray-700">{schools.find(s => s._id === teacher.school)?.name || 'Unknown'}</span></p>
+                  <p><span className="font-medium text-gray-600">School:</span> <span className="text-gray-700">{Array.isArray(schools) ? schools.find(s => s._id === teacher.school)?.name || 'Unknown' : 'Unknown'}</span></p>
                   <p><span className="font-medium text-gray-600">Status:</span> <span className={teacher.status === 'Active' ? 'text-emerald-500' : 'text-gray-500'}>{teacher.status}</span></p>
                 </div>
                 <div className="flex justify-end gap-3 mt-4">
@@ -376,25 +403,6 @@ const TeacherManagement = () => {
                       )}
                     </div>
                     <div>
-                      <select
-                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 transition-all duration-200"
-                        value={formData.school}
-                        onChange={(e) => setFormData({ ...formData, school: e.target.value })}
-                        aria-label="School"
-                        required
-                      >
-                        <option value="">Select a School</option>
-                        {schools.map((school) => (
-                          <option key={school._id} value={school._id}>
-                            {school.name}
-                          </option>
-                        ))}
-                      </select>
-                      {formErrors.school && (
-                        <p className="text-red-500 text-sm mt-1">{formErrors.school}</p>
-                      )}
-                    </div>
-                    <div>
                       <input
                         type="password"
                         placeholder="Password"
@@ -459,29 +467,29 @@ const TeacherManagement = () => {
         </Transition>
       </div>
       <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-in;
-        }
-        .animate-slide-in {
-          animation: slideIn 0.3s ease-out;
-        }
-      `}</style>
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                    }
+                    to {
+                        opacity: 1;
+                    }
+                }
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(100%);
+                    }
+                    to {
+                        transform: translateX(0);
+                    }
+                }
+                .animate-fade-in {
+                    animation: fadeIn 0.3s ease-in;
+                }
+                .animate-slide-in {
+                    animation: slideIn 0.3s ease-out;
+                }
+            `}</style>
     </div>
   );
 };

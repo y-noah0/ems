@@ -26,15 +26,15 @@ api.interceptors.request.use(
 const adminService = {
   // Classes
   getAllClasses: async (schoolId) => {
-  try {
-    const response = await api.get(`/class`, {
-      params: { schoolId }
-    });
-    return response.data.classes;
-  } catch (error) {
-    throw error.response ? error.response.data : { message: 'Network error' };
-  }
-},
+    try {
+      const response = await api.get(`/class`, {
+        params: { schoolId }
+      });
+      return response.data.classes;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
 
 
   // Get classes for teachers (uses a different endpoint with teacher access)
@@ -84,7 +84,7 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
+
   createSubject: async (subjectData) => {
     try {
       const response = await api.post('/admin/subjects', subjectData);
@@ -93,7 +93,7 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Error creating subject' };
     }
   },
-  
+
   assignTeacherToSubject: async (subjectId, teacherId) => {
     try {
       const response = await api.put(`/admin/subjects/${subjectId}/assign-teacher`, { teacherId });
@@ -128,7 +128,7 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
+
   createStudent: async (studentData) => {
     try {
       const response = await api.post('/admin/students', studentData);
@@ -137,7 +137,7 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Error creating student' };
     }
   },
-  
+
   importStudents: async (formData) => {
     try {
       // For file uploads, we need to use multipart/form-data
@@ -151,7 +151,7 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Error importing students' };
     }
   },
-  
+
   // Import students from CSV
   importStudentsFromCSV: async (file, classId) => {
     try {
