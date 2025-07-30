@@ -6,17 +6,20 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
 const winston = require('winston');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { authenticate, limiter, mongoSanitize } = require('./middlewares/authMiddleware'); // Use provided auth.js
+const authMiddleware = require('./middlewares/authMiddleware');
 const socketHandler = require('./socketHandler');
 const Exam = require('./models/Exam');
 const Submission = require('./models/Submission');
 const schedule = require('node-schedule');
+
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -35,17 +38,16 @@ app.use(helmet());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan('dev')); // HTTP request logger
-app.use(limiter); // Apply global rate limiting
-
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Max 100 requests per window
+}));
 
 // Attach io instance to each request
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
-
-// 🔐 Apply authentication middleware to all /api routes
-
 
 // 🎧 Socket.IO events
 io.on('connection', (socket) => {
@@ -55,21 +57,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// 🛣️ Other Routes (loaded dynamically)
-const routesPath = path.join(__dirname, 'routes');
-fs.readdirSync(routesPath).forEach(file => {
-  if (file.endsWith('.js') && file !== 'auth.js') { // Skip auth routes
-    const routeName = file.replace('.js', '');
-    try {
-      const route = require(`./routes/${routeName}`);
-      app.use(`/api/${routeName}`, route);
-    } catch (error) {
-      logger.error(`Error loading route ${routeName}:`, error.message, error.stack);
-    }
-  }
-});
+// 🛣️ Routes
+const routes = require('./routes');
+app.use('/api', routes);
 
-// Logger setup
+// Fix missing imports and variables
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: winston.format.combine(
@@ -176,6 +168,20 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam
     process.exit(1);
   });
 
+// API Routes
+const routesPath = path.join(__dirname, 'routes');
+fs.readdirSync(routesPath).forEach(file => {
+  if (file.endsWith('.js')) {
+    const routeName = file.replace('.js', '');
+    try {
+      const route = require(`./routes/${routeName}`);
+      app.use(`/api/${routeName}`, route);
+    } catch (error) {
+      logger.error(`Error loading route ${routeName}:`, error.message, error.stack);
+    }
+  }
+});
+
 // 404 Fallback
 app.use((req, res) => {
   res.status(404).json({
@@ -192,8 +198,7 @@ app.use((err, req, res, next) => {
     method: req.method,
     url: req.url,
     body: req.body,
-    ip: req.ip,
-    userId: req.user ? req.user.id : 'unauthenticated'
+    ip: req.ip
   });
   res.status(500).json({
     success: false,

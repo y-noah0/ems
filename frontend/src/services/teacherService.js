@@ -36,7 +36,7 @@ const teacherService = {
 
     fetchTeachers: async (schoolId) => {
         try {
-            const response = await api.get('/teacher', schoolId);
+            const response = await api.get('/teachers', schoolId);
             return response.data.teachers;
         } catch (error) {
             throw error.response ? error.response.data : { message: 'Network error' };
