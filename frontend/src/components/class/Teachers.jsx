@@ -28,15 +28,17 @@ const TeacherManagement = () => {
   const [notification, setNotification] = useState(null);
 
   const fetchTeachers = async () => {
-    if (!currentUser?.school) {
-      setNotification({ type: 'error', message: 'No school associated with your account.' });
+    if (!currentUser?.school || loading) {
+      if (!currentUser?.school) {
+        setNotification({ type: 'error', message: 'No school associated with your account.' });
+      }
       setLoading(false);
-      return;
+      return
     }
     setLoading(true);
     try {
-      const teachers = await teacherService.fetchTeachers(currentUser.school);
-      setTeachersData(teachers);
+      const teachers = await teacherService.fetchTeachers(currentUser.school)
+      setTeachersData(Array.isArray(teachers) ? teachers : []);
     } catch (error) {
       const errorMessage = error.errors
         ? error.errors.map(e => e.msg).join(', ')
@@ -54,7 +56,8 @@ const TeacherManagement = () => {
       setSchools(Array.isArray(schoolsData) ? schoolsData : []);
     } catch (error) {
       console.error('Error fetching schools:', error.message);
-      setSchools([{ _id: '507f1f77bcf86cd799439011', name: 'Default School' }]);
+      setSchools([]);
+      setNotification({ type: 'error', message: 'Failed to fetch schools.' });
     }
   };
 
@@ -63,7 +66,7 @@ const TeacherManagement = () => {
       setNotification({ type: 'error', message: 'Please log in to view teachers.' });
       return;
     }
-    if (currentUser.school) {
+    if (currentUser.school && !loading) {
       fetchTeachers();
       fetchSchools();
     }
@@ -122,16 +125,15 @@ const TeacherManagement = () => {
         fullName: formData.fullName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
-        schoolId: currentUser.school, // Use currentUser.school
-        password: formData.password,
+        schoolId: currentUser.school,
+        password: formData.password || undefined,
         profilePicture: formData.profilePicture || null,
         preferences: formData.preferences,
         status: formData.status,
       };
       if (selectedTeacher) {
-        await teacherService.api.put(`/teachers`, {
+        const response = await teacherService.updateTeacher({
           ...payload,
-          schoolId: currentUser.school,
           teacherId: selectedTeacher._id
         });
         setTeachersData(
@@ -158,7 +160,7 @@ const TeacherManagement = () => {
   const handleDelete = async (teacherId) => {
     if (window.confirm('Are you sure you want to delete this teacher?')) {
       try {
-        await teacherService.api.delete(`/teachers`, { data: { schoolId: currentUser.school, teacherId } });
+        await teacherService.deleteTeacher({ schoolId: currentUser.school, teacherId });
         setTeachersData(teachersData.filter((t) => t._id !== teacherId));
         setNotification({ type: 'success', message: 'Teacher deleted successfully!' });
       } catch (error) {
@@ -292,16 +294,19 @@ const TeacherManagement = () => {
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-lg font-semibold text-gray-800">{teacher.fullName}</h2>
                   <CheckCircle2
-                    className={teacher.status === 'Active' ? 'text-emerald-500' : 'text-gray-400'}
-                    size={20}
+                    className={
+                      !teacher.isDeleted
+                        ? 'text-emerald-500'
+                        : 'text-red-300'
+                    }
+                    size={30}
                   />
+
                 </div>
                 <div className="space-y-2">
                   <p><span className="font-medium text-gray-600">Name:</span> <span className="text-gray-700">{teacher.fullName}</span></p>
                   <p><span className="font-medium text-gray-600">Email:</span> <span className="text-gray-700">{teacher.email}</span></p>
                   <p><span className="font-medium text-gray-600">Phone:</span> <span className="text-gray-700">{teacher.phoneNumber}</span></p>
-                  <p><span className="font-medium text-gray-600">School:</span> <span className="text-gray-700">{Array.isArray(schools) ? schools.find(s => s._id === teacher.school)?.name || 'Unknown' : 'Unknown'}</span></p>
-                  <p><span className="font-medium text-gray-600">Status:</span> <span className={teacher.status === 'Active' ? 'text-emerald-500' : 'text-gray-500'}>{teacher.status}</span></p>
                 </div>
                 <div className="flex justify-end gap-3 mt-4">
                   <button
@@ -413,7 +418,7 @@ const TeacherManagement = () => {
                           setFormData({ ...formData, password: e.target.value })
                         }
                         aria-label="Password"
-                        required
+                        required={!selectedTeacher}
                       />
                       {formErrors.password && (
                         <p className="text-red-500 text-sm mt-1">{formErrors.password}</p>
