@@ -58,20 +58,23 @@ const createSubject = async (req, res) => {
 const getSubjects = async (req, res) => {
     try {
         const { schoolId } = req.body;
-        // if (!schoolId || !mongoose.Types.ObjectId.isValid(schoolId)) {
-        
-        //     return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
-        // }
 
+        // Validate schoolId
+        if (!schoolId || !mongoose.Types.ObjectId.isValid(schoolId)) {
+            return res.status(400).json({ success: false, message: 'A valid schoolIds is required' });
+        }
+
+        // Fetch subjects
         const subjects = await Subject.find({ school: schoolId, isDeleted: false })
             .populate('school', 'name')
             .populate('trades', 'name')
             .populate('teacher', 'fullName email');
 
-        res.json({ success: true, subjects });
+        // Return results
+        return res.json({ success: true, subjects });
     } catch (error) {
-        logger.error('Error in getSubjects', { error: error.message, ip: req.ip });
-        res.status(500).json({ success: false, message: 'Server Error' });
+        logger?.error?.('Error in getSubjects', { error: error.message, ip: req.ip });
+        return res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
 
