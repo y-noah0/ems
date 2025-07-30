@@ -23,16 +23,17 @@ api.interceptors.request.use(
 const tradeService = {
   getAllTrades: async () => {
     try {
-      const response = await api.get('/admin/trades');
+      const response = await api.get('/trade');
       return response.data.trades;
+
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
   getTradeById: async (id) => {
     try {
-      const response = await api.get(`/admin/trades/${id}`);
-      return response.data.trade;
+      const response = await api.get(`/trade/${id}`);
+      return response.data.trades;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
