@@ -6,7 +6,7 @@ const { authenticate, isAdmin, isDean, isTeacherOrDeanOrHeadmaster, limiter, mon
 router.use(limiter);
 
 // Routes for teacher management
-router.get(
+router.post(
     '/',
     teacherController.validateListTeachers,
     teacherController.listTeachers

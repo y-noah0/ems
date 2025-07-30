@@ -74,30 +74,13 @@ const validateToggleTeacherStatus = [
     check('isActive').isBoolean().withMessage('isActive must be a boolean'),
 ];
 
-// List all teachers for the user's school
+// List all teachers for a given schoolId
 async function listTeachers(req, res) {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            logger.warn('Validation errors in listTeachers', { errors: errors.array(), userId: req.para.id });
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
         const { schoolId } = req.body;
 
-        if (req.user.school.toString() !== schoolId) {
-            logger.warn('School ID mismatch', { userId: req.params.id, schoolId, userSchool: req.user.school });
-            return res.status(403).json({
-                success: false,
-                message: 'You are not authorized to view teachers for this school',
-            });
-        }
-
-        if (!['admin', 'dean', 'headmaster'].includes(req.user.role)) {
-            return res.status(403).json({
-                success: false,
-                message: 'You are not authorized to view teachers',
-            });
+        if (!schoolId) {
+            return res.status(400).json({ success: false, message: 'schoolId is required' });
         }
 
         const teachers = await User.find({
@@ -106,7 +89,7 @@ async function listTeachers(req, res) {
             isDeleted: false,
         })
             .select('fullName email phoneNumber profilePicture preferences lastLogin')
-            .lean();
+            .lean()
 
         res.json({
             success: true,
@@ -114,24 +97,32 @@ async function listTeachers(req, res) {
             message: 'Teachers retrieved successfully',
         });
     } catch (error) {
-        logger.error('listTeachers error', { error: error.message, stack: error.stack, userId: req.params.id });
-        res.status(500).json({ success: false, message: 'Server error occurred while retrieving teachers' });
+        logger.error('listTeachers error', {
+            error: error.message,
+            stack: error.stack,
+            schoolId: req.body.schoolId,
+        });
+        res.status(500).json({
+            success: false,
+            message: 'Server error occurred while retrieving teachers',
+        });
     }
 }
 
-// Update a teacher's details
+
+// Update a teacher's details for a given schoolId
 async function updateTeacher(req, res) {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            logger.warn('Validation errors in updateTeacher', { errors: errors.array(), userId: req.para.id });
+            logger.warn('Validation errors in updateTeacher', { errors: errors.array(), schoolId: req.body.schoolId });
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
         const { schoolId, teacherId, fullName, email, phoneNumber, profilePicture, preferences } = req.body;
 
         if (req.user.school.toString() !== schoolId) {
-            logger.warn('School ID mismatch', { userId: req.para.id, schoolId, userSchool: req.user.school });
+            logger.warn('School ID mismatch', { schoolId, userSchool: req.user.school });
             return res.status(403).json({
                 success: false,
                 message: 'You are not authorized to update teachers for this school',
@@ -151,7 +142,6 @@ async function updateTeacher(req, res) {
         // Update fields if provided
         if (fullName) teacher.fullName = sanitize(fullName);
         if (email) {
-            // Check for email uniqueness within school
             const existingUser = await User.findOne({ email, school: schoolId, _id: { $ne: teacherId }, isDeleted: false });
             if (existingUser) {
                 return res.status(400).json({ success: false, message: 'Email already in use by another user in this school' });
@@ -180,7 +170,7 @@ async function updateTeacher(req, res) {
             'user',
             teacher._id,
             'update',
-            req.para.id,
+            null, // No userId
             { previous: previousData },
             { updated: { fullName, email, phoneNumber, profilePicture, preferences }, school: schoolId }
         );
@@ -209,24 +199,24 @@ async function updateTeacher(req, res) {
             message: 'Teacher updated successfully',
         });
     } catch (error) {
-        logger.error('updateTeacher error', { error: error.message, stack: error.stack, userId: req.para.id });
+        logger.error('updateTeacher error', { error: error.message, stack: error.stack, schoolId: req.body.schoolId });
         res.status(500).json({ success: false, message: 'Server error occurred while updating teacher' });
     }
 }
 
-// Delete (soft delete) a teacher
+// Soft delete a teacher for a given schoolId
 async function deleteTeacher(req, res) {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            logger.warn('Validation errors in deleteTeacher', { errors: errors.array(), userId: req.para.id });
+            logger.warn('Validation errors in deleteTeacher', { errors: errors.array(), schoolId: req.body.schoolId });
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
         const { schoolId, teacherId } = req.body;
 
         if (req.user.school.toString() !== schoolId) {
-            logger.warn('School ID mismatch', { userId: req.para.id, schoolId, userSchool: req.user.school });
+            logger.warn('School ID mismatch', { schoolId, userSchool: req.user.school });
             return res.status(403).json({
                 success: false,
                 message: 'You are not authorized to delete teachers for this school',
@@ -249,7 +239,7 @@ async function deleteTeacher(req, res) {
             'user',
             teacher._id,
             'delete',
-            req.para.id,
+            null, // No userId
             { isDeleted: false },
             { isDeleted: true, school: schoolId }
         );
@@ -269,24 +259,24 @@ async function deleteTeacher(req, res) {
             message: 'Teacher deactivated successfully',
         });
     } catch (error) {
-        logger.error('deleteTeacher error', { error: error.message, stack: error.stack, userId: req.para.id });
+        logger.error('deleteTeacher error', { error: error.message, stack: error.stack, schoolId: req.body.schoolId });
         res.status(500).json({ success: false, message: 'Server error occurred while deactivating teacher' });
     }
 }
 
-// Restore a deleted teacher
+// Restore a deleted teacher for a given schoolId
 async function restoreTeacher(req, res) {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            logger.warn('Validation errors in restoreTeacher', { errors: errors.array(), userId: req.para.id });
+            logger.warn('Validation errors in restoreTeacher', { errors: errors.array(), schoolId: req.body.schoolId });
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
         const { schoolId, teacherId } = req.body;
 
         if (req.user.school.toString() !== schoolId) {
-            logger.warn('School ID mismatch', { userId: req.para.id, schoolId, userSchool: req.user.school });
+            logger.warn('School ID mismatch', { schoolId, userSchool: req.user.school });
             return res.status(403).json({
                 success: false,
                 message: 'You are not authorized to restore teachers for this school',
@@ -309,7 +299,7 @@ async function restoreTeacher(req, res) {
             'user',
             teacher._id,
             'restore',
-            req.para.id,
+            null, // No userId
             { isDeleted: true },
             { isDeleted: false, school: schoolId }
         );
@@ -329,24 +319,24 @@ async function restoreTeacher(req, res) {
             message: 'Teacher reactivated successfully',
         });
     } catch (error) {
-        logger.error('restoreTeacher error', { error: error.message, stack: error.stack, userId: req.para.id });
+        logger.error('restoreTeacher error', { error: error.message, stack: error.stack, schoolId: req.body.schoolId });
         res.status(500).json({ success: false, message: 'Server error occurred while reactivating teacher' });
     }
 }
 
-// Toggle teacher status (activate/deactivate)
+// Toggle teacher status (activate/deactivate) for a given schoolId
 async function toggleTeacherStatus(req, res) {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            logger.warn('Validation errors in toggleTeacherStatus', { errors: errors.array(), userId: req.para.id });
+            logger.warn('Validation errors in toggleTeacherStatus', { errors: errors.array(), schoolId: req.body.schoolId });
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
         const { schoolId, teacherId, isActive } = req.body;
 
         if (req.user.school.toString() !== schoolId) {
-            logger.warn('School ID mismatch', { userId: req.para.id, schoolId, userSchool: req.user.school });
+            logger.warn('School ID mismatch', { schoolId, userSchool: req.user.school });
             return res.status(403).json({
                 success: false,
                 message: 'You are not authorized to modify teacher status for this school',
@@ -363,14 +353,14 @@ async function toggleTeacherStatus(req, res) {
         const teacher = await validateEntity(User, teacherId, 'User', schoolId, { role: 'teacher' });
 
         const previousStatus = teacher.isDeleted;
-        teacher.isDeleted = !isActive; // isActive: true -> isDeleted: false, isActive: false -> isDeleted: true
+        teacher.isDeleted = !isActive;
         await teacher.save();
 
         await logAudit(
             'user',
             teacher._id,
             'toggle-status',
-            req.para.id,
+            null, // No userId
             { isDeleted: previousStatus },
             { isDeleted: teacher.isDeleted, school: schoolId }
         );
@@ -393,7 +383,7 @@ async function toggleTeacherStatus(req, res) {
             message,
         });
     } catch (error) {
-        logger.error('toggleTeacherStatus error', { error: error.message, stack: error.stack, userId: req.para.id });
+        logger.error('toggleTeacherStatus error', { error: error.message, stack: error.stack, schoolId: req.body.schoolId });
         res.status(500).json({ success: false, message: 'Server error occurred while modifying teacher status' });
     }
 }
@@ -407,5 +397,5 @@ module.exports = {
     validateListTeachers,
     validateUpdateTeacher,
     validateDeleteTeacher,
-    validateToggleTeacherStatus
+    validateToggleTeacherStatus,
 };
