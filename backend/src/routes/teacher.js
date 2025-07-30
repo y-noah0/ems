@@ -7,7 +7,7 @@ router.use(limiter);
 
 // Routes for teacher management
 router.get(
-    '/:id',
+    '/',
     teacherController.validateListTeachers,
     teacherController.listTeachers
 );
