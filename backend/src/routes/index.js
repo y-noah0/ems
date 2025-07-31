@@ -10,11 +10,11 @@ const tradeRoutes = require('./trade');
 const subjectRoutes = require('./subject');
 
 // Mount routes
-router.use('/teachers', teacher)
-router.use('/students' , student)
-router.use('/reports', reportRoutes);
-router.use('/promotions', promotionRoutes);
-router.use('/enrollments', enrollmentRoutes);
+// router.use('/teachers', teacher)
+// router.use('/students' , student)
+// router.use('/reports', reportRoutes);
+// router.use('/promotions', promotionRoutes);
+// router.use('/enrollments', enrollmentRoutes);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/exams', examRoutes);

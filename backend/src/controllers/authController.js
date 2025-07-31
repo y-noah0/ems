@@ -315,7 +315,6 @@ const login = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      logger?.warn?.('Validation errors in login', { errors: errors.array(), ip: req.ip });
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
@@ -332,25 +331,21 @@ const login = async (req, res) => {
       }
 
       if (!user) {
-        logger?.warn?.('Invalid credentials: no match found', { identifier, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid credentials' });
       }
     } else {
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-        logger?.warn?.('Invalid password', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid credentials' });
       }
     }
 
     if (!user.emailVerified && user.role !== 'student') {
-      logger?.warn?.('Email not verified', { userId: user._id, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Email not verified' });
     }
 
     if (user.twoFactorEnabled) {
       if (!twoFactorCode) {
-        logger?.warn?.('2FA code required', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: '2FA code required' });
       }
 
@@ -361,12 +356,10 @@ const login = async (req, res) => {
       });
 
       if (!verified) {
-        logger?.warn?.('Invalid 2FA code', { userId: user._id, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Invalid 2FA code' });
       }
     }
 
-    // Ensure updateLastLogin doesn't throw
     if (user.updateLastLogin) {
       await user.updateLastLogin();
     }
@@ -377,22 +370,17 @@ const login = async (req, res) => {
       tokenVersion: user.tokenVersion || 0,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'your_jwt_secret', {
-      expiresIn: '12h',
-    });
-
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET || 'your_refresh_secret', {
       expiresIn: '7d',
     });
 
-    // sendNotification should not break login
+    // Try to send login notification
     try {
       await sendNotification(user, `You logged in at ${new Date().toISOString()}`, 'EMS Login Notification', req);
     } catch (notifyErr) {
-      logger?.warn?.('Notification error during login', { userId: user._id, error: notifyErr.message });
+      console.warn('Notification error during login:', notifyErr.message);
     }
-
-    logger?.info?.('User logged in', { userId: user._id, ip: req.ip });
 
     return res.json({
       success: true,
@@ -412,12 +400,6 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
-    logger?.error?.('Error in login', {
-      error: error.message,
-      stack: error.stack,
-      ip: req.ip,
-    });
-
     return res.status(500).json({
       success: false,
       message: 'Server iraturitse shn 😓',
@@ -425,6 +407,7 @@ const login = async (req, res) => {
     });
   }
 };
+
 
 // Logout user
 const logout = async (req, res) => {

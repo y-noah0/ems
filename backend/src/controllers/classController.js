@@ -56,21 +56,17 @@ const createClass = async (req, res) => {
     }
 };
 
-// Get all classes (filtered by schoolId in body)
+
+// Get all classes (filtered by schoolId in query)
 const getClasses = async (req, res) => {
-    const { schoolId } = req.query;
-    if (!schoolId) {
-        return res.status(400).json({ success: false, message: 'schoolId is required in query' });
+    const schoolId = req.query.schoolId;
+
+    // Validate schoolId
+    if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
+        return res.status(400).json({ success: false, message: 'Valid schoolId is required in query' });
     }
 
     try {
-        const { schoolId } = req.body;
-
-        // Validate schoolId
-        if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
-            return res.status(400).json({ success: false, message: 'Valid schoolId is required in request body' });
-        }
-
         // Check if user is authorized for the school
         if (!isAuthorizedForSchool(req, schoolId)) {
             return res.status(403).json({ success: false, message: 'Access denied for this school' });
@@ -88,21 +84,18 @@ const getClasses = async (req, res) => {
     }
 };
 
-// Get class by ID (filtered by schoolId in body)
+
+
+// Get class by ID (filtered by schoolId in query)
 const getClassById = async (req, res) => {
-    const { schoolId } = req.query;
-    if (!schoolId) {
-        return res.status(400).json({ success: false, message: 'schoolId is required in query' });
+    const schoolId = req.query.schoolId;
+
+    // Validate schoolId
+    if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
+        return res.status(400).json({ success: false, message: 'Valid schoolId is required in query' });
     }
 
     try {
-        const { schoolId } = req.body;
-
-        // Validate schoolId
-        if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
-            return res.status(400).json({ success: false, message: 'Valid schoolId is required in request body' });
-        }
-
         // Check if user is authorized for the school
         if (!isAuthorizedForSchool(req, schoolId)) {
             return res.status(403).json({ success: false, message: 'Access denied for this school' });
@@ -123,6 +116,7 @@ const getClassById = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
+
 
 // Update class (only dean or admin, restricted to school)
 const updateClass = async (req, res) => {
