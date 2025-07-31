@@ -34,13 +34,13 @@ const Sidebar = ({ userRole = 'student' }) => {
       active: location.pathname.includes('/dean/classes'),
       roles: ['dean']
     },
-    {
-      title: 'Class performance',
-      icon: Building2,
-      path: '/dean/performance',
-      active: location.pathname.includes('/dean/performance'),
-      roles: ['dean']
-    },
+    // {
+    //   title: 'Class performance',
+    //   icon: Building2,
+    //   path: '/dean/performance',
+    //   active: location.pathname.includes('/dean/performance'),
+    //   roles: ['dean']
+    // },
     {
       title: 'Exams Management',
       icon: FileText,
@@ -55,13 +55,13 @@ const Sidebar = ({ userRole = 'student' }) => {
       active: location.pathname.includes('/dean/teachers'),
       roles: ['dean']
     },
-    {
-      title: 'Student Management',
-      icon: GraduationCap,
-      path: '/dean/students',
-      active: location.pathname.includes('/dean/students'),
-      roles: ['dean']
-    },
+    // {
+    //   title: 'Student Management',
+    //   icon: GraduationCap,
+    //   path: '/dean/students',
+    //   active: location.pathname.includes('/dean/students'),
+    //   roles: ['dean']
+    // },
     {
       title: 'Reporting',
       icon: BarChart3,

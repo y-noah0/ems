@@ -14,7 +14,7 @@ const ManageClasses = () => {
     level: '',
     trade: '',
     year: '',
-    school: '', // will be set automatically
+    schoolId: '', // will be set automatically
     capacity: 30,
     subjects: [],
   });
@@ -25,33 +25,37 @@ const ManageClasses = () => {
   const [students, setStudents] = useState([]);
 
   // Fetch all data on mount
-  useEffect(() => {
+useEffect(() => {
+  if (currentUser?.school) {
     fetchAll();
-  }, []);
+  }
+}, [currentUser?.school]);
 
-  const fetchAll = async () => {
-    setLoading(true);
-    try {
-      const [classes, trades, subjects] = await Promise.all([
-        getClasses(),
-        tradeService.getAllTrades(),
-        getSubjects(),
-      ]);
-      setClassesData(classes);
-      setTradeOptions(trades);
-      setSubjectOptions(subjects);
-    } catch {
-      alert('Failed to fetch data');
-    }
-    setLoading(false);
-  };
+const fetchAll = async () => {
+  if (!currentUser?.school) return;
+
+  setLoading(true);
+  try {
+    const [classes, trades, subjects] = await Promise.all([
+      getClasses(currentUser.school),
+      tradeService.getAllTrades(),
+      getSubjects(),
+    ]);
+    setClassesData(classes);
+    setTradeOptions(trades || []); 
+    setSubjectOptions(subjects  || []);
+  } catch (error) {
+    console.error(error);
+  }
+  setLoading(false);
+};
 
   const handleAddClass = () => {
     setNewClass({
       level: '',
       trade: '',
       year: '',
-      school: currentUser.school, // set automatically
+      schoolId: currentUser.school, // set automatically
       capacity: 30,
       subjects: [],
     });
@@ -73,16 +77,38 @@ const ManageClasses = () => {
     }
   };
 
-  const handleAddSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await createClass(newClass);
-      setShowAddModal(false);
-      fetchAll();
-    } catch {
-      alert('Failed to create class');
-    }
-  };
+const handleAddSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!['L3', 'L4', 'L5'].includes(newClass.level)) {
+    alert('Please select a valid class level.');
+    return;
+  }
+  if (!newClass.trade || newClass.trade.length !== 24) {
+    alert('Please select a valid trade.');
+    return;
+  }
+  if (!newClass.schoolId || newClass.schoolId.length !== 24) {
+    alert('Invalid school ID.');
+    return;
+  }
+  if (!newClass.year || newClass.year < 2000) {
+    alert('Please enter a valid year.');
+    return;
+  }
+
+  // Log the payload before sending
+  console.log('Creating class with data:', newClass);
+
+  try {
+  await createClass(newClass);
+  setShowAddModal(false);
+  fetchAll();
+} catch (error) {
+  console.error('Error creating class:', error);
+  alert(error.message);
+}
+};
 
   const handleViewClass = (cls) => {
     setSelectedClass(cls);
@@ -129,39 +155,43 @@ const ManageClasses = () => {
           ) : classesData.length === 0 ? (
             <p className="text-gray-500">No classes available. Create your first class!</p>
           ) : (
-            classesData.map((cls) => (
-              <div
-                key={cls._id}
-                className="relative bg-white bg-opacity-90 rounded-2xl shadow-2xl hover:shadow-blue-200 transition-shadow duration-300 p-8 flex flex-col items-center justify-between border border-blue-100 group"
-              >
-                <div className="absolute top-4 right-4 pointer-events-none select-none">
-                  <span
-                    className="text-7xl md:text-8xl"
-                    style={{
-                      filter: 'drop-shadow(0 4px 16px rgba(59,130,246,0.18))',
-                      opacity: 0.18,
-                      transition: 'opacity 0.3s',
-                    }}
-                  >
-                    📚
-                  </span>
-                </div>
-                <div className="flex flex-col items-center mb-6">
-                  <div className="text-2xl font-extrabold text-blue-700 mb-2 tracking-wide drop-shadow-sm">
-                    {cls.level}
-                    {tradeOptions.find((t) => t._id === cls.trade)?.code || ''}
-                  </div>
-                  <div className="text-xs uppercase tracking-widest text-blue-400 font-semibold bg-blue-50 px-3 py-1 rounded-full shadow-sm">
-                    Academic Class
-                  </div>
-                </div>
-                <button
-                  className="mt-4 w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-semibold py-2 rounded-xl shadow-lg hover:shadow-blue-300 transition-all duration-200 text-base tracking-wide"
-                  onClick={() => handleViewClass(cls)}
-                >
-                  View Details
-                </button>
-              </div>
+            classesData.classes.map((cls) => (
+       <div
+  key={cls._id}
+  className="relative bg-white bg-opacity-90 rounded-2xl shadow-2xl hover:shadow-blue-200 transition-shadow duration-300 p-6 flex flex-col items-center justify-between border border-blue-100 group max-w-xs mx-auto sm:max-w-sm md:max-w-md"
+>
+  <div className="absolute top-4 right-4 pointer-events-none select-none">
+    <span
+      className="text-6xl sm:text-7xl md:text-8xl"
+      style={{
+        filter: 'drop-shadow(0 4px 16px rgba(59,130,246,0.18))',
+        opacity: 0.18,
+        transition: 'opacity 0.3s',
+      }}
+    >
+      📚
+    </span>
+  </div>
+  <div className="flex flex-col items-center mb-6 text-center">
+    <div className="text-2xl sm:text-3xl font-extrabold text-blue-700 mb-1 tracking-wide drop-shadow-sm">
+      {cls.level}
+<span className="ml-2 text-xl sm:text-2xl font-semibold text-blue-600">
+  {typeof cls.trade === 'object' && cls.trade !== null
+    ? cls.trade.name
+    : tradeOptions.find((t) => t._id === cls.trade)?.name || 'Unknown Trade'}
+</span>
+    </div>
+    <div className="text-xs uppercase tracking-widest text-blue-400 font-semibold bg-blue-50 px-3 py-1 rounded-full shadow-sm">
+      Academic Class
+    </div>
+  </div>
+  <button
+    className="mt-4 w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-semibold py-2 rounded-xl shadow-lg hover:shadow-blue-300 transition-all duration-200 text-base tracking-wide"
+    onClick={() => handleViewClass(cls)}
+  >
+    View Details
+  </button>
+</div>
             ))
           )}
         </div>
@@ -258,20 +288,20 @@ const ManageClasses = () => {
                   Trade
                 </label>
                 <select
-                  id="trade"
-                  name="trade"
-                  value={newClass.trade || ''}
-                  onChange={handleAddInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select trade</option>
-                  {tradeOptions.map((trade) => (
-                    <option key={trade._id} value={trade._id}>
-                      {trade.name} ({trade.code})
-                    </option>
-                  ))}
-                </select>
+  name="trade"
+  id="trade"
+  value={newClass.trade || ''}
+  onChange={handleAddInputChange}
+  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+  required
+>
+  <option value="">Select trade</option>
+  {Array.isArray(tradeOptions) && tradeOptions.map((trade) => (
+    <option key={trade._id} value={trade._id}>
+      {trade.name} ({trade.code})
+    </option>
+  ))}
+</select>
               </div>
               <div>
                 <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">
@@ -297,7 +327,7 @@ const ManageClasses = () => {
                 </label>
                 <input
                   type="text"
-                  value={currentUser.schoolName || 'Your School'}
+                  value={currentUser.school || 'Your School'}
                   disabled
                   className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
                 />
@@ -322,23 +352,23 @@ const ManageClasses = () => {
                   Subjects
                 </label>
                 <select
-                  id="subjects"
-                  name="subjects"
-                  multiple
-                  value={newClass.subjects || []}
-                  onChange={(e) => {
-                    const options = Array.from(e.target.selectedOptions, (opt) => opt.value);
-                    setNewClass((prev) => ({ ...prev, subjects: options }));
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  {subjectOptions.map((subject) => (
-                    <option key={subject._id} value={subject._id}>
-                      {subject.name}
-                    </option>
-                  ))}
-                </select>
+                     id="subjects"
+                     name="subjects"
+                     multiple
+                     value={newClass.subjects || []}
+                     onChange={(e) => {
+                       const options = Array.from(e.target.selectedOptions, (opt) => opt.value);
+                       setNewClass((prev) => ({ ...prev, subjects: options }));
+                     }}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     required
+                   >
+                     {Array.isArray(subjectOptions) && subjectOptions.map((subject) => (
+                       <option key={subject._id} value={subject._id}>
+                         {subject.name}
+                       </option>
+                     ))}
+                   </select>
                 <span className="text-xs text-gray-400">
                   Hold Ctrl (Windows) or Cmd (Mac) to select multiple
                 </span>

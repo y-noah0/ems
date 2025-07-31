@@ -1,0 +1,12 @@
+[33mf884678[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mEmmanuel[m[33m, [m[1;31morigin/Emmanuel[m[33m)[m HEAD@{0}: pull: Fast-forward
+[33madc06c8[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: merge origin/master: Fast-forward
+[33mfff57e6[m HEAD@{2}: merge origin/master: Fast-forward
+[33m04c4560[m HEAD@{3}: checkout: moving from Emmanuel to Emmanuel
+[33m04c4560[m HEAD@{4}: commit: all cange that made on dean
+[33m6154c5c[m HEAD@{5}: merge origin/master: Merge made by the 'ort' strategy.
+[33m71b0a0b[m HEAD@{6}: commit: every thing done by emmy
+[33m1cb0896[m HEAD@{7}: commit: Exam management page
+[33m021f5e8[m HEAD@{8}: commit: log out
+[33m04171d3[m HEAD@{9}: checkout: moving from master to Emmanuel
+[33m75bae54[m[33m ([m[1;32mmaster[m[33m)[m HEAD@{10}: commit: authdebugged
+[33mfc2c723[m HEAD@{11}: clone: from https://github.com/y-noah0/ems.git
