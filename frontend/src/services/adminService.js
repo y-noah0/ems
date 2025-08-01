@@ -26,15 +26,18 @@ api.interceptors.request.use(
 // Admin service
 const adminService = {
   // Classes
-  getAllClasses: async () => {
+  getAllClasses: async (schoolId) => {
     try {
-      const response = await api.get('/admin/classes');
+      const response = await api.get(`/class`, {
+        params: { schoolId }
+      });
       return response.data.classes;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
+
+
   // Get classes for teachers (uses a different endpoint with teacher access)
   getTeacherClasses: async () => {
     try {
@@ -45,10 +48,10 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Failed to load classes. Please try again.' };
     }
   },
-  createClass: async (classData) => {
+
+  createClass: async (classData, schoolId) => {
     try {
-      const response = await api.post('/admin/classes', classData);
-      toast.success('Class created successfully!');
+      const response = await api.post('/admin/classes', { ...classData, schoolId });
       return response.data.class;
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Failed to create class';
@@ -56,10 +59,10 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  updateClass: async (id, classData) => {
+
+  updateClass: async (id, classData, schoolId) => {
     try {
-      const response = await api.put(`/admin/classes/${id}`, classData);
-      toast.success('Class updated successfully!');
+      const response = await api.put(`/admin/classes/${id}`, { ...classData, schoolId });
       return response.data.class;
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Failed to update class';
@@ -68,9 +71,9 @@ const adminService = {
     }
   },
 
-  deleteClass: async (id) => {
+  deleteClass: async (id, schoolId) => {
     try {
-      const response = await api.delete(`/admin/classes/${id}`);
+      const response = await api.delete(`/admin/classes/${id}?schoolId=${schoolId}`);
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
@@ -78,15 +81,15 @@ const adminService = {
   },
 
   // Subjects
-  getSubjectsByClass: async (classId) => {
+  getSubjectsByClass: async (classId, schoolId) => {
     try {
-      const response = await api.get(`/admin/classes/${classId}/subjects`);
+      const response = await api.get(`/admin/classes/${classId}/subjects?schoolId=${schoolId}`);
       return response.data.subjects;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
+
   createSubject: async (subjectData) => {
     try {
       const response = await api.post('/admin/subjects', subjectData);
@@ -95,7 +98,7 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Error creating subject' };
     }
   },
-  
+
   assignTeacherToSubject: async (subjectId, teacherId) => {
     try {
       const response = await api.put(`/admin/subjects/${subjectId}/assign-teacher`, { teacherId });
@@ -114,6 +117,7 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
+
   // Students
   getStudentsByClass: async (classId) => {
     try {
@@ -121,7 +125,7 @@ const adminService = {
         console.error('Invalid class ID provided to getStudentsByClass');
         return [];
       }
-      
+
       const response = await api.get(`/admin/classes/${classId}/students`);
       return response.data.students;
     } catch (error) {
@@ -129,7 +133,8 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-    createStudent: async (studentData) => {
+
+  createStudent: async (studentData) => {
     try {
       const response = await api.post('/admin/students', studentData);
       toast.success('Student created successfully!');
@@ -140,7 +145,8 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Error creating student' };
     }
   },
-    importStudents: async (formData) => {
+
+  importStudents: async (formData) => {
     try {
       // For file uploads, we need to use multipart/form-data
       const response = await api.post('/admin/import-students', formData, {
@@ -156,27 +162,27 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Error importing students' };
     }
   },
-  
+
   // Import students from CSV
   importStudentsFromCSV: async (file, classId) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('classId', classId);
-      
+
       const response = await axios.post(`${API_URL}/admin/import-students`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
+
   // Get individual student by ID
   getStudentById: async (studentId) => {
     try {
@@ -186,7 +192,7 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
+
   // Get student results by ID
   getStudentResults: async (studentId) => {
     try {
@@ -196,17 +202,21 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get class by ID
-  getClassById: async (classId) => {
+
+  // Get class by ID (with optional schoolId validation)
+  getClassById: async (classId, schoolId) => {
     try {
-      const response = await api.get(`/admin/classes/${classId}`);
+      const url = schoolId
+        ? `/admin/classes/${classId}?schoolId=${schoolId}`
+        : `/admin/classes/${classId}`;
+      const response = await api.get(url);
       return response.data.class;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  // Get individual student by 
+  
+
 };
 
 export default adminService;

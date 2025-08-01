@@ -1,70 +1,86 @@
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import Layout from "../../components/layout/Layout";
-import tradesData from '../../data/trades.json'; // use full trades data
+import schoolService from '../../services/schoolService';
+import tradeService from '../../services/tradeService';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 import Button from "../../components/ui/Button";
+import authService from "../../services/authService";
 
 export default function AddSchool() {
+    const { id } = useParams();
     const [selectedTrades, setSelectedTrades] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [formData, setFormData] = useState({
         name: '',
-        code: '',
-        type: 'TVET',
-        location: {
-            district: '',
-            sector: '',
-            cell: ''
-        },
-        contact: {
-            phone: '',
-            email: '',
-            website: '',
-            headmasterName: '',
-            headmasterEmail: '',
-            headmasterPhone: ''
-        },
-        accreditation: 'WDA Accredited',
-        establishedYear: new Date().getFullYear(),
-        description: ''
+        location: { district: '', sector: '', cell: '' },
+        contact: { phone: '', email: '', website: '' },
+        headmaster: '',
+        logo: null,
+        category: 'TVET'
     });
-    
+    const [trades, setTrades] = useState([]);
+    const navigate = useNavigate();
+    // const [isLoading, setIsLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Load trades
     useEffect(() => {
-        setSelectedTrades([]);
-    }, [formData.type]);
+        tradeService.getAllTrades()
+            .then(setTrades)
+            .catch(err => console.error('Failed to load trades', err));
+    }, []);
+    
+    // If editing, load existing school data
+    useEffect(() => {
+        if (!id) return;
+        // load existing school data for editing
+        schoolService.getSchoolById(id)
+            .then(school => {
+                // Parse address safely
+                const addr = school.address || '';
+                const parts = addr.split(', ');
+                const [district, sector, cell] = [parts[0]||'', parts[1]||'', parts[2]||''];
+                setFormData({
+                    name: school.name,
+                    location: { district, sector, cell },
+                    contact: { phone: school.contactPhone, email: school.contactEmail, website: '' },
+                    // Prepopulate headmaster with email for edit
+                    headmaster: school.headmaster?.email || '',
+                    logo: null,
+                    category: school.category
+                });
+                setSelectedTrades(school.tradesOffered.map(t => t._id));
+            })
+            .catch(() => toast.error('Failed to load school'));
+    }, [id]);
 
-    // helper to get trades by school type
-    const getTradesByType = () => {
-        if (formData.type === 'TVET') {
-            return Object.values(tradesData.TVET).flat();
-        } else if (formData.type === 'Secondary') {
-            const { olevel, alevel } = tradesData.REB;
-            return [...olevel, ...Object.values(alevel).flat()];
-        } else if (formData.type === 'Primary') {
-            // Return primary grade options
-            return tradesData.primary;
-        }
-        return [];
-    };
-
-    // Get available trades based on type
-    const availableTrades = getTradesByType();
-    const filteredTrades = availableTrades.filter(trade =>
-        trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        trade.code.toLowerCase().includes(searchTerm.toLowerCase())
+    // Filter trades by search term and selected school type
+    const filteredTrades = trades.filter(trade =>
+        // match trade category to selected school type
+        trade.category === formData.type &&
+        (
+            trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            trade.code.toLowerCase().includes(searchTerm.toLowerCase())
+        )
     );
     
     // Handle trade selection
-    const handleTradeChange = (tradeCode, checked) => {
+    const handleTradeChange = (tradeId, checked) => {
         if (checked) {
-            setSelectedTrades([...selectedTrades, tradeCode]);
+            setSelectedTrades([...selectedTrades, tradeId]);
         } else {
-            setSelectedTrades(selectedTrades.filter(code => code !== tradeCode));
+            setSelectedTrades(selectedTrades.filter(id => id !== tradeId));
         }
     };
     
     // Handle form input changes
     const handleInputChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value, files } = e.target;
+        if (name === 'logo' && files) {
+            return setFormData(prev => ({ ...prev, logo: files[0] }));
+        }
         if (name.includes('.')) {
             const [parent, child] = name.split('.');
             setFormData(prev => ({
@@ -81,19 +97,51 @@ export default function AddSchool() {
             }));
         }
     };
-    
-    // Handle form submission
-    const handleSubmit = (e) => {
+
+    // Handle form submission (create or update)
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const schoolData = {
-            ...formData,
-            trades: selectedTrades,
-            createdAt: new Date().toISOString(),
-            status: 'Active'
-        };
-        console.log('School data to submit:', schoolData);
-        // Here you would typically make an API call to save the school
-        alert('School added successfully! (This is a demo)');
+        setIsSubmitting(true);
+        try {
+            //get headmaster ID from email
+            if (!formData.headmaster) {
+                toast.error('Please provide a headmaster ID');
+                return;
+            }
+            const headmaster = await authService.getHeadmaster(formData.headmaster);
+            console.log('Headmaster fetched:', headmaster);
+            
+            if (!headmaster) {
+                toast.error('Headmaster not found');
+                return;
+            }
+            // submit as multipart/form-data
+            const data = new FormData();
+            data.append('name', formData.name);
+            data.append('address', `${formData.location.district}, ${formData.location.sector}, ${formData.location.cell}`);
+            data.append('contactEmail', formData.contact.email);
+            data.append('contactPhone', formData.contact.phone);
+            // include school category
+            data.append('category', formData.category);
+            data.append('headmaster', headmaster.id);
+            selectedTrades.forEach(id => data.append('tradesOffered', id));
+            formData.logo? data.append('logo', formData.logo): data.append('logo', null);
+            
+            if (id) {
+                // update mode
+                await schoolService.updateSchool(id, data);
+                toast.success('School updated successfully!');
+            } else {
+                await schoolService.createSchool(data);
+                toast.success('School added successfully!');
+            }
+            navigate('/admin/schools');
+        } catch (err) {
+            console.error('Error adding school:', err);
+            toast.error(err.response?.data?.message || 'Failed to add school');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -102,12 +150,12 @@ export default function AddSchool() {
                 <div className="max-w-4xl mx-auto">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">Add New School</h1>
+                            <h1 className="text-2xl font-bold text-gray-900">{id ? 'Edit School' : 'Add New School'}</h1>
                             <p className="text-sm text-gray-500 mt-1">Create a new educational institution profile</p>
                         </div>
                         <Button 
                             variant="outline" 
-                            onClick={() => window.history.back()}
+                            onClick={() => navigate('/admin/schools')}
                         >
                             Cancel
                         </Button>
@@ -157,10 +205,12 @@ export default function AddSchool() {
                                         required
                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                     >
+                                        <option value="" >Select school type</option>
                                         <option value="TVET">TVET School</option>
-                                        <option value="Secondary">Secondary School</option>
-                                        <option value="Primary">Primary School</option>
-                                        <option value="University">University</option>
+                                        <option value="REB">Secondary School</option>
+                                        <option value="PRIMARY">Primary School</option>
+                                        <option value="UNIVERSITY">University</option>
+                                        <option value="CAMBRIDGE">Cambridge</option>
                                     </select>
                                 </div>
                                 <div>
@@ -274,43 +324,30 @@ export default function AddSchool() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Headmaster Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="contact.headmasterName"
-                                        value={formData.contact.headmasterName}
-                                        onChange={handleInputChange}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Headmaster Full Name"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Headmaster Email
                                     </label>
                                     <input
                                         type="email"
-                                        name="contact.headmasterEmail"
-                                        value={formData.contact.headmasterEmail}
+                                        name="headmaster"
+                                        value={formData.headmaster}
                                         onChange={handleInputChange}
                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Headmaster Email"
+                                        placeholder="Headmaster ID"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Headmaster Phone
+                                        Logo
                                     </label>
                                     <input
-                                        type="text"
-                                        name="contact.headmasterPhone"
-                                        value={formData.contact.headmasterPhone}
+                                        type="file"
+                                        name="logo"
+                                        accept="image/*"
                                         onChange={handleInputChange}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                                        placeholder="Headmaster Phone"
+                                        className="w-full text-sm"
                                     />
                                 </div>
+                                
                             </div>
                         </div>
 
@@ -343,8 +380,8 @@ export default function AddSchool() {
                                     >
                                         <input
                                             type="checkbox"
-                                            checked={selectedTrades.includes(trade.code)}
-                                            onChange={(e) => handleTradeChange(trade.code, e.target.checked)}
+                                            checked={selectedTrades.includes(trade._id)}
+                                            onChange={(e) => handleTradeChange(trade._id, e.target.checked)}
                                             className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                         />
                                         <div className="flex-1">
@@ -387,8 +424,8 @@ export default function AddSchool() {
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={!formData.name || !formData.code}>
-                                Add School
+                            <Button type="submit" disabled={isSubmitting || !formData.name}>
+                                {isSubmitting ? 'Submitting...' : 'Add School'}
                             </Button>
                         </div>
                     </form>

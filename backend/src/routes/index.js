@@ -6,21 +6,30 @@ const examRoutes = require('./exam');
 const submissionRoutes = require('./submission');
 const systemAdminRoutes = require('./systemAdmin');
 const notificationRoutes = require('./notification');
+const tradeRoutes = require('./trade');
+const subjectRoutes = require('./subject');
+const teacher = require('./teacher');
+const student = require('./student');
+const reportRoutes = require('./report');
+const promotionRoutes = require('./promotion');
+const enrollmentRoutes = require('./enrollment');
+const classes = require('./class');
 
 // Mount routes
+router.use('/class', classes);
+router.use('/schools', require('./school'));
+router.use('/teachers', teacher)
+router.use('/students', student)
+router.use('/reports', reportRoutes);
+router.use('/promotions', promotionRoutes);
+router.use('/enrollments', enrollmentRoutes);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/exams', examRoutes);
 router.use('/submissions', submissionRoutes);
 router.use('/system-admin', systemAdminRoutes);
-// Headmaster-specific routes
-const headmasterRoutes = require('./headmaster');
-const { authenticate, requireRoles } = require('../middlewares/authMiddleware');
-// Only headmasters can access these
-router.use('/headmaster', authenticate, requireRoles(['headmaster']), headmasterRoutes);
 router.use('/notifications', notificationRoutes);
-// Mount subject routes for CRUD and retrieval
-const subjectRoutes = require('./subject');
+router.use('/trade', tradeRoutes);
 router.use('/subjects', subjectRoutes);
 
 // Special case for subjects under exams controller

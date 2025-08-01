@@ -16,10 +16,10 @@ export default function SubjectCatalog() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const subjectsRes = await subjectService.getAllSubjects();
+                const subjectsRes = await subjectService.getSubjects();
                 setSubjectsList(subjectsRes);
             } catch (error) {
-                showToast("Failed to load subjects", "error");
+                showToast("Failed to load subjects: " + error.message, "error");
             }
         };
         fetchData();

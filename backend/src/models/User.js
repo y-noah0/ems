@@ -6,7 +6,7 @@ const UserSchema = new Schema({
   role: {
     type: String,
     required: true,
-    enum: ['student', 'teacher', 'dean', 'admin', 'headmaster'],
+    enum: ['student' , 'teacher', 'dean', 'admin' , 'headmaster'],
     default: 'student'
   },
   fullName: {
@@ -18,7 +18,7 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please Enter a valid email'],
     required: function () { return this.role !== 'student'; },
     sparse: true,
     unique: true
@@ -36,13 +36,7 @@ const UserSchema = new Schema({
   },
   passwordHash: {
     type: String,
-    required: true,
-    validate: {
-      validator: function (v) {
-        return v.length >= 8;
-      },
-      message: 'Password must be at least 8 characters long'
-    }
+    required: true
   },
   phoneNumber: {
     type: String,
@@ -53,17 +47,11 @@ const UserSchema = new Schema({
   school: {
     type: Schema.Types.ObjectId,
     ref: 'School',
-    required: true
-  },
-  subjects: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Subject',
-    required: function () { return this.role === 'teacher'; },
-    validate: {
-      validator: function (v) { return this.role !== 'teacher' ? v.length === 0 : true; },
-      message: 'Subjects are only allowed for teachers'
+    default: null,
+    required: function () {
+      return ['student', 'teacher', 'dean'].includes(this.role);
     }
-  }],
+  },
   profilePicture: {
     type: String,
     trim: true,
@@ -79,6 +67,27 @@ const UserSchema = new Schema({
       type: String,
       enum: ['light', 'dark'],
       default: 'light'
+    }
+  },
+  classId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Class',
+    required: function() {
+      return this.role === 'student';
+    },
+    validate: {
+      validator: function(v) {
+        return this.role === 'student' ? v != null : v == null;
+      },
+      message: 'Students must have a class, non-students must not have a class'
+    }
+  },
+  termId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Term',
+    validate: {
+      validator: function (v) { return this.role === 'student' ? v.length > 0 : v.length === 0; },
+      message: 'termids are required for students and not allowed for other roles'
     }
   },
   lastLogin: {
@@ -107,35 +116,84 @@ const UserSchema = new Schema({
   isDeleted: {
     type: Boolean,
     default: false
+  },
+  parentFullName: {
+    type: String,
+    trim: true,
+    default: null,
+    required: false,
+    validate: {
+      validator: function (v) {
+        if (this.role === 'student' && v != null) return v.length > 0;
+        return true;
+      },
+      message: 'Parent full name must not be empty if provided'
+    }
+  },
+  parentNationalId: {
+    type: String,
+    trim: true,
+    default: null,
+    required: false,
+    validate: {
+      validator: function (v) {
+        if (this.role === 'student' && v != null) return v.length > 0;
+        return true;
+      },
+      message: 'Parent national ID must not be empty if provided'
+    }
+  },
+  parentPhoneNumber: {
+    type: String,
+    trim: true,
+    match: [/^\+?\d{10,15}$/, 'Please enter a valid phone number'],
+    default: null,
+    required: false
+  },
+  graduated: {
+    type: Boolean,
+    default: false,
+    required: false
+  },
+  graduationDate: {
+    type: Date,
+    default: null,
+    required: false
   }
 }, { timestamps: true });
 
+// Indexes
 UserSchema.index({ email: 1 }, { unique: true, sparse: true });
 UserSchema.index({ role: 1, school: 1 });
 
+// Pre-save validations
 UserSchema.pre('save', async function (next) {
   if (this.isModified('passwordHash')) {
     try {
       const salt = await bcrypt.genSalt(10);
       this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
-      this.tokenVersion += 1; // Increment tokenVersion on password change
+      this.tokenVersion += 1;
     } catch (error) {
       return next(error);
     }
   }
 
-  if (this.role === 'teacher' && this.subjects.length) {
-    const Subject = mongoose.model('Subject');
-    const subjects = await Subject.find({ _id: { $in: this.subjects }, school: this.school });
-    if (subjects.length !== this.subjects.length) {
-      return next(new Error('All subjects must belong to the user’s school'));
-    }
+  if (this.role === 'teacher') {
+    if (!this.school) return next(new Error('Teacher must be assigned to a school'));
   }
 
+  if (this.role === 'headmaster' && this.school) {
+    const School = mongoose.model('School');
+    const school = await School.findOne({ headmaster: this._id });
+    if (school && school._id.toString() !== this.school.toString()) {
+      return next(new Error('Headmaster is already assigned to another school'));
+    }
+  }
 
   next();
 });
 
+// Methods
 UserSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.passwordHash);
 };

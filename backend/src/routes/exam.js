@@ -62,7 +62,7 @@ router.get(
 // @access  Teachers, Deans, Admins
 router.put(
   '/:examId',
-  authMiddleware.isTeacherOrDeanOrHeadmaster,
+  authMiddleware.isTeacherOrDeanOrAdmin,
   examController.validateUpdateExam,
   examController.updateExam
 );
@@ -72,7 +72,7 @@ router.put(
 // @access  Teachers, Deans, Admins
 router.delete(
   '/:examId',
-  authMiddleware.isTeacherOrDeanOrHeadmaster,
+  authMiddleware.isTeacherOrDeanOrAdmin,
   examController.validateExamIdParam,
   examController.deleteExam
 );
@@ -131,12 +131,11 @@ router.put(
 // @access  Deans, Headmasters
 router.get(
   '/school',
-  authMiddleware.authenticate,
   (req, res, next) => {
     if (!['dean', 'headmaster'].includes(req.user.role)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Access denied. Dean or Headmaster role required.' 
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Dean or Headmaster role required.'
       });
     }
     next();

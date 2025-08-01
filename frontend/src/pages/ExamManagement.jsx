@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import Layout from "../components/layout/Layout";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
-import Select from "../components/ui/Select";
+import { FiChevronDown } from 'react-icons/fi';
 import examService from "../services/examService";
 import ExamCard from "../components/ui/ExamCard";
 import { useAuth } from "../context/AuthContext";
@@ -18,6 +18,12 @@ const ExamManagement = () => {
     const [filterStatus, setFilterStatus] = useState("all");
     const [selectedSubject, setSelectedSubject] = useState(null);
     const [selectedClass, setSelectedClass] = useState(null);
+    const [subjectOptionsList, setSubjectOptionsList] = useState([]);
+    const [classOptionsList, setClassOptionsList] = useState([]);
+    const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
+    const [showClassDropdown, setShowClassDropdown] = useState(false);
+    const subjectDropdownRef = useRef(null);
+    const classDropdownRef = useRef(null);
 
     // Determine user role for ExamCard - default to teacher for this page
     const userRole = useAuth().currentUser?.role 
@@ -27,19 +33,19 @@ const ExamManagement = () => {
         return userRole // This is the teacher's exam management page
     };
 
-    const subjectOptions = [
-        { value: "mathematics", label: "Mathematics" },
-        { value: "english", label: "English" },
-        { value: "science", label: "Science" },
-        { value: "history", label: "History" },
-    ];
-
-    const classOptions = [
-        { value: "grade-9", label: "Grade 9" },
-        { value: "grade-10", label: "Grade 10" },
-        { value: "grade-11", label: "Grade 11" },
-        { value: "grade-12", label: "Grade 12" },
-    ];
+    // Custom dropdown click-outside handler
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (subjectDropdownRef.current && !subjectDropdownRef.current.contains(event.target)) {
+                setShowSubjectDropdown(false);
+            }
+            if (classDropdownRef.current && !classDropdownRef.current.contains(event.target)) {
+                setShowClassDropdown(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Get status from URL query parameters
     useEffect(() => {
@@ -56,6 +62,11 @@ const ExamManagement = () => {
         try {
             const examsData = await examService.getTeacherExams();
             setExams(examsData);
+            // derive options
+            const subjects = Array.from(new Set(examsData.map(ex => ex.subject?.name).filter(Boolean)));
+            setSubjectOptionsList(subjects.map(s => ({ value: s, label: s })));
+            const classes = Array.from(new Set(examsData.flatMap(ex => ex.classes?.map(c => c.name)).filter(Boolean)));
+            setClassOptionsList(classes.map(cn => ({ value: cn, label: cn })));
         } catch (error) {
             console.error("Error fetching exams:", error);
             setError("Failed to load exams");
@@ -70,15 +81,15 @@ const ExamManagement = () => {
 
     // Filter exams based on status and search term
     const filteredExams = exams.filter((exam) => {
-        const matchesStatus =
-            filterStatus === "all" || exam.status === filterStatus;
+        const matchesStatus = filterStatus === "all" || exam.status === filterStatus;
         const matchesSearch =
             searchTerm === "" ||
             exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (exam.subject?.name || "")
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase());
-        return matchesStatus && matchesSearch;
+            (exam.subject?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSubject = !selectedSubject || exam.subject?.name === selectedSubject.value;
+        const matchesClass = !selectedClass ||
+            exam.classes?.some(c => `${c.level} ${c.trade.code}` === selectedClass.value);
+        return matchesStatus && matchesSearch && matchesSubject && matchesClass;
     });
 
     // Sort exams: draft first, then active, scheduled, and finally completed
@@ -90,41 +101,7 @@ const ExamManagement = () => {
         return new Date(b.createdAt) - new Date(a.createdAt);
     });
 
-    // Handler for activating an exam
-    const handleActivate = async (examId) => {
-        setLoading(true);
-        setError("");
-        try {
-            await examService.activateExam(examId);
-            await fetchExams();
-        } catch (err) {
-            setError(
-                err?.message ||
-                    err?.response?.data?.message ||
-                    "Failed to activate exam"
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    // Handler for completing an exam
-    const handleComplete = async (examId) => {
-        setLoading(true);
-        setError("");
-        try {
-            await examService.completeExam(examId);
-            await fetchExams();
-        } catch (err) {
-            setError(
-                err?.message ||
-                    err?.response?.data?.message ||
-                    "Failed to complete exam"
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
 
     return (
         <Layout>
@@ -134,21 +111,50 @@ const ExamManagement = () => {
                         <p className="title">Exam Management</p>
                     </div>
                     <div>
+                        {/* Filter dropdowns */}
                         <div className="flex gap-3">
-                            <Select
-                                options={subjectOptions}
-                                value={selectedSubject}
-                                onChange={setSelectedSubject}
-                                placeholder="Subject"
-                                className="min-w-[120px]"
-                            />
-                            <Select
-                                options={classOptions}
-                                value={selectedClass}
-                                onChange={setSelectedClass}
-                                placeholder="Class"
-                                className="min-w-[120px]"
-                            />
+                            {/* Subject Filter */}
+                            <div ref={subjectDropdownRef} className="relative">
+                                <button
+                                    className="flex items-center justify-between gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 min-w-[120px]"
+                                    onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
+                                >
+                                    {selectedSubject?.label || 'Subject'}
+                                    <FiChevronDown className={`transition-transform ${showSubjectDropdown ? 'rotate-180' : ''}`} />
+                                </button>
+                                {showSubjectDropdown && (
+                                    <div className="absolute right-0 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                                        {subjectOptionsList.map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                className={`block w-full text-left px-4 py-2 text-sm ${selectedSubject?.value === opt.value ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                                onClick={() => { setSelectedSubject(opt); setShowSubjectDropdown(false); }}
+                                            >{opt.label}</button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {/* Class Filter */}
+                            <div ref={classDropdownRef} className="relative">
+                                <button
+                                    className="flex items-center justify-between gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 min-w-[120px]"
+                                    onClick={() => setShowClassDropdown(!showClassDropdown)}
+                                >
+                                    {selectedClass?.label || 'Class'}
+                                    <FiChevronDown className={`transition-transform ${showClassDropdown ? 'rotate-180' : ''}`} />
+                                </button>
+                                {showClassDropdown && (
+                                    <div className="absolute right-0 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                                        {classOptionsList.map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                className={`block w-full text-left px-4 py-2 text-sm ${selectedClass?.value === opt.value ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                                                onClick={() => { setSelectedClass(opt); setShowClassDropdown(false); }}
+                                            >{opt.label}</button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

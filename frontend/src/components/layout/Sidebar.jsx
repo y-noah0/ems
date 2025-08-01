@@ -111,7 +111,7 @@ const Sidebar = ({ userRole = "student" }) => {
             roles: ["dean"],
         },
         //Headmaster specifics
-        
+
         {
             title: "Class management",
             icon: Building2,
@@ -148,6 +148,13 @@ const Sidebar = ({ userRole = "student" }) => {
             roles: ["headmaster"],
         },
         {
+            title: "School Profile",
+            icon: Users,
+            path: "/headmaster/school",
+            active: location.pathname.includes("/headmaster/school"),
+            roles: ["headmaster"],
+        },
+        {
             title: "Reporting",
             icon: BarChart3,
             path: "/headmaster/reports",
@@ -172,9 +179,16 @@ const Sidebar = ({ userRole = "student" }) => {
         // Admin specific items
         {
             title: "School Management",
-            icon: Users,
+            icon: Building2,
             path: "/admin/schools",
             active: location.pathname.includes("/admin/schools"),
+            roles: ["admin"],
+        },
+         {
+            title: "Headmasters Management",
+            icon: Users,
+            path: "/admin/headmasters",
+            active: location.pathname.includes("/admin/headmasters"),
             roles: ["admin"],
         },
         {
@@ -210,8 +224,8 @@ const Sidebar = ({ userRole = "student" }) => {
             active: location.pathname.includes("/headmaster/trades-offered"),
             roles: ["headmaster"],
         },
-        
-        
+
+
         //student specific items
         {
             title: "Exams Management",

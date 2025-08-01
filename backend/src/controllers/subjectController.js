@@ -1,3 +1,4 @@
+// subjectController.js
 const Subject = require('../models/Subject');
 const School = require('../models/school');
 const Class = require('../models/Class');
@@ -37,7 +38,7 @@ const createSubject = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { name, description, school, classes = [], trades = [], teacher, credits } = req.body;
+        const { name, description, school, trades, teacher, credits } = req.body;
 
         // Validate referenced entities
         await ensureActiveEntity(School, school, 'School');
@@ -51,7 +52,7 @@ const createSubject = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Subject with this name already exists in this school' });
         }
 
-        const subject = new Subject({ name, description, school, classes, trades, teacher, credits });
+        const subject = new Subject({ name, description, school, trades, teacher, credits });
         await subject.save();
 
         logger.info('Subject created', { subjectId: subject._id });
@@ -67,7 +68,6 @@ const getSubjects = async (req, res) => {
     try {
         const subjects = await Subject.find({ isDeleted: false })
             .populate('school', 'name')
-            .populate('classes', 'level trade year')
             .populate('trades', 'name')
             .populate('teacher', 'fullName email');
 
@@ -82,22 +82,28 @@ const getSubjects = async (req, res) => {
 const getSubjectById = async (req, res) => {
     try {
         const subject = await validateEntity(Subject, req.params.id, 'Subject');
+
         await subject
             .populate('school', 'name')
-            .populate('classes', 'level trade year')
             .populate('trades', 'name')
             .populate('teacher', 'fullName email');
 
-        res.json({ success: true, subject });
+        return res.json({ success: true, subject });
     } catch (error) {
-        // Handle validation errors thrown by validateEntity
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({ success: false, message: error.message });
+        if (error?.statusCode) {
+            // This is likely a validation error from validateEntity
+            return res.status(error.statusCode).json({
+                success: false,
+                message: error.message
+            });
         }
+
+        // Generic server error
         logger.error('Error in getSubjectById', { error: error.message, ip: req.ip });
-        res.status(500).json({ success: false, message: 'Server Error' });
+        return res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
+
 
 // Update subject by ID
 const updateSubject = async (req, res) => {
@@ -107,7 +113,6 @@ const updateSubject = async (req, res) => {
             logger.warn('Validation failed in updateSubject', { errors: errors.array(), ip: req.ip });
             return res.status(400).json({ success: false, errors: errors.array() });
         }
-
         const subject = await Subject.findById(req.params.id);
         if (!subject || subject.isDeleted) {
             return res.status(404).json({ success: false, message: 'Subject not found' });
@@ -130,7 +135,6 @@ const updateSubject = async (req, res) => {
         subject.name = name || subject.name;
         subject.description = description || subject.description;
         subject.school = school || subject.school;
-        subject.classes = classes || subject.classes;
         subject.trades = trades || subject.trades;
         subject.teacher = teacher || subject.teacher;
         subject.credits = credits !== undefined ? credits : subject.credits;

@@ -12,7 +12,8 @@ const {
   resetPassword,
   enable2FA,
   updateProfile,
-  getCurrentUser
+  resendVerificationCode,
+  fetchHeadmasterByEmail
 } = require('../controllers/authController');
 
 // Middleware for validation
@@ -59,14 +60,6 @@ const registerValidation = [
 
 const loginValidation = [
   check('identifier', 'Identifier is required').notEmpty(),
-  check('identifier', 'Please include a valid email for non-students'),
-  // .if((value, { req }) => {
-  //   // Check if identifier looks like an email
-  //   const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-  //   return emailRegex.test(value);
-  // })
-  // .isEmail()
-  // .normalizeEmail(),
   check('password', 'Password is required').exists(),
   check('twoFactorCode', '2FA code must be a 6-digit number').optional().isNumeric().isLength({ min: 6, max: 6 })
 ];
@@ -82,8 +75,23 @@ router.post('/register', registerValidation, register);
 // @desc    Verify email
 // @access  Public
 router.post('/verify-email', [
+  check('userId', 'User ID is required').notEmpty(),
   check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 })
 ], verifyEmail);
+
+// @route   POST /auth/resend-verification
+// @desc    Resend verification code
+// @access  Public
+router.post('/resend-verification', [
+  check('email', 'Please include a valid email').isEmail().normalizeEmail()
+], resendVerificationCode);
+
+// @route   POST /auth/fetch-headmaster
+// @desc    Fetch headmaster by email
+// @access  Private
+router.post('/fetch-headmaster', authenticate, [
+  check('email', 'Please include a valid email').isEmail().normalizeEmail()
+], fetchHeadmasterByEmail);
 
 // @route   POST /auth/login
 // @desc    Log in user
@@ -135,6 +143,8 @@ router.put('/profile', authenticate, [
 // @route   GET /auth/me
 // @desc    Get current authenticated user
 // @access  Private
-router.get('/me', authenticate, getCurrentUser);
+router.get('/me', authenticate, (req, res) => {
+  res.json({ success: true, user: req.user });
+});
 
 module.exports = router;

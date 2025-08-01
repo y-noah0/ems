@@ -5,11 +5,14 @@ import Layout from "../../components/layout/Layout";
 import StatsCards from "../../components/dashboard/StatsCards";
 import DynamicTable from "../../components/class/DynamicTable";
 import Button from "../../components/ui/Button1";
+import adminService from "../../services/adminService";
+import schoolService from "../../services/schoolService";
 
 const AdminDashboard = () => {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
-    const [stats, setStats] = useState({});
+    const [stats, setStats] = useState({ classCount:0, teacherCount:0, studentCount:0, examCount:0 });
+    const [topSchools, setTopSchools] = useState([]);
 
     useEffect(() => {
         if (!currentUser || currentUser.role !== "admin") {
@@ -17,15 +20,43 @@ const AdminDashboard = () => {
         }
     }, [currentUser, navigate]);
     useEffect(() => {
-        if (currentUser && currentUser.role === "admin") {
-            setStats({
-                classCount: 23,
-                teacherCount: 244,
-                studentCount: 26532,
-                examCount: 23,
-            });
-        }
+        const fetchDashboard = async () => {
+            try {
+                const classes = await adminService.getAllClasses(currentUser.school);
+                const teachers = await adminService.getAllTeachers();
+                // sum students per class
+                let studentCount = 0;
+                for (const cls of classes) {
+                    const students = await adminService.getStudentsByClass(cls.id);
+                    studentCount += students.length;
+                }
+                // examCount placeholder
+                const examCount = 0;
+                setStats({
+                    classCount: classes.length,
+                    teacherCount: teachers.length,
+                    studentCount,
+                    examCount
+                });
+            } catch (err) {
+                console.error('Error loading dashboard stats:', err);
+            }
+        };
+        if (currentUser && currentUser.role === "admin") fetchDashboard();
     }, [currentUser]);
+
+    // Fetch top schools
+    useEffect(() => {
+        const fetchSchools = async () => {
+            try {
+                const schools = await schoolService.getAllSchools();
+                setTopSchools(schools);
+            } catch (err) {
+                console.error('Error loading schools:', err);
+            }
+        };
+        fetchSchools();
+    }, []);
 
     if (!currentUser || currentUser.role !== "admin") {
         return (
@@ -34,23 +65,6 @@ const AdminDashboard = () => {
             </div>
         );
     }
-    const topSchools = [
-        {
-            id: 1,
-            name: "mather marry",
-            students: 322,
-        },
-        {
-            id: 2,
-            name: "john doe",
-            students: 422,
-        },
-        {
-            id: 3,
-            name: "jane smith",
-            students: 522,
-        },
-    ];
     const payments = [
         {
             id: 1,

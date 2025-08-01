@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Layout from "../../components/layout/Layout";
@@ -7,12 +7,18 @@ import tradeService from "../../services/tradeService";
 import subjectService from "../../services/subjectService";
 
 export default function TradesCatalog() {
-    const [activeCategory, setActiveCategory] = useState("All");
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteConfirmation, setDeleteConfirmation] = useState(null);
-    const [undoTimeout, setUndoTimeout] = useState(null);
+    const [undoTimeout, setUndoTimeout] = useState(null); // for undo
     const [trades, setTrades] = useState([]);
+    // Category grouping (derived from trades)
+    const [activeCategory, setActiveCategory] = useState('All');
+    const categories = useMemo(() => {
+        const uniqueCats = Array.from(new Set(trades.map(t => t.category).filter(Boolean)));
+        return ['All', ...uniqueCats];
+    }, [trades]);
     const [subjects, setSubjects] = useState([]);
+    const [lastDeleted, setLastDeleted] = useState(null); // for undo
     const navigate = useNavigate();
     const { showToast } = useContext(ToastContext);
 
@@ -22,22 +28,26 @@ export default function TradesCatalog() {
             try {
                 const tradesRes = await tradeService.getAllTrades();
                 setTrades(tradesRes);
-                const subjectsRes = await subjectService.getAllSubjects();
+                const subjectsRes = await subjectService.getSubjects();
                 setSubjects(subjectsRes);
             } catch (error) {
-                showToast("Failed to load data", "error");
+                showToast("Failed to load data: " + error.message, "error");
             }
         };
         fetchData();
-    }, []);
+    }, [showToast]);
 
-    // Handle search filter
+    // Handle search and category filter
     const filterTrades = (tradesList) => {
-        if (!searchTerm) return tradesList;
-        return tradesList.filter((trade) =>
+        let filtered = tradesList;
+        if (activeCategory && activeCategory !== 'All') {
+            filtered = filtered.filter(trade => trade.category === activeCategory);
+        }
+        if (!searchTerm) return filtered;
+        return filtered.filter((trade) =>
             trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             trade.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            trade.fullName.toLowerCase().includes(searchTerm.toLowerCase())
+            (trade.description || '').toLowerCase().includes(searchTerm.toLowerCase())
         );
     };
 
@@ -48,17 +58,8 @@ export default function TradesCatalog() {
         ).length;
     };
 
-    // Get all trades in a flat structure for table display
-    const getAllTrades = () => {
-        let filteredTrades = trades;
-        
-        // Filter by category if not "All"
-        if (activeCategory !== "All") {
-            filteredTrades = filteredTrades.filter(trade => trade.type === activeCategory);
-        }
-        
-        return filterTrades(filteredTrades);
-    };
+    // Get all trades for table display
+    const getAllTrades = () => filterTrades(trades);
 
     // Handle trade click to navigate to detail page
     const handleTradeClick = (trade) => {
@@ -83,27 +84,34 @@ export default function TradesCatalog() {
 
     // Confirm delete
     const confirmDelete = (trade) => {
-        // Here you would typically make an API call to delete the trade
-        console.log("Deleting trade:", trade.id);
-        
-        showToast(`${trade.name} deleted successfully`, 'success');
-        
-        // Show undo option
-        const timeout = setTimeout(() => {
-            // Final deletion after timeout
-            console.log("Trade permanently deleted:", trade.id);
+        // remove from UI immediately and allow undo
+        setLastDeleted(trade);
+        setTrades(prev => prev.filter(t => t._id !== trade._id));
+        showToast(`${trade.name} deleted (undo available)`, 'success');
+        // schedule permanent deletion
+        const timeout = setTimeout(async () => {
+            try {
+                await tradeService.deleteTrade(trade._id);
+            } catch (err) {
+                showToast(err.message || 'Failed to delete trade', 'error');
+            } finally {
+                setLastDeleted(null);
+                setUndoTimeout(null);
+            }
         }, 5000);
-        
         setUndoTimeout(timeout);
         setDeleteConfirmation(null);
     };
 
     // Handle undo
     const handleUndo = () => {
-        if (undoTimeout) {
+        if (undoTimeout && lastDeleted) {
             clearTimeout(undoTimeout);
             setUndoTimeout(null);
-            showToast("Deletion cancelled", 'info');
+            // restore deleted trade
+            setTrades(prev => [lastDeleted, ...prev]);
+            setLastDeleted(null);
+            showToast("Deletion undone", 'info');
         }
     };
 
@@ -111,38 +119,18 @@ export default function TradesCatalog() {
         <Layout>
             <div className="px-6 py-4">
                 <div className="flex justify-between items-center mb-6">
-                    {/* Category tabs */}
-                    <div className="flex space-x-4">
-                        <Button
-                            size="sm"
-                            variant={activeCategory === "All" ? "primary" : "outline"}
-                            onClick={() => setActiveCategory("All")}
-                        >
-                            All Trades
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant={activeCategory === "Technical" ? "primary" : "outline"}
-                            onClick={() => setActiveCategory("Technical")}
-                        >
-                            Technical
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant={activeCategory === "Business" ? "primary" : "outline"}
-                            onClick={() => setActiveCategory("Business")}
-                        >
-                            Business
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant={activeCategory === "Creative" ? "primary" : "outline"}
-                            onClick={() => setActiveCategory("Creative")}
-                        >
-                            Creative
-                        </Button>
+                    <div className="flex gap-2">
+                        {categories.map(cat => (
+                            <Button
+                                key={cat}
+                                size="xs"
+                                variant={activeCategory === cat ? 'primary' : 'outline'}
+                                onClick={() => setActiveCategory(cat)}
+                            >
+                                {cat}
+                            </Button>
+                        ))}
                     </div>
-                    
                     {/* Search */}
                     <div className="relative w-64">
                         <input
@@ -162,7 +150,6 @@ export default function TradesCatalog() {
                             </svg>
                         </div>
                     </div>
-                    
                     <Button to="/admin/trades/add" size="sm">
                         Add Trade
                     </Button>
@@ -172,7 +159,7 @@ export default function TradesCatalog() {
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div className="px-6 py-4 border-b border-gray-200">
                         <h2 className="text-lg font-semibold text-gray-900">
-                            TVET Trades Catalog
+                            {activeCategory === 'All' ? 'Trades Catalog' : `${activeCategory} Trades Catalog`}
                         </h2>
                     </div>
                     
@@ -180,15 +167,12 @@ export default function TradesCatalog() {
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Trade/Combination
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Level
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Type
-                                    </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Trade (Name / Code)
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Description
+                            </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Subjects
                                     </th>
@@ -215,12 +199,7 @@ export default function TradesCatalog() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {trade.level}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {trade.type}
-                                            </span>
+                                            {trade.description || '—'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">

@@ -10,7 +10,6 @@ const {
   loginValidation,
   registerValidation
 } = require('../middlewares/authMiddleware');
-const tradeController = require('../controllers/tradeController');
 const multer = require('multer');
 
 // Configure multer for file uploads
@@ -26,10 +25,6 @@ router.use(authenticate, isDean);
 // @desc    Get all classes
 // @access  Dean
 router.get('/classes', adminController.getAllClasses);
-// @route   GET api/admin/trades
-// @desc    Get all trades
-// @access  Dean
-router.get('/trades', tradeController.getAllTrades);
 
 // @route   POST api/admin/classes
 // @desc    Create a new class
@@ -63,10 +58,6 @@ router.put(
 // @desc    Delete a class
 // @access  Dean
 router.delete('/classes/:id', adminController.deleteClass);
-// @route   GET api/admin/trades/:id
-// @desc    Get trade by ID
-// @access  Dean
-router.get('/trades/:id', tradeController.getTradeById);
 
 // @route   GET api/admin/classes/:classId/subjects
 // @desc    Get subjects for a class
@@ -114,7 +105,8 @@ router.post(
   '/import-students',
   upload.single('file'),
   [
-    check('classId', 'Class ID is required').notEmpty()
+    check('classId', 'Class ID is required').notEmpty(),
+    check('schoolId', 'School ID is required').notEmpty()
   ],
   adminController.importStudentsFromCSV
 );
@@ -128,7 +120,8 @@ router.post(
     check('fullName', 'Full name is required').notEmpty(),
     check('email', 'Please include a valid email').isEmail(),
     check('registrationNumber', 'Registration number is required').notEmpty(),
-    check('classId', 'Class ID is required').notEmpty()
+    check('classId', 'Class ID is required').notEmpty(),
+    check('schoolId', 'School ID is required').notEmpty()
   ],
   adminController.createStudent
 );

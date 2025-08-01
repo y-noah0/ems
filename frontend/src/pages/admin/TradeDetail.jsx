@@ -23,16 +23,16 @@ export default function TradeDetail() {
             try {
                 const tradeData = await tradeService.getTradeById(id);
                 setTrade(tradeData);
-                const subjectsList = await subjectService.getAllSubjects();
+                const subjectsList = await subjectService.getSubjects();
                 setAllSubjects(subjectsList);
                 // Assigned subjects
                 const assigned = subjectsList.filter(s =>
-                    Array.isArray(s.trades) && s.trades.map(t => t.toString()).includes(tradeData._id)
+                    Array.isArray(s.trades) && s.trades.map(t => t._id?.toString()).includes(tradeData._id)
                 );
                 setTradeSubjects(assigned);
                 // Available subjects
                 const available = subjectsList.filter(s =>
-                    !Array.isArray(s.trades) || !s.trades.map(t => t.toString()).includes(tradeData._id)
+                    !Array.isArray(s.trades) || !s.trades.map(t => t._id?.toString()).includes(tradeData._id)
                 );
                 setAvailableSubjects(available);
             } catch (error) {
@@ -44,6 +44,8 @@ export default function TradeDetail() {
         fetchData();
     }, [id, navigate, showToast]);
 
+    console.log(trade);
+    
     // Filter available subjects based on search
     const filteredAvailableSubjects = availableSubjects.filter(subject =>
         subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -223,11 +225,11 @@ export default function TradeDetail() {
                                 {filteredAvailableSubjects.length > 0 ? (
                                     filteredAvailableSubjects.map((subject) => (
                                         <div
-                                            key={subject.id}
+                                            key={subject._id}
                                             className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                                                selectedSubject === subject.id ? 'bg-blue-50 border-blue-200' : ''
+                                                selectedSubject === subject._id ? 'bg-blue-50 border-blue-200' : ''
                                             }`}
-                                            onClick={() => setSelectedSubject(subject.id)}
+                                            onClick={() => setSelectedSubject(subject._id)}
                                         >
                                             <div className="flex items-center">
                                                 <input

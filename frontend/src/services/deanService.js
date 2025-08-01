@@ -88,7 +88,7 @@ const deanService = {
   
   getClassById: async (classId) => {
     return apiCall(async () => {
-      const response = await api.get(`/admin/classes/${classId}`);
+      const response = await api.get(`/class/${classId}`);
       return response.data.class;
     });
   },
@@ -135,7 +135,12 @@ const deanService = {
     });
     return response.data;
   },
-  
+  //Trade Management
+
+  getTrades: async ()=>{
+    const response = await api.get('admin/trades')
+    return response.data
+  },
   // Teacher Management
   getAllTeachers: async () => {
     return apiCall(async () => {
@@ -153,6 +158,11 @@ const deanService = {
   reviewExam: async (examId, status, feedback) => {
     const response = await api.put(`/exams/${examId}/review`, { status, feedback });
     return response.data;
+  },
+
+  getExams: async () => {
+    const response = await api.get(`/exams/school`)
+    return response.data
   },
   
   // Reports

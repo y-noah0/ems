@@ -35,7 +35,7 @@ const SubjectSchema = new Schema({
   }
 }, { timestamps: true });
 
-SubjectSchema.index({ name: 1, school: 1 }, { unique: true });
+SubjectSchema.index({ name: 1}, { unique: true });
 
 SubjectSchema.pre('save', async function (next) {
   if (this.isModified('teacher') && this.teacher) {

@@ -1,25 +1,55 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Layout from "../../components/layout/Layout";
 import Button from "../../components/ui/Button1";
 import DynamicTable from "../../components/class/DynamicTable";
 import { Navigate, useNavigate } from "react-router-dom";
-import data from "../../data/mockSchools.json";
+import schoolService from "../../services/schoolService";
+import { toast } from "react-toastify";
 
 export default function SchoolManagement() {
     const [schools, setSchools] = useState([]);
+    // Category grouping
+    const [activeCategory, setActiveCategory] = useState('All');
+    const categories = useMemo(() => {
+        const unique = Array.from(new Set(schools.map(s => s.type).filter(Boolean)));
+        return ['All', ...unique];
+    }, [schools]);
+    // Filter schools by category
+    const filteredSchools = useMemo(() => {
+        return activeCategory === 'All'
+            ? schools
+            : schools.filter(school => school.type === activeCategory);
+    }, [schools, activeCategory]);
     const navigate = useNavigate();
     
     useEffect(() => {
-        setSchools(data.schools || []);
+        const fetchSchools = async () => {
+            try {
+                const list = await schoolService.getAllSchools();
+                setSchools(list);
+            } catch (err) {
+                console.error("Error loading schools:", err);
+                toast.error("Failed to load schools");
+            }
+        };
+        fetchSchools();
     }, []);
 
     const handleEdit = (school) => {
         navigate(`/admin/school/${school._id}/edit`);
     };
 
-    const handleDelete = (school) => {
-        // Add delete functionality here
-        console.log("Delete school:", school._id);
+    const handleDelete = async (school) => {
+        if (window.confirm(`Are you sure you want to delete ${school.name}?`)) {
+            try {
+                await schoolService.deleteSchool(school._id);
+                setSchools(prev => prev.filter(s => s._id !== school._id));
+                toast.success("School deleted successfully");
+            } catch (err) {
+                console.error("Error deleting school:", err);
+                toast.error("Failed to delete school");
+            }
+        }
     };
 
     const handleView = (school) => {
@@ -31,8 +61,13 @@ export default function SchoolManagement() {
         { 
             key: 'name', 
             title: 'School',
-            render: (value) => (
-                <span className="text-sm font-medium text-gray-900">{value}</span>
+            render: (value, record) => (
+                <button
+                    onClick={() => handleView(record)}
+                    className="text-sm font-medium text-blue-600 hover:underline"
+                >
+                    {value}
+                </button>
             )
         },
         { 
@@ -80,21 +115,33 @@ export default function SchoolManagement() {
             <Layout>
                 <div className="px-6 py-4 overflow-hidden">
                     <div className="flex justify-between border-b pb-2 border-b-black/10">
-                        <h1 className="title">Manage schools</h1>
+                        <div className="flex flex-wrap gap-2">
+                            {categories.map(category => (
+                                <Button
+                                    key={category}
+                                    size="sm"
+                                    onClick={() => setActiveCategory(category)}
+                                    variant={activeCategory === category ? 'primary' : 'outline'}
+                                >
+                                    {category}
+                                </Button>
+                            ))}
+                        </div>
                         <input
                             type="text"
                             placeholder="Search schools..."
-                            className="border border-black/10 px-4 rounded-lg text-sm h-8 w-64 focus-visible::border-black/10 "
+                            className="border border-black/10 px-4 rounded-lg text-sm h-8 w-64 focus-visible:border-black/10"
                         />
-                        <Button to={"/admin/schools/add"} size="sm">Add School</Button>
+                        <Button to="/admin/schools/add" size="sm">Add School</Button>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-200">
                             <h2 className="text-lg font-semibold text-gray-900">All Schools ({schools.length})</h2>
                         </div>
+                        
                         <div className="overflow-x-auto">
                             <DynamicTable
-                                data={schools}
+                                data={filteredSchools}
                                 columns={schoolsColumns}
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}

@@ -21,8 +21,9 @@ api.interceptors.request.use(
 
 // Subject service
 const subjectService = {
-  getAllSubjects: async () => {
+  getSubjects: async () => {
     try {
+      // backend route is /api/subjects
       const response = await api.get('/subjects');
       return response.data.subjects;
     } catch (error) {

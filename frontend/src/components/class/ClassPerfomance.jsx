@@ -1,121 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DynamicTable from '../class/DynamicTable';
 import { FiChevronDown } from 'react-icons/fi';
+import deanService from '../../services/deanService';
 
 const ClassPerformance = () => {
-  // Sample performance data
-  const [performanceData, setPerformanceData] = useState([
-    { 
-      id: 1, 
-      name: 'Mukamana alexis', 
-      assessment1: '87%', 
-      assessment2: '82%', 
-      test: '89%', 
-      exams: '85%',
-      total: '84%'
-    },
-    { 
-      id: 2, 
-      name: 'Mukamana alexis', 
-      assessment1: '87%', 
-      assessment2: '82%', 
-      test: '89%', 
-      exams: '85%',
-      total: '84%'
-    },
-    { 
-      id: 3, 
-      name: 'Mukamana alexis', 
-      assessment1: '87%', 
-      assessment2: '82%', 
-      test: '89%', 
-      exams: '85%',
-      total: '84%'
-    },
-    { 
-      id: 4, 
-      name: 'Mukamana alexis', 
-      assessment1: '87%', 
-      assessment2: '82%', 
-      test: '89%', 
-      exams: '85%',
-      total: '84%'
-    },
-    { 
-      id: 5, 
-      name: 'Mukamana alexis', 
-      assessment1: '87%', 
-      assessment2: '82%', 
-      test: '89%', 
-      exams: '85%',
-      total: '84%'
-    },
-    { 
-      id: 6, 
-      name: 'Mukamana alexis', 
-      assessment1: '87%', 
-      assessment2: '82%', 
-      test: '89%', 
-      exams: '85%',
-      total: '84%'
-    },
-    { 
-      id: 7, 
-      name: 'Mukamana alexis', 
-      assessment1: '87%', 
-      assessment2: '82%', 
-      test: '89%', 
-      exams: '85%',
-      total: '84%'
-    },
-    {
-      id: 8,
-      name: 'Mukamana alexis',
-      assessment1: '87%',
-      assessment2: '82%',
-      test: '89%',
-      exams: '85%',
-      total: '84%'
-    },
-    {
-      id: 9,
-      name: 'Mukamana alexis',
-      assessment1: '87%',
-      assessment2: '82%',
-      test: '89%',
-      exams: '85%',
-      total: '84%'
-    },
-    {
-      id: 10,
-      name: 'Mukamana alexis',
-      assessment1: '87%',
-      assessment2: '82%',
-      test: '89%',
-      exams: '85%',
-      total: '84%'
-    }
-  ]);
-
-  // Define columns for the performance table
-  const performanceColumns = [
-    { key: 'name', title: 'Names', width: '25%' },
-    { key: 'assessment1', title: 'Ass I', width: '12%' },
-    { key: 'assessment2', title: 'Ass II', width: '12%' },
-    { key: 'test', title: 'Test', width: '12%' },
-    { key: 'exams', title: 'Exams', width: '12%' },
-    { key: 'total', title: 'Total', width: '12%' },
-  ];
+  // Performance data fetched from API
+  const [performanceData, setPerformanceData] = useState([]);
 
   // Dropdown options
   const academicYearOptions = ['2023-2024', '2024-2025', '2025-2026', '2026-2027'];
   const termOptions = ['Term 1', 'Term 2', 'Term 3'];
-  const classOptions = ['P1 A', 'P1 B', 'P2 A', 'P2 B', 'P3 A', 'P3 B', 'P4 A', 'P4 B', 'P5 A', 'P5 B', 'P6 A', 'P6 B'];
+  // Class options from backend
+  const [classOptionsData, setClassOptionsData] = useState([]);
 
   // Currently selected filters
   const [academicYear, setAcademicYear] = useState('2025-2026');
   const [term, setTerm] = useState('Term 1');
-  const [selectedClass, setSelectedClass] = useState('P5 B');
+  const [selectedClass, setSelectedClass] = useState('');
   
   // Dropdown visibility states
   const [showYearDropdown, setShowYearDropdown] = useState(false);
@@ -147,16 +48,36 @@ const ClassPerformance = () => {
     };
   }, []);
 
-  // Filter data based on selections
+  // Fetch class list on component mount
   useEffect(() => {
-    // Here you would typically fetch data based on the filters
-    // For now, we'll just log the filter changes
-    console.log('Filters changed:', { academicYear, term, selectedClass });
-    
-    // Mock API call or data filtering
-    // In a real app, you would fetch data from your API here
-    // setPerformanceData(fetchedData);
-  }, [academicYear, term, selectedClass]);
+    const loadClasses = async () => {
+      try {
+        const classes = await deanService.getAllClasses();
+        setClassOptionsData(classes);
+        if (classes.length) setSelectedClass(`${classes[0].level} ${classes[0].trade.code}`);
+      } catch (err) {
+        console.error('Error loading classes:', err);
+      }
+    };
+    loadClasses();
+  }, []);
+
+  // Fetch performance data when class changes
+  useEffect(() => {
+    const loadPerformance = async () => {
+      if (!selectedClass) return;
+      try {
+        // find selected class object
+        const cls = classOptionsData.find(c => `${c.level} ${c.trade.code}` === selectedClass);
+        if (!cls) return;
+        const report = await deanService.generateClassReport(cls._id, /* termId */ '');
+        setPerformanceData(report.students || []);
+      } catch (err) {
+        console.error('Error loading performance:', err);
+      }
+    };
+    loadPerformance();
+  }, [selectedClass, classOptionsData]);
 
   // View student details handler
   const handleViewDetails = (student) => {
@@ -232,24 +153,27 @@ const ClassPerformance = () => {
               className="flex items-center justify-between gap-2 px-4 py-2 bg-white border border-gray-300 rounded-md text-sm text-gray-700 min-w-[100px]"
               onClick={() => setShowClassDropdown(!showClassDropdown)}
             >
-              {selectedClass}
+              {selectedClass || 'Select class'}
               <FiChevronDown className={`transition-transform ${showClassDropdown ? 'rotate-180' : ''}`} />
             </button>
             
             {showClassDropdown && (
               <div className="absolute right-0 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg z-20">
-                {classOptions.map((classOption) => (
-                  <button
-                    key={classOption}
-                    className={`block w-full text-left px-4 py-2 text-sm ${classOption === selectedClass ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
-                    onClick={() => {
-                      setSelectedClass(classOption);
-                      setShowClassDropdown(false);
-                    }}
-                  >
-                    {classOption}
-                  </button>
-                ))}
+                {classOptionsData.map((cls) => {
+                  const label = `${cls.level} ${cls.trade.code}`;
+                  return (
+                    <button
+                      key={cls._id}
+                      className={`block w-full text-left px-4 py-2 text-sm ${label === selectedClass ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}`}
+                      onClick={() => {
+                        setSelectedClass(label);
+                        setShowClassDropdown(false);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -260,7 +184,14 @@ const ClassPerformance = () => {
         {/* Use the updated DynamicTable component */}
         <DynamicTable
           data={performanceData}
-          columns={performanceColumns}
+          columns={[
+            { key: 'name', title: 'Names', width: '25%' },
+            { key: 'assessment1', title: 'Ass I', width: '12%' },
+            { key: 'assessment2', title: 'Ass II', width: '12%' },
+            { key: 'test', title: 'Test', width: '12%' },
+            { key: 'exams', title: 'Exams', width: '12%' },
+            { key: 'total', title: 'Total', width: '12%' },
+          ]}
           showActions={true}
           containerWidth="1040px"
           containerHeight="450px"

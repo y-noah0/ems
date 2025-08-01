@@ -1,8 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, isDean } = require('../middlewares/authMiddleware');
-// Protect all subject routes: only Dean, Admin, Headmaster
-router.use(authenticate, isDean);
 const { body, param } = require('express-validator');
 const subjectController = require('../controllers/subjectController');
 
@@ -10,9 +7,7 @@ const subjectController = require('../controllers/subjectController');
 const validateSubjectCreateUpdate = [
     body('name').notEmpty().withMessage('Name is required').isString().trim(),
     body('description').optional().isString().trim(),
-    body('school').notEmpty().withMessage('School is required').isMongoId(),
-    body('classes').optional().isArray(),
-    body('classes.*').isMongoId(),
+    body('schoolId').notEmpty().withMessage('School is required').isMongoId().optional(),
     body('trades').optional().isArray(),
     body('trades.*').isMongoId(),
     body('teacher').optional().isMongoId(),
