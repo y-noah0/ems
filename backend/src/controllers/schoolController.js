@@ -113,9 +113,9 @@ const updateSchool = async (req, res) => {
             school = await validateEntity(School, req.params.id, 'School');
         } catch (validationError) {
             logger.warn(`School validation failed: ${validationError.message}`, { id: req.params.id });
-            return res.status(validationError.statusCode || 400).json({ 
-                success: false, 
-                message: validationError.message 
+            return res.status(validationError.statusCode || 400).json({
+                success: false,
+                message: validationError.message
             });
         }
 
@@ -172,11 +172,11 @@ const deleteSchool = async (req, res) => {
         }
 
         // Clear the school field for the associated headmaster
-        const headmaster = await User.findById(school.headmaster);
-        if (headmaster) {
-            headmaster.school = null;
-            await headmaster.save();
-        }
+        // const headmaster = await User.findById(school.headmaster);
+        // if (headmaster) {
+        //     headmaster.school = null;
+        //     await headmaster.save();
+        // }
 
         school.isDeleted = true;
         await school.save();

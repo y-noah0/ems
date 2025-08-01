@@ -19,7 +19,7 @@ const classes = require('./class');
 router.use('/class', classes);
 router.use('/schools', require('./school'));
 router.use('/teachers', teacher)
-router.use('/students' , student)
+router.use('/students', student)
 router.use('/reports', reportRoutes);
 router.use('/promotions', promotionRoutes);
 router.use('/enrollments', enrollmentRoutes);
@@ -28,9 +28,9 @@ router.use('/admin', adminRoutes);
 router.use('/exams', examRoutes);
 router.use('/submissions', submissionRoutes);
 router.use('/system-admin', systemAdminRoutes);
-router.use('/notifications', notificationRoutes);  
+router.use('/notifications', notificationRoutes);
 router.use('/trade', tradeRoutes);
-router.use('/subjects', subjectRoutes);        
+router.use('/subjects', subjectRoutes);
 
 // Special case for subjects under exams controller
 const examController = require('../controllers/examController');

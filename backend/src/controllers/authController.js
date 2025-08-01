@@ -42,6 +42,29 @@ const checkNotificationRateLimit = (userId) => {
   return true;
 };
 
+// Simple in-memory rate limiter for verification code resends
+const resendRateLimit = new Map();
+const RESEND_LIMIT = 3; // Max 3 resends per user in 30 minutes
+const RESEND_WINDOW = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+const checkResendRateLimit = (userId) => {
+  const now = Date.now();
+  const userResends = resendRateLimit.get(userId) || { count: 0, startTime: now };
+
+  if (now - userResends.startTime > RESEND_WINDOW) {
+    userResends.count = 0;
+    userResends.startTime = now;
+  }
+
+  if (userResends.count >= RESEND_LIMIT) {
+    return false;
+  }
+
+  userResends.count += 1;
+  resendRateLimit.set(userId, userResends);
+  return true;
+};
+
 // HTML email template with blue color scheme
 const emailTemplate = (userFullName, message, subject) => `
 <!DOCTYPE html>
@@ -402,12 +425,11 @@ const login = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: 'Server iraturitse shn 😓',
+      message: 'Server Error',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 };
-
 
 // Logout user
 const logout = async (req, res) => {
@@ -429,11 +451,22 @@ const logout = async (req, res) => {
 // Verify email
 const verifyEmail = async (req, res) => {
   try {
-    const { token } = req.body;
-    const user = await User.findOne({ emailVerificationToken: token });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation errors in verifyEmail', { errors: errors.array(), ip: req.ip });
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { userId, token } = req.body;
+    const user = await User.findOne({ _id: userId, emailVerificationToken: token, isDeleted: false });
     if (!user) {
-      logger.warn('Invalid or expired verification token', { ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+      logger.warn('Invalid user ID or verification token', { userId, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Invalid user ID or verification token' });
+    }
+
+    if (user.emailVerified) {
+      logger.warn('Email already verified', { userId, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Email already verified' });
     }
 
     user.emailVerificationToken = null;
@@ -447,9 +480,58 @@ const verifyEmail = async (req, res) => {
     const tokenJwt = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });
     const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
 
-    res.json({ success: true, token: tokenJwt, refreshToken });
+    res.json({ success: true, message: 'Email verified successfully', token: tokenJwt, refreshToken });
   } catch (error) {
     logger.error('Error in verifyEmail', { error: error.message, stack: error.stack, ip: req.ip });
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Resend verification code
+const resendVerificationCode = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation errors in resendVerificationCode', { errors: errors.array(), ip: req.ip });
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { email } = req.body;
+    const user = await User.findOne({ email, isDeleted: false });
+    if (!user) {
+      logger.warn('Email not found for resend verification', { email, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Email not found' });
+    }
+
+    if (user.emailVerified) {
+      logger.warn('Email already verified for resend request', { userId: user._id, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Email already verified' });
+    }
+
+    if (!checkResendRateLimit(user._id)) {
+      logger.warn('Resend verification rate limit exceeded', { userId: user._id, ip: req.ip });
+      return res.status(429).json({ success: false, message: 'Too many resend attempts. Please wait before trying again.' });
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.emailVerificationToken = verificationCode;
+    await user.save();
+
+    const message = `A new verification code has been generated for your EMS account. Your verification code is: <strong>${verificationCode}</strong>. Please use this code to verify your email in the EMS application.`;
+    const sent = await sendNotification(user, message, 'EMS Verification Code Resend', req);
+    if (!sent) {
+      logger.error('Failed to send verification code resend notification', { userId: user._id, ip: req.ip });
+      return res.status(500).json({ success: false, message: 'Failed to send verification code' });
+    }
+
+    logger.info('Verification code resent', { userId: user._id, ip: req.ip });
+    res.json({ success: true, message: 'New verification code sent', userId: user._id });
+  } catch (error) {
+    logger.error('Error in resendVerificationCode', { error: error.message, stack: error.stack, ip: req.ip });
     res.status(500).json({
       success: false,
       message: 'Server Error',
@@ -617,6 +699,7 @@ module.exports = {
   login,
   logout,
   verifyEmail,
+  resendVerificationCode,
   refreshToken,
   requestPasswordReset,
   resetPassword,
