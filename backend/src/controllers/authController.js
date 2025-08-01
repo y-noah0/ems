@@ -540,6 +540,47 @@ const resendVerificationCode = async (req, res) => {
   }
 };
 
+// Fetch headmaster by email
+const fetchHeadmasterByEmail = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation errors in fetchHeadmasterByEmail', { errors: errors.array(), ip: req.ip });
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { email } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase(), role: 'headmaster', isDeleted: false })
+      .select('fullName email phoneNumber school profilePicture preferences');
+
+    if (!user) {
+      logger.warn('Headmaster not found for email', { email, ip: req.ip });
+      return res.status(404).json({ success: false, message: 'Headmaster not found' });
+    }
+
+    logger.info('Headmaster fetched by email', { userId: user._id, email, ip: req.ip });
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        school: user.school,
+        profilePicture: user.profilePicture,
+        preferences: user.preferences
+      }
+    });
+  } catch (error) {
+    logger.error('Error in fetchHeadmasterByEmail', { error: error.message, stack: error.stack, ip: req.ip });
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 // Refresh token
 const refreshToken = async (req, res) => {
   try {
@@ -700,6 +741,7 @@ module.exports = {
   logout,
   verifyEmail,
   resendVerificationCode,
+  fetchHeadmasterByEmail,
   refreshToken,
   requestPasswordReset,
   resetPassword,

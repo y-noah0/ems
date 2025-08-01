@@ -12,7 +12,8 @@ const {
   resetPassword,
   enable2FA,
   updateProfile,
-  resendVerificationCode
+  resendVerificationCode,
+  fetchHeadmasterByEmail
 } = require('../controllers/authController');
 
 // Middleware for validation
@@ -84,6 +85,13 @@ router.post('/verify-email', [
 router.post('/resend-verification', [
   check('email', 'Please include a valid email').isEmail().normalizeEmail()
 ], resendVerificationCode);
+
+// @route   POST /auth/fetch-headmaster
+// @desc    Fetch headmaster by email
+// @access  Private
+router.post('/fetch-headmaster', authenticate, [
+  check('email', 'Please include a valid email').isEmail().normalizeEmail()
+], fetchHeadmasterByEmail);
 
 // @route   POST /auth/login
 // @desc    Log in user
