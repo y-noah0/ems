@@ -8,13 +8,21 @@ const systemAdminRoutes = require('./systemAdmin');
 const notificationRoutes = require('./notification');
 const tradeRoutes = require('./trade');
 const subjectRoutes = require('./subject');
+const teacher = require('./teacher');
+const student = require('./student');
+const reportRoutes = require('./report');
+const promotionRoutes = require('./promotion');
+const enrollmentRoutes = require('./enrollment');
+const classes = require('./class');
 
 // Mount routes
-// router.use('/teachers', teacher)
-// router.use('/students' , student)
-// router.use('/reports', reportRoutes);
-// router.use('/promotions', promotionRoutes);
-// router.use('/enrollments', enrollmentRoutes);
+router.use('/class', classes);
+router.use('/schools', require('./school'));
+router.use('/teachers', teacher)
+router.use('/students' , student)
+router.use('/reports', reportRoutes);
+router.use('/promotions', promotionRoutes);
+router.use('/enrollments', enrollmentRoutes);
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/exams', examRoutes);
