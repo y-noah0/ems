@@ -1,6 +1,7 @@
 const express = require('express');
 const { check } = require('express-validator');
 const router = express.Router();
+const upload = require('../middlewares/upload');
 
 const {
   register,
@@ -19,7 +20,7 @@ const {
 // Middleware for validation
 const registerValidation = [
   check('fullName', 'Full name is required').notEmpty().trim(),
-  check('password', 'Password is required and should be at least 6 characters'),
+  check('password', 'Password is required and should be at least 6 characters').isLength({ min: 6 }),
   check('email', 'Please include a valid email')
     .if((value, { req }) => req.body.role !== 'student')
     .isEmail()
@@ -69,7 +70,7 @@ const { authenticate } = require('../middlewares/authMiddleware');
 // @route   POST /auth/register
 // @desc    Register user
 // @access  Public
-router.post('/register', registerValidation, register);
+router.post('/register', upload.single('profilePicture'), registerValidation, register);
 
 // @route   POST /auth/verify-email
 // @desc    Verify email
@@ -131,7 +132,7 @@ router.post('/enable-2fa', authenticate, enable2FA);
 // @route   PUT /auth/profile
 // @desc    Update user profile
 // @access  Private
-router.put('/profile', authenticate, [
+router.put('/profile', authenticate, upload.single('profilePicture'), [
   check('email').optional().isEmail().withMessage('Invalid email').normalizeEmail(),
   check('phoneNumber').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number'),
   check('profilePicture').optional().matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i).withMessage('Invalid image URL'),

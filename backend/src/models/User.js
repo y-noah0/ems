@@ -6,7 +6,7 @@ const UserSchema = new Schema({
   role: {
     type: String,
     required: true,
-    enum: ['student' , 'teacher', 'dean', 'admin' , 'headmaster'],
+    enum: ['student', 'teacher', 'dean', 'admin', 'headmaster'],
     default: 'student'
   },
   fullName: {
@@ -55,7 +55,13 @@ const UserSchema = new Schema({
   profilePicture: {
     type: String,
     trim: true,
-    match: [/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i, 'Please enter a valid image URL'],
+    validate: {
+      validator: function (v) {
+        return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
+          /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
+      },
+      message: 'Please enter a valid image URL or local upload path'
+    },
     default: null
   },
   preferences: {
@@ -72,11 +78,11 @@ const UserSchema = new Schema({
   classId: {
     type: Schema.Types.ObjectId,
     ref: 'Class',
-    required: function() {
+    required: function () {
       return this.role === 'student';
     },
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return this.role === 'student' ? v != null : v == null;
       },
       message: 'Students must have a class, non-students must not have a class'
