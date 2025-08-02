@@ -45,6 +45,7 @@ import DeanExamDetails from "./pages/Dean/ExamDetails";
 import ReportingPage from "./pages/Dean/Reporting/ReportingPage";
 import ClassReports from "./pages/Dean/Reporting/ClassReports";
 import SchoolManagement from "./pages/admin/SchoolManagement";
+import SchoolProfile from "./pages/admin/SchoolProfile";
 import AddSchool from "./pages/admin/AddSchool";
 import TradesCatalog from "./pages/admin/TradesCatalog";
 import TradeDetail from "./pages/admin/TradeDetail";
@@ -1071,6 +1072,14 @@ function App() {
                                 element={
                                     <ProtectedRoute allowedRoles={["admin"]}>
                                         <AddSchool />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/admin/school/:id"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <SchoolProfile />
                                     </ProtectedRoute>
                                 }
                             />

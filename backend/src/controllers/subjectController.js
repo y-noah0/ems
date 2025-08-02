@@ -42,9 +42,8 @@ const createSubject = async (req, res) => {
 
         // Validate referenced entities
         await ensureActiveEntity(School, school, 'School');
-        if (trades && trades.length > 0) {
-            await Promise.all(trades.map(id => ensureActiveEntity(Trade, id, 'Trade')));
-        }
+        await Promise.all(classes.map(id => ensureActiveEntity(Class, id, 'Class')));
+        await Promise.all(trades.map(id => ensureActiveEntity(Trade, id, 'Trade')));
         if (teacher) await ensureActiveEntity(User, teacher, 'Teacher');
 
         // Check for duplicate subject
@@ -69,7 +68,7 @@ const getSubjects = async (req, res) => {
     try {
         const subjects = await Subject.find({ isDeleted: false })
             .populate('school', 'name')
-            .populate('trades', 'name code category description')
+            .populate('trades', 'name')
             .populate('teacher', 'fullName email');
 
         res.json({ success: true, subjects });
@@ -86,7 +85,7 @@ const getSubjectById = async (req, res) => {
 
         await subject
             .populate('school', 'name')
-            .populate('trades', 'name code category description')
+            .populate('trades', 'name')
             .populate('teacher', 'fullName email');
 
         return res.json({ success: true, subject });
@@ -141,12 +140,6 @@ const updateSubject = async (req, res) => {
         subject.credits = credits !== undefined ? credits : subject.credits;
 
         await subject.save();
-
-        // Populate the updated subject before returning
-        await subject
-            .populate('school', 'name')
-            .populate('trades', 'name code category description')
-            .populate('teacher', 'fullName email');
 
         logger.info('Subject updated', { subjectId: subject._id });
         res.json({ success: true, subject });

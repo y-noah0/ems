@@ -141,11 +141,4 @@ router.put('/profile', authenticate, upload.single('profilePicture'), [
   check('preferences.theme').optional().isIn(['light', 'dark']).withMessage('Invalid theme')
 ], updateProfile);
 
-// @route   GET /auth/me
-// @desc    Get current authenticated user
-// @access  Private
-router.get('/me', authenticate, (req, res) => {
-  res.json({ success: true, user: req.user });
-});
-
 module.exports = router;
