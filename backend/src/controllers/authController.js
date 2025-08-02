@@ -11,6 +11,8 @@ const Class = require('../models/Class');
 const Term = require('../models/term');
 const { sendEmail } = require('../services/emailService');
 const { sendSMS } = require('../services/twilioService');
+const fs = require('fs');
+const path = require('path');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -210,6 +212,8 @@ const register = async (req, res) => {
       parentPhoneNumber
     } = req.body;
 
+    const profilePicturePath = req.file ? req.file.path : profilePicture || null;
+
     if (['student', 'teacher', 'dean'].includes(role)) {
       if (!schoolId) {
         logger.warn('Missing school ID for required role', { role, ip: req.ip });
@@ -258,7 +262,7 @@ const register = async (req, res) => {
       registrationNumber,
       email: role !== 'student' ? email : email || undefined,
       phoneNumber,
-      profilePicture,
+      profilePicture: profilePicturePath,
       preferences: { notifications: { email: !!email, sms: !!phoneNumber }, theme: 'light' },
       class: role === 'student' && classId ? classId : undefined,
       emailVerificationToken: verificationCode,
@@ -551,7 +555,7 @@ const fetchHeadmasterByEmail = async (req, res) => {
 
     const { email } = req.body;
     const user = await User.findOne({ email: email.toLowerCase(), role: 'headmaster', isDeleted: false })
-      .select('_id fullName email phoneNumber school profilePicture preferences');
+      .select('fullName email phoneNumber school profilePicture preferences');
 
     if (!user) {
       logger.warn('Headmaster not found for email', { email, ip: req.ip });
@@ -706,6 +710,12 @@ const enable2FA = async (req, res) => {
 // Update user profile
 const updateProfile = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation errors in updateProfile', { errors: errors.array(), ip: req.ip });
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
     const user = await User.findById(req.user._id);
     if (!user) {
       logger.warn('User not found', { userId: req.user._id, ip: req.ip });
@@ -717,6 +727,15 @@ const updateProfile = async (req, res) => {
     delete updates.role;
     delete updates.emailVerificationToken;
     delete updates.tokenVersion;
+
+    // Handle profile picture upload
+    if (req.file && user.profilePicture && !user.profilePicture.startsWith('http')) {
+      fs.unlink(path.join(__dirname, '..', user.profilePicture), (err) => {
+        if (err) logger.warn('Failed to delete old profile picture', { error: err.message, ip: req.ip });
+      });
+    }
+
+    updates.profilePicture = req.file ? req.file.path : updates.profilePicture || user.profilePicture;
 
     Object.assign(user, updates);
     await user.save();

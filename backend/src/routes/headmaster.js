@@ -1,14 +1,29 @@
 const express = require('express');
+const { check } = require('express-validator');
 const router = express.Router();
-const headmasterController = require('../controllers/headmasterController');
 
-// Trades offered by school
-router.get('/trades', headmasterController.getTradesOffered);
-router.post('/trades/:tradeId', headmasterController.addTradeOffered);
-router.delete('/trades/:tradeId', headmasterController.removeTradeOffered);
+const {
+    headmasterValidation,
+    getHeadmasters,
+    updateHeadmaster,
+    deleteHeadmaster
+} = require('../controllers/headmasterController');
 
-// Subjects in trades offered and add custom subject
-router.get('/subjects', headmasterController.getSubjectsCatalog);
-router.post('/subjects', headmasterController.createSubject);
+const { authenticate, isAdmin } = require('../middlewares/authMiddleware');
+
+// @route   GET /headmasters
+// @desc    Get all headmasters, optionally filtered by schoolId
+// @access  Private (admin only)
+router.get('/', authenticate, isAdmin, getHeadmasters);
+
+// @route   PUT /headmasters/:id
+// @desc    Update a headmaster's details
+// @access  Private (admin only)
+router.put('/:id', authenticate, isAdmin, headmasterValidation, updateHeadmaster);
+
+// @route   DELETE /headmasters/:id
+// @desc    Soft delete a headmaster
+// @access  Private (admin only)
+router.delete('/:id', authenticate, isAdmin, deleteHeadmaster);
 
 module.exports = router;
