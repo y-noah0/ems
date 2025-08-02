@@ -89,27 +89,35 @@ const Sidebar = ({ userRole = "student" }) => {
             active: location.pathname.includes("/dean/teachers"),
             roles: ["dean"],
         },
+      //   {
+      //       title: "Student Management",
+      //       icon: GraduationCap,
+      //       path: "/dean/students",
+      //       active: location.pathname.includes("/dean/students"),
+      //       roles: ["dean"],
+      // },
+      {
+        title: "Term summary",
+        icon: FileBarChart,
+        path: "/dean/term-summary",
+        active: location.pathname.includes("/dean/term-summary"),
+        roles: ["dean"],
+      },
         {
-            title: "Student Management",
-            icon: GraduationCap,
-            path: "/dean/students",
-            active: location.pathname.includes("/dean/students"),
+            title: "Courses Management",
+            icon: BarChart3,
+            path: "/dean/reports",
+            active: location.pathname.includes("/dean/reports"),
             roles: ["dean"],
-        },
-        {
+      },
+                {
             title: "Reporting",
             icon: BarChart3,
             path: "/dean/reports",
             active: location.pathname.includes("/dean/reports"),
             roles: ["dean"],
         },
-        {
-            title: "Term summary",
-            icon: FileBarChart,
-            path: "/dean/term-summary",
-            active: location.pathname.includes("/dean/term-summary"),
-            roles: ["dean"],
-        },
+
         //Headmaster specifics
 
         {

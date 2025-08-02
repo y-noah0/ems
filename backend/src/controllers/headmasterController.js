@@ -1,8 +1,7 @@
-const { validationResult } = require('express-validator');
+const { check, validationResult } = require('express-validator');
 const winston = require('winston');
 const User = require('../models/User');
 const School = require('../models/school');
-const { sendNotification } = require('../services/notificationService');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -40,6 +39,7 @@ const getHeadmasters = async (req, res) => {
     const headmasters = await User.find(query)
       .select('fullName email phoneNumber school profilePicture preferences')
       .populate('school', 'name category');
+
     logger.info('Headmasters fetched', { schoolId: schoolId || 'all', count: headmasters.length, ip: req.ip });
     res.json({ success: true, headmasters });
   } catch (error) {
@@ -85,12 +85,6 @@ const updateHeadmaster = async (req, res) => {
 
     await headmaster.save();
 
-    await sendNotification(
-      headmaster,
-      'Your profile has been successfully updated in the EMS system.',
-      'EMS Headmaster Profile Update',
-      req
-    );
     logger.info('Headmaster updated', { headmasterId: headmaster._id, ip: req.ip });
     res.json({
       success: true,
@@ -136,12 +130,6 @@ const deleteHeadmaster = async (req, res) => {
     headmaster.isDeleted = true;
     await headmaster.save();
 
-    await sendNotification(
-      headmaster,
-      'Your account has been deactivated in the EMS system.',
-      'EMS Headmaster Account Deactivation',
-      req
-    );
     logger.info('Headmaster soft deleted', { headmasterId: headmaster._id, ip: req.ip });
     res.json({ success: true, message: 'Headmaster deleted successfully' });
   } catch (error) {
