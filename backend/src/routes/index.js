@@ -14,8 +14,10 @@ const reportRoutes = require('./report');
 const promotionRoutes = require('./promotion');
 const enrollmentRoutes = require('./enrollment');
 const classes = require('./class');
+const headmasterRoutes = require('./headmaster');
 
-// Mount routes
+// Mount 
+router.use('/headmasters', headmasterRoutes);
 router.use('/class', classes);
 router.use('/schools', require('./school'));
 router.use('/teachers', teacher)
