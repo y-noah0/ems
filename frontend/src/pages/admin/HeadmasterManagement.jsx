@@ -88,27 +88,29 @@ export default function HeadmasterManagement() {
               </svg>
               Back
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">Headmaster Management</h1>
+            
           </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* Search */}
+          {/* Search */}
             <div className="relative">
               <input
                 type="text"
                 placeholder="Search headmasters..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-64"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-64 placeholder:text-sm text-sm"
               />
               <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
 
+          
+          <div className="flex items-center space-x-4">
+            
             {/* Add Headmaster Button */}
             <Button
               onClick={handleAddHeadmaster}
+              size='sm'
               variant="primary"
             >
               Add Headmaster
@@ -132,13 +134,7 @@ export default function HeadmasterManagement() {
               <p className="mt-1 text-sm text-gray-500">
                 {searchTerm ? 'Try adjusting your search criteria.' : 'Get started by adding a new headmaster.'}
               </p>
-              {!searchTerm && (
-                <div className="mt-6">
-                  <Button onClick={handleAddHeadmaster} variant="primary">
-                    Add Headmaster
-                  </Button>
-                </div>
-              )}
+              
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">

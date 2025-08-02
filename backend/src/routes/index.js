@@ -33,6 +33,8 @@ router.use('/system-admin', systemAdminRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/trade', tradeRoutes);
 router.use('/subjects', subjectRoutes);
+router.use('/trade', tradeRoutes);
+router.use('/subjects', subjectRoutes);
 
 // Special case for subjects under exams controller
 const examController = require('../controllers/examController');
