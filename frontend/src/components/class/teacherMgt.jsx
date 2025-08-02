@@ -1,23 +1,20 @@
-import React, { useState } from 'react';
-import { FiEdit, FiTrash2, FiUser, FiMail, FiPhoneCall } from 'react-icons/fi';
+import React, { useState, useMemo } from 'react';
+import { FiEdit, FiTrash2, FiUser, FiMail, FiPhoneCall, FiSearch } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const TeacherManagementTableNew = () => {
     const [data, setData] = useState([
-        { names: 'John Fuwag', email: '0772', phone: '123-456-7890', assignedCourses: '', lastLogin: '2025-07-15', accessManagement: false, deleteUpdate: false, isEditing: false },
-        { names: 'Sarah Kim', email: '0888', phone: '098-765-4321', assignedCourses: '', lastLogin: '2025-07-20', accessManagement: true, deleteUpdate: false, isEditing: false },
-        { names: 'Michael Lee', email: '0999', phone: '555-555-5555', assignedCourses: '', lastLogin: '2025-07-10', accessManagement: false, deleteUpdate: true, isEditing: false },
+        { names: 'John Fuwag', email: 'john@example.com', phone: '123-456-7890', assignedCourses: 'Math', lastLogin: '2025-07-15', accessManagement: false, deleteUpdate: false, isEditing: false },
+        { names: 'Sarah Kim', email: 'sarah@example.com', phone: '098-765-4321', assignedCourses: 'Science', lastLogin: '2025-07-20', accessManagement: true, deleteUpdate: false, isEditing: false },
+        { names: 'Michael Lee', email: 'michael@example.com', phone: '555-555-5555', assignedCourses: 'History', lastLogin: '2025-07-10', accessManagement: false, deleteUpdate: true, isEditing: false },
     ]);
+
+    const [filters, setFilters] = useState({ course: '', access: '' });
+    const [searchQuery, setSearchQuery] = useState('');
 
     const handleToggle = (index, field) => {
         const newData = [...data];
         newData[index][field] = !newData[index][field];
-        setData(newData);
-    };
-
-    const handleDropdownChange = (index, field, value) => {
-        const newData = [...data];
-        newData[index][field] = value;
         setData(newData);
     };
 
@@ -39,27 +36,103 @@ const TeacherManagementTableNew = () => {
         setData(newData);
     };
 
+    const handleFilterChange = (field, value) => {
+        setFilters({ ...filters, [field]: value });
+    };
+
+    const handleDropdownChange = (index, field, value) => {
+        const newData = [...data];
+        newData[index][field] = value;
+        setData(newData);
+    };
+
+    const filteredData = useMemo(() => {
+        return data.filter((row) => {
+            const matchesSearch =
+                row.names.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                row.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                row.phone.includes(searchQuery);
+
+            const matchesCourse = filters.course ? row.assignedCourses === filters.course : true;
+            const matchesAccess =
+                filters.access === ''
+                    ? true
+                    : filters.access === 'true'
+                        ? row.accessManagement
+                        : !row.accessManagement;
+
+            return matchesSearch && matchesCourse && matchesAccess;
+        });
+    }, [data, filters, searchQuery]);
+
     return (
         <div className="p-6 min-h-screen bg-gradient-to-br from-white to-gray-50">
             <h2 className="text-3xl font-bold mb-6 text-gray-800 flex items-center gap-2">
                 <FiUser className="text-blue-500" /> Teacher Management
             </h2>
 
-            <div className="relative overflow-x-auto shadow-xl rounded-xl bg-white border border-gray-200">
-                <table className="w-full border-collapse min-w-[900px]">
-                    <thead className="bg-gray-100 text-gray-700">
+            {/* Filters and Search Bar with Button */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div className="flex flex-wrap gap-4 items-center">
+                    <select
+                        value={filters.course}
+                        onChange={(e) => handleFilterChange('course', e.target.value)}
+                        className="p-2 border rounded bg-white text-sm focus:ring-2 focus:ring-blue-400"
+                    >
+                        <option value="">All Courses</option>
+                        <option value="Math">Math</option>
+                        <option value="Science">Science</option>
+                        <option value="History">History</option>
+                    </select>
+
+                    <select
+                        value={filters.access}
+                        onChange={(e) => handleFilterChange('access', e.target.value)}
+                        className="p-2 border rounded bg-white text-sm focus:ring-2 focus:ring-blue-400"
+                    >
+                        <option value="">All Access</option>
+                        <option value="true">Enabled</option>
+                        <option value="false">Disabled</option>
+                    </select>
+                </div>
+
+                <div className="flex gap-3 w-full sm:w-auto">
+                    <div className="relative w-full sm:w-64">
+                        <FiSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search Teachers..."
+                            className="w-full pl-10 pr-4 py-2 border rounded bg-white text-sm focus:ring-2 focus:ring-blue-400"
+                        />
+                    </div>
+                    <button
+                        className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-200"
+                        onClick={() => alert('Course Assignment functionality')}
+                    >
+                        Course Assignment
+                    </button>
+                </div>
+            </div>
+
+            <div className="overflow-x-auto shadow-xl rounded-xl bg-white border border-gray-200">
+                <table className="w-full min-w-[900px] table-fixed border-separate border-spacing-0">
+                    <thead className="bg-gray-100">
                         <tr>
-                            {['Names', 'Email', 'Phone', 'Assigned Courses', 'Last Login', 'Access Mgmt', 'Edit / Delete'].map((header, i) => (
-                                <th key={i} className="p-4 text-sm font-semibold border border-gray-300 text-center">
+                            {['Name', 'Email', 'Phone', 'Assigned', 'Last Login', 'Access', 'Actions'].map((header, index) => (
+                                <th
+                                    key={index}
+                                    className="p-4 text-center text-gray-600 text-sm font-semibold border-b border-r border-gray-300"
+                                >
                                     {header}
                                 </th>
                             ))}
                         </tr>
                     </thead>
-
                     <tbody>
                         <AnimatePresence>
-                            {data.map((row, index) => (
+                            {filteredData.map((row, index) => (
                                 <motion.tr
                                     key={index}
                                     className="border-b border-gray-200 hover:bg-blue-50/30 transition-colors"
@@ -68,53 +141,53 @@ const TeacherManagementTableNew = () => {
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.2 }}
                                 >
-                                    <td className="p-4 text-sm">
+                                    <td className="p-4 text-center">
                                         {row.isEditing ? (
                                             <input
                                                 value={row.names}
                                                 onChange={(e) => handleInputChange(index, 'names', e.target.value)}
-                                                className="w-full p-2 border rounded text-sm"
+                                                className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                                             />
                                         ) : (
-                                            <div className="flex items-center gap-2 text-gray-700">
+                                            <div className="flex justify-center items-center gap-2 text-sm text-gray-700">
                                                 <FiUser className="text-blue-500" />
                                                 {row.names}
                                             </div>
                                         )}
                                     </td>
-                                    <td className="p-4 text-sm text-gray-600">
+                                    <td className="p-4 text-center text-sm text-gray-600">
                                         {row.isEditing ? (
                                             <input
                                                 value={row.email}
                                                 onChange={(e) => handleInputChange(index, 'email', e.target.value)}
-                                                className="w-full p-2 border rounded text-sm"
+                                                className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                                             />
                                         ) : (
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex justify-center items-center gap-2">
                                                 <FiMail className="text-purple-400" />
                                                 {row.email}
                                             </div>
                                         )}
                                     </td>
-                                    <td className="p-4 text-sm text-gray-600">
+                                    <td className="p-4 text-center text-sm text-gray-600">
                                         {row.isEditing ? (
                                             <input
                                                 value={row.phone}
                                                 onChange={(e) => handleInputChange(index, 'phone', e.target.value)}
-                                                className="w-full p-2 border rounded text-sm"
+                                                className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                                             />
                                         ) : (
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex justify-center items-center gap-2">
                                                 <FiPhoneCall className="text-green-400" />
                                                 {row.phone}
                                             </div>
                                         )}
                                     </td>
-                                    <td className="p-4">
+                                    <td className="p-4 text-center">
                                         <select
                                             value={row.assignedCourses}
                                             onChange={(e) => handleDropdownChange(index, 'assignedCourses', e.target.value)}
-                                            className="w-full p-2 border rounded text-sm bg-white"
+                                            className="w-full p-2 border rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
                                             disabled={row.isEditing}
                                         >
                                             <option value="">Select</option>
@@ -123,7 +196,7 @@ const TeacherManagementTableNew = () => {
                                             <option value="History">History</option>
                                         </select>
                                     </td>
-                                    <td className="p-4 text-sm text-gray-600">{row.lastLogin}</td>
+                                    <td className="p-4 text-center text-sm text-gray-600">{row.lastLogin}</td>
                                     <td className="p-4 text-center">
                                         <button
                                             onClick={() => handleToggle(index, 'accessManagement')}
@@ -138,29 +211,27 @@ const TeacherManagementTableNew = () => {
                                             />
                                         </button>
                                     </td>
-                                    <td className="p-4 flex justify-center gap-3">
-                                        <button
-                                            onClick={() => handleEditToggle(index)}
-                                            className="text-blue-500 hover:text-blue-700 hover:scale-110 transition-transform"
-                                        >
-                                            <FiEdit size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(index)}
-                                            className="text-red-500 hover:text-red-700 hover:scale-110 transition-transform"
-                                        >
-                                            <FiTrash2 size={18} />
-                                        </button>
+                                    <td className="p-4 text-center">
+                                        <div className="flex justify-center gap-3">
+                                            <button
+                                                onClick={() => handleEditToggle(index)}
+                                                className="text-blue-500 hover:text-blue-700 transition-transform transform hover:scale-110"
+                                            >
+                                                <FiEdit size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(index)}
+                                                className="text-red-500 hover:text-red-700 transition-transform transform hover:scale-110"
+                                            >
+                                                <FiTrash2 size={18} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </motion.tr>
                             ))}
                         </AnimatePresence>
                     </tbody>
                 </table>
-
-                <div className="absolute top-0 left-0 text-xs text-gray-400 bg-white px-3 py-1 rounded-br-lg border-r border-b">
-                    page manage → entry control
-                </div>
             </div>
         </div>
     );
