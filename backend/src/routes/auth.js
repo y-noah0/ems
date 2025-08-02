@@ -1,5 +1,6 @@
 const express = require('express');
-const { check } = require('express-validator');
+const { check, body } = require('express-validator');
+const validator = require('validator');
 const router = express.Router();
 const upload = require('../middlewares/upload');
 
@@ -77,8 +78,19 @@ router.post('/register', upload.single('profilePicture'), registerValidation, re
 // @desc    Verify email
 // @access  Public
 router.post('/verify-email', [
-  check('userId', 'User ID is required').notEmpty(),
-  check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 })
+  // Make userId optional and add email validation
+  check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 }),
+  // Custom validation to ensure either email or userId is provided
+  body().custom((value, { req }) => {
+    const { email, userId } = req.body;
+    if (!email && !userId) {
+      throw new Error('Either email or User ID is required');
+    }
+    if (email && !validator.isEmail(email)) {
+      throw new Error('Please include a valid email');
+    }
+    return true;
+  })
 ], verifyEmail);
 
 // @route   POST /auth/resend-verification

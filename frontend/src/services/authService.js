@@ -149,15 +149,20 @@ login: async (identifier, password) => {
         return user ? JSON.parse(user) : null;
     },
 
-    verifyEmail: async (tk) => {
-      const token = {token: tk}
+    verifyEmail: async (data) => {
         try {
-            const response = await api.post("/auth/verify-email", token);
-            toast.success("Password changed successfully");
+            // Support both old format (just token) and new format (email + token)
+            const payload = typeof data === 'string' 
+                ? { token: data } 
+                : { email: data.email, token: data.token };
+                
+            const response = await api.post("/auth/verify-email", payload);
+            toast.success("Email verified successfully");
             return response.data;
         } catch (error) {
+            console.error("Email verification error:", error);
             toast.error(
-                error.response?.data?.message || "Password change failed"
+                error.response?.data?.message || "Email verification failed"
             );
             throw error.response
                 ? error.response.data

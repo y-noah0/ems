@@ -461,15 +461,31 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { userId, token } = req.body;
-    const user = await User.findOne({ _id: userId, emailVerificationToken: token, isDeleted: false });
-    if (!user) {
-      logger.warn('Invalid user ID or verification token', { userId, ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Invalid user ID or verification token' });
+    // Support both old format (userId + token) and new format (email + token)
+    const { userId, email, token } = req.body;
+    
+    let user;
+    if (email) {
+      // New format: use email
+      user = await User.findOne({ email, emailVerificationToken: token, isDeleted: false });
+      if (!user) {
+        logger.warn('Invalid email or verification token', { email, ip: req.ip });
+        return res.status(400).json({ success: false, message: 'Invalid email or verification token' });
+      }
+    } else if (userId) {
+      // Old format: use userId for backward compatibility
+      user = await User.findOne({ _id: userId, emailVerificationToken: token, isDeleted: false });
+      if (!user) {
+        logger.warn('Invalid user ID or verification token', { userId, ip: req.ip });
+        return res.status(400).json({ success: false, message: 'Invalid user ID or verification token' });
+      }
+    } else {
+      logger.warn('Missing email or userId in verifyEmail request', { ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Email or User ID is required' });
     }
 
     if (user.emailVerified) {
-      logger.warn('Email already verified', { userId, ip: req.ip });
+      logger.warn('Email already verified', { userId: user._id, email: user.email, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Email already verified' });
     }
 
