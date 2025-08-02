@@ -42,7 +42,13 @@ const SchoolSchema = new Schema({
     logo: {
         type: String,
         trim: true,
-        match: [/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i, 'Please enter a valid image URL'],
+        validate: {
+            validator: function (v) {
+                return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
+                    /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
+            },
+            message: 'Please enter a valid image URL or local upload path'
+        },
         default: null
     },
     isDeleted: {

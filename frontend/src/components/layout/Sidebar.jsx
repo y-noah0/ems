@@ -149,7 +149,7 @@ const Sidebar = ({ userRole = 'student' }) => {
     <>
       {/* Mobile sidebar toggle button */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 bg-white border border-gray-200 rounded-lg p-2 shadow-lg transition-all duration-200 hover:bg-gray-50"
+        className="md:hidden fixed top-15 left-4 z-50 bg-white border border-gray-200 rounded-lg p-2 shadow-lg transition-all duration-200 hover:bg-gray-50"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Toggle sidebar"
       >

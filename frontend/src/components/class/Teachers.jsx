@@ -222,6 +222,13 @@ const TeacherManagement = () => {
               onClick={() => openModal()}
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transform hover:scale-105 transition-all duration-200"
             >
+           Management
+            </button>
+
+            <button
+              onClick={() => openModal()}
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transform hover:scale-105 transition-all duration-200"
+            >
               <Plus size={18} /> Add Teacher
             </button>
           </div>
