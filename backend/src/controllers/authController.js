@@ -754,6 +754,48 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Get current user
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .select('-passwordHash -emailVerificationToken -twoFactorSecret')
+      .populate('school', 'name address')
+      .populate('classId', 'name level')
+      .populate('termId', 'name startDate endDate');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        registrationNumber: user.registrationNumber,
+        school: user.school,
+        phoneNumber: user.phoneNumber,
+        profilePicture: user.profilePicture,
+        preferences: user.preferences,
+        classId: user.classId,
+        termId: user.termId,
+        emailVerified: user.emailVerified,
+        twoFactorEnabled: user.twoFactorEnabled,
+        lastLogin: user.lastLogin
+      }
+    });
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -765,5 +807,6 @@ module.exports = {
   requestPasswordReset,
   resetPassword,
   enable2FA,
-  updateProfile
+  updateProfile,
+  getCurrentUser
 };

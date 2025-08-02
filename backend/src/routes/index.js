@@ -15,8 +15,10 @@ const promotionRoutes = require('./promotion');
 const enrollmentRoutes = require('./enrollment');
 const classes = require('./class');
 const headmasterRoutes = require('./headmaster');
+const uploadsRoutes = require('./uploads');
 
 // Mount 
+router.use('/uploads', uploadsRoutes);
 router.use('/headmasters', headmasterRoutes);
 router.use('/class', classes);
 router.use('/schools', require('./school'));

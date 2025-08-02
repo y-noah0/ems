@@ -57,6 +57,8 @@ const UserSchema = new Schema({
     trim: true,
     validate: {
       validator: function (v) {
+        // Allow null, undefined, or empty string
+        if (!v || v === '') return true;
         return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
           /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
       },
@@ -205,8 +207,11 @@ UserSchema.methods.comparePassword = async function (password) {
 };
 
 UserSchema.methods.updateLastLogin = async function () {
-  this.lastLogin = new Date();
-  await this.save();
+  // Use updateOne to avoid triggering validation on the entire document
+  await this.constructor.updateOne(
+    { _id: this._id },
+    { lastLogin: new Date() }
+  );
 };
 
 UserSchema.methods.invalidateTokens = async function () {

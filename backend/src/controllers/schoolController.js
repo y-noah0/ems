@@ -36,7 +36,7 @@ const createSchool = async (req, res) => {
         }
 
         const { name, address, contactEmail, contactPhone, headmaster, tradesOffered, category } = req.body;
-        const logo = req.file ? req.file.path : req.body.logo || null;
+        const logo = req.file ? `/uploads/schools/${req.file.filename}` : req.body.logo || null;
 
         const existing = await School.findOne({ name, category });
         if (existing) {
@@ -154,7 +154,8 @@ const updateSchool = async (req, res) => {
         }
 
         if (req.file && school.logo && !school.logo.startsWith('http')) {
-            fs.unlink(path.join(__dirname, '..', school.logo), (err) => {
+            const oldLogoPath = path.join(__dirname, '..', '..', school.logo);
+            fs.unlink(oldLogoPath, (err) => {
                 if (err) logger.warn('Failed to delete old logo', { error: err.message, ip: req.ip });
             });
         }
@@ -192,7 +193,7 @@ const updateSchool = async (req, res) => {
         school.headmaster = headmaster;
         school.tradesOffered = tradesOffered || [];
         school.category = category;
-        school.logo = req.file ? req.file.path : req.body.logo || school.logo;
+        school.logo = req.file ? `/uploads/schools/${req.file.filename}` : req.body.logo || school.logo;
 
         await school.save();
         logger.info('School updated', { schoolId: school._id, name, category, ip: req.ip });

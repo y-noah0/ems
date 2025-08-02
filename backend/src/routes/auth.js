@@ -14,7 +14,8 @@ const {
   enable2FA,
   updateProfile,
   resendVerificationCode,
-  fetchHeadmasterByEmail
+  fetchHeadmasterByEmail,
+  getCurrentUser
 } = require('../controllers/authController');
 
 // Middleware for validation
@@ -98,6 +99,11 @@ router.post('/fetch-headmaster', authenticate, [
 // @desc    Log in user
 // @access  Public
 router.post('/login', loginValidation, login);
+
+// @route   GET /auth/me
+// @desc    Get current user
+// @access  Private
+router.get('/me', authenticate, getCurrentUser);
 
 // @route   POST /auth/logout
 // @desc    Logout user
