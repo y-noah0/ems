@@ -3,6 +3,7 @@ import Layout from "../components/layout/Layout";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
+import DynamicTable from "../components/class/DynamicTable";
 import adminService from "../services/adminService";
 import authService from "../services/authService";
 
@@ -260,6 +261,98 @@ const UsersManagement = () => {
         }
     };
 
+    // Table column definitions
+    const teacherColumns = [
+        { 
+            key: 'fullName', 
+            title: 'Name',
+            render: (value) => (
+                <div className="text-sm font-medium text-gray-900">
+                    {value}
+                </div>
+            )
+        },
+        { key: 'email', title: 'Email' },
+        { 
+            key: 'registrationNumber', 
+            title: 'Registration Number',
+            render: (value) => (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    {value}
+                </span>
+            )
+        }
+    ];
+
+    const studentColumns = [
+        { 
+            key: 'fullName', 
+            title: 'Name',
+            render: (value) => (
+                <div className="text-sm font-medium text-gray-900">
+                    {value}
+                </div>
+            )
+        },
+        { key: 'email', title: 'Email' },
+        { 
+            key: 'registrationNumber', 
+            title: 'Registration Number',
+            render: (value) => (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    {value}
+                </span>
+            )
+        }
+    ];
+
+    // Action handlers
+    const handleEditTeacher = (teacher) => {
+        console.log('Edit teacher:', teacher);
+        // Add edit logic here
+    };
+
+    const handleDeleteTeacher = async (teacher) => {
+        if (!window.confirm(`Are you sure you want to delete ${teacher.fullName}?`)) return;
+        
+        try {
+            await adminService.deleteTeacher(teacher._id);
+            // Reload teachers data
+            const teachersData = await adminService.getAllTeachers();
+            setTeachers(teachersData);
+            setFormSuccess('Teacher deleted successfully!');
+            setTimeout(() => setFormSuccess(''), 3000);
+        } catch (error) {
+            console.error('Error deleting teacher:', error);
+            setFormError('Failed to delete teacher');
+            setTimeout(() => setFormError(''), 3000);
+        }
+    };
+
+    const handleEditStudent = (student) => {
+        console.log('Edit student:', student);
+        // Add edit logic here
+    };
+
+    const handleDeleteStudent = async (student) => {
+        if (!window.confirm(`Are you sure you want to delete ${student.fullName}?`)) return;
+        
+        try {
+            await adminService.deleteStudent(student._id);
+            // Reload students for selected class
+            if (selectedClass) {
+                const studentsData = await adminService.getStudentsByClass(selectedClass);
+                setStudents(studentsData);
+            }
+            setFormSuccess('Student deleted successfully!');
+            setTimeout(() => setFormSuccess(''), 3000);
+        } catch (error) {
+            console.error('Error deleting student:', error);
+            setFormError('Failed to delete student');
+            setTimeout(() => setFormError(''), 3000);
+        }
+    };
+
     return (
         <Layout>
             <div className="mb-6">
@@ -411,71 +504,16 @@ const UsersManagement = () => {
 
                     <Card>
                         <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th
-                                            scope="col"
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            Name
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            Email
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            Registration Number
-                                        </th>
-                                        <th
-                                            scope="col"
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                        >
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {teachers.length === 0 ? (
-                                        <tr>
-                                            <td
-                                                colSpan="4"
-                                                className="px-6 py-4 text-center text-sm text-gray-500"
-                                            >
-                                                No teachers found
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        teachers.map((teacher) => (
-                                            <tr key={teacher._id}>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    {teacher.fullName}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {teacher.email}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {teacher.registrationNumber}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    <Button
-                                                        variant="secondary"
-                                                        size="sm"
-                                                    >
-                                                        View Details
-                                                    </Button>
-                                                    {/* Additional actions can be added here */}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                            <DynamicTable
+                                data={teachers}
+                                columns={teacherColumns}
+                                onEdit={handleEditTeacher}
+                                onDelete={handleDeleteTeacher}
+                                showActions={true}
+                                emptyMessage="No teachers found"
+                                containerWidth="100%"
+                                containerHeight="auto"
+                            />
                         </div>
                     </Card>
                 </div>
@@ -654,83 +692,16 @@ const UsersManagement = () => {
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                Name
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                Registration Number
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                Email
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                            >
-                                                Actions
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {students.length === 0 ? (
-                                            <tr>
-                                                <td
-                                                    colSpan="4"
-                                                    className="px-6 py-4 text-center text-sm text-gray-500"
-                                                >
-                                                    No students found in this
-                                                    class
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            students.map((student) => (
-                                                <tr key={student._id}>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                        {student.fullName}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {
-                                                            student.registrationNumber
-                                                        }
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {student.email}
-                                                    </td>{" "}
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-2">
-                                                        <Button
-                                                            as="a"
-                                                            href={`/dean/students/${student._id}/results`}
-                                                            variant="secondary"
-                                                            size="sm"
-                                                        >
-                                                            View Results
-                                                        </Button>
-                                                        <Button
-                                                            as="a"
-                                                            href={`/dean/students/${student._id}`}
-                                                            variant="secondary"
-                                                            size="sm"
-                                                        >
-                                                            View Profile
-                                                        </Button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
+                                <DynamicTable
+                                    data={students}
+                                    columns={studentColumns}
+                                    onEdit={handleEditStudent}
+                                    onDelete={handleDeleteStudent}
+                                    showActions={true}
+                                    emptyMessage="No students found in this class"
+                                    containerWidth="100%"
+                                    containerHeight="auto"
+                                />
                             </div>
                         )}
                     </Card>

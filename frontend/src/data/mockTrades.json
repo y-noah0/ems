@@ -1,0 +1,221 @@
+{
+  "trades": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f1",
+      "name": "Software Development",
+      "code": "SOD",
+      "fullName": "Software Development",
+      "category": "TVET",
+      "level": "L3-L5",
+      "type": "Technical",
+      "description": "Comprehensive software development program covering programming languages, frameworks, and software engineering practices",
+      "duration": "3 years",
+      "subjects": ["Programming", "Database Systems", "Software Engineering", "Mathematics", "Physics"],
+      "requirements": {
+        "entry": "O-Level with Mathematics and Physics",
+        "minimumGrade": "Second Class"
+      },
+      "careerPaths": [
+        "Software Developer",
+        "Web Developer",
+        "Mobile App Developer",
+        "System Analyst",
+        "Database Administrator"
+      ],
+      "certification": "TVET Level 5 Diploma",
+      "accreditation": "WDA Accredited",
+      "createdAt": "2024-08-30T08:00:00.000Z",
+      "updatedAt": "2024-08-30T08:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f2",
+      "name": "Network and Internet Technology",
+      "code": "NIT",
+      "fullName": "Network and Internet Technology",
+      "category": "TVET",
+      "level": "L3-L5",
+      "type": "Technical",
+      "description": "Specialized program in network administration, cybersecurity, and internet technologies",
+      "duration": "3 years",
+      "subjects": ["Computer Networks", "Network Security", "Programming", "Mathematics", "Physics"],
+      "requirements": {
+        "entry": "O-Level with Mathematics and Physics",
+        "minimumGrade": "Second Class"
+      },
+      "careerPaths": [
+        "Network Administrator",
+        "Cybersecurity Specialist",
+        "Systems Administrator",
+        "IT Support Specialist",
+        "Network Engineer"
+      ],
+      "certification": "TVET Level 5 Diploma",
+      "accreditation": "WDA Accredited",
+      "createdAt": "2024-08-30T08:15:00.000Z",
+      "updatedAt": "2024-08-30T08:15:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f3",
+      "name": "Multimedia and Publishing",
+      "code": "MMP",
+      "fullName": "Multimedia and Publishing",
+      "category": "TVET",
+      "level": "L3-L5",
+      "type": "Creative",
+      "description": "Creative program focusing on digital media, graphic design, and publishing technologies",
+      "duration": "3 years",
+      "subjects": ["Digital Marketing", "Business Communication", "Graphic Design", "Mathematics"],
+      "requirements": {
+        "entry": "O-Level with Art or Mathematics",
+        "minimumGrade": "Second Class"
+      },
+      "careerPaths": [
+        "Graphic Designer",
+        "Digital Marketer",
+        "Content Creator",
+        "Web Designer",
+        "Publishing Specialist"
+      ],
+      "certification": "TVET Level 5 Diploma",
+      "accreditation": "WDA Accredited",
+      "createdAt": "2024-08-30T08:30:00.000Z",
+      "updatedAt": "2024-08-30T08:30:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f4",
+      "name": "Electrical Installation",
+      "code": "EI",
+      "fullName": "Electrical Installation",
+      "category": "TVET",
+      "level": "L3-L4",
+      "type": "Technical",
+      "description": "Practical training in electrical systems installation and maintenance",
+      "duration": "2 years",
+      "subjects": ["Electrical Systems", "Mathematics", "Physics", "Safety Procedures"],
+      "requirements": {
+        "entry": "O-Level with Mathematics and Physics",
+        "minimumGrade": "Second Class"
+      },
+      "careerPaths": [
+        "Electrician",
+        "Electrical Technician",
+        "Maintenance Technician",
+        "Electrical Supervisor"
+      ],
+      "certification": "TVET Level 4 Certificate",
+      "accreditation": "WDA Accredited",
+      "createdAt": "2024-08-30T08:45:00.000Z",
+      "updatedAt": "2024-08-30T08:45:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f5",
+      "name": "Automotive Technology",
+      "code": "AT",
+      "fullName": "Automotive Technology",
+      "category": "TVET",
+      "level": "L3-L4",
+      "type": "Technical",
+      "description": "Comprehensive training in automotive repair, maintenance, and diagnostics",
+      "duration": "2 years",
+      "subjects": ["Automotive Systems", "Mathematics", "Physics", "Safety Procedures"],
+      "requirements": {
+        "entry": "O-Level with Mathematics and Physics",
+        "minimumGrade": "Second Class"
+      },
+      "careerPaths": [
+        "Automotive Technician",
+        "Mechanic",
+        "Diagnostic Specialist",
+        "Service Advisor"
+      ],
+      "certification": "TVET Level 4 Certificate",
+      "accreditation": "WDA Accredited",
+      "createdAt": "2024-08-30T09:00:00.000Z",
+      "updatedAt": "2024-08-30T09:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f6",
+      "name": "Business Administration",
+      "code": "BA",
+      "fullName": "Business Administration",
+      "category": "TVET",
+      "level": "L3-L5",
+      "type": "Business",
+      "description": "Comprehensive business program covering management, finance, and entrepreneurship",
+      "duration": "3 years",
+      "subjects": ["Business Management", "Finance", "Marketing", "Mathematics", "Business Communication"],
+      "requirements": {
+        "entry": "O-Level with Mathematics",
+        "minimumGrade": "Second Class"
+      },
+      "careerPaths": [
+        "Business Manager",
+        "Administrative Officer",
+        "Entrepreneur",
+        "Project Coordinator",
+        "Operations Manager"
+      ],
+      "certification": "TVET Level 5 Diploma",
+      "accreditation": "WDA Accredited",
+      "createdAt": "2024-08-30T09:15:00.000Z",
+      "updatedAt": "2024-08-30T09:15:00.000Z"
+    }
+  ],
+  "tradeCategories": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f7",
+      "name": "Information Technology",
+      "code": "IT",
+      "description": "Technology-focused trades including software development and networking",
+      "trades": ["SOD", "NIT"],
+      "totalStudents": 145,
+      "averageGrade": 72.5
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f8",
+      "name": "Creative Arts",
+      "code": "CA",
+      "description": "Creative and design-focused trades",
+      "trades": ["MMP"],
+      "totalStudents": 67,
+      "averageGrade": 75.2
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8f9",
+      "name": "Technical Services",
+      "code": "TS",
+      "description": "Hands-on technical trades and services",
+      "trades": ["EI", "AT"],
+      "totalStudents": 89,
+      "averageGrade": 68.7
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8fa",
+      "name": "Business and Management",
+      "code": "BM",
+      "description": "Business-focused trades and administration",
+      "trades": ["BA"],
+      "totalStudents": 78,
+      "averageGrade": 71.3
+    }
+  ],
+  "tradeStatistics": {
+    "totalTrades": 6,
+    "totalStudents": 379,
+    "averageGrade": 71.5,
+    "tradesByCategory": {
+      "Technical": 4,
+      "Business": 1,
+      "Creative": 1
+    },
+    "tradesByLevel": {
+      "L3-L4": 2,
+      "L3-L5": 4
+    },
+    "certificationTypes": {
+      "TVET Level 4 Certificate": 2,
+      "TVET Level 5 Diploma": 4
+    },
+    "employmentRate": 87.5
+  }
+}

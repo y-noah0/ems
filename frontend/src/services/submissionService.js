@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -33,6 +34,88 @@ const submissionService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
+  
+  // Get Assessment 1 results
+  getAssessment1Results: async () => {
+    try {
+      const response = await api.get('/submissions/results/assessment1');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  // Get Assessment 2 results
+  getAssessment2Results: async () => {
+    try {
+      const response = await api.get('/submissions/results/assessment2');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  // Get Exam results
+  getExamResults: async () => {
+    try {
+      const response = await api.get('/submissions/results/exam');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  // Get Homework results
+  getHomeworkResults: async () => {
+    try {
+      const response = await api.get('/submissions/results/homework');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  // Get Quiz results
+  getQuizResults: async () => {
+    try {
+      const response = await api.get('/submissions/results/quiz');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  // Get Combined results (all assessment types)
+  getCombinedResults: async () => {
+    try {
+      const response = await api.get('/submissions/results/combined');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  // Get Student performance by ID
+  getStudentMarks: async (studentId) => {
+    try {
+      const response = await api.get('/submissions/student/marks', {
+        params: { studentId }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  // Get current student's performance
+  getMyMarks: async () => {
+    try {
+      const response = await api.get('/submissions/my-marks');
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
 
   // Save answers (auto-save)
   saveAnswers: async (submissionId, answers) => {
@@ -44,12 +127,15 @@ const submissionService = {
     }
   },
 
-  // Submit exam
+  // Submit exam  
   submitExam: async (submissionId, answers) => {
     try {
       const response = await api.post('/submissions/submit', { submissionId, answers });
+      toast.success('Exam submitted successfully!');
       return response.data;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to submit exam';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },

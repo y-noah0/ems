@@ -1,33 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import Card from '../ui/Card';
+import deanService from '../../services/deanService';
 
 const ExamsSection = () => {
-  const exams = [
-    {
-      title: 'Statistics and logarithms',
-      subject: 'Mathematics',
-      code: 'L4500',
-      description: 'An exam on logarithms and statistics',
-      time: '20:20 pm - 20:55pm',
-      questions: '20 questions',
-      score: '/50',
-      status: 'Active',
-      statusColor: 'text-blue-600'
-    },
-    {
-      title: 'Statistics and logarithms',
-      subject: 'Mathematics',
-      code: 'L4500',
-      description: 'An exam on logarithms and statistics',
-      time: '20:20 pm - 20:55pm',
-      questions: '20 questions',
-      score: '/50',
-      status: 'Cancelled',
-      statusColor: 'text-red-600'
-    }
-  ];
+  const [exams, setExams] = useState([])
 
+  const getExams = async ()=>{
+    const response = await deanService.getExams
+    setExams(response )
+  }
+  useEffect(() => {
+    // getExams();
+  }, [])
   return (
-    <div className="w-full">
+    <div className="w-">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-lg font-semibold text-gray-900">Exams</h3>
         <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
@@ -36,7 +22,9 @@ const ExamsSection = () => {
       </div>
 
       <div className="space-y-4">
-        {exams.map((exam, index) => (
+        {exams.length==0? <Card> 
+          <p className="text-gray-600 text-sm text-center">No exams right now</p>
+        </Card>: exams.map((exam, index) => (
           <div
             key={index}
             className="bg-white rounded-xl p-4 border border-gray-300 shadow-sm hover:shadow-lg hover:border-blue-500 transition-all cursor-pointer group"

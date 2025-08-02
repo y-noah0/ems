@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
+import DynamicTable from '../components/class/DynamicTable';
 import adminService from '../services/adminService';
 import submissionService from '../services/submissionService';
 import { useAuth } from '../context/AuthContext';
@@ -12,7 +13,9 @@ const StudentResults = () => {
   const [student, setStudent] = useState(null);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');  useEffect(() => {
+  const [error, setError] = useState('');
+
+  useEffect(() => {
     const fetchStudentResults = async () => {
       setLoading(true);
       try {
@@ -95,7 +98,9 @@ const StudentResults = () => {
         </div>
       </Layout>
     );
-  }      // Calculate average score
+  }
+
+  // Calculate average score
   const totalScore = results.reduce((sum, result) => {
     // Calculate percentage score for each result
     const scoreValue = typeof result.score === 'number' ? result.score : 0;
@@ -104,6 +109,69 @@ const StudentResults = () => {
     return sum + percentage;
   }, 0);
   const averageScore = results.length > 0 ? (totalScore / results.length).toFixed(2) : 0;
+
+  // Results table columns
+  const resultsColumns = [
+    { 
+      key: 'subject', 
+      title: 'Subject',
+      render: (value) => (
+        <span className="text-sm font-medium text-gray-900">
+          {value}
+        </span>
+      )
+    },
+    { 
+      key: 'title', 
+      title: 'Exam Title',
+      render: (value) => (
+        <span className="text-sm text-gray-900">
+          {value}
+        </span>
+      )
+    },
+    { 
+      key: 'type', 
+      title: 'Type',
+      render: (value) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          {value?.toUpperCase() || 'EXAM'}
+        </span>
+      )
+    },
+    { 
+      key: 'score', 
+      title: 'Score',
+      render: (value, item) => (
+        <span className="text-sm font-medium text-gray-900">
+          {value || 0} / {item.maxScore || 100}
+        </span>
+      )
+    },
+    { 
+      key: 'percentage', 
+      title: 'Percentage',
+      render: (value, item) => {
+        const percentage = ((item.score || 0) / (item.maxScore || 100)) * 100;
+        const colorClass = percentage >= 70 ? 'text-green-600' : percentage >= 50 ? 'text-yellow-600' : 'text-red-600';
+        return (
+          <span className={`text-sm font-medium ${colorClass}`}>
+            {percentage.toFixed(1)}%
+          </span>
+        );
+      }
+    },
+    { 
+      key: 'date', 
+      title: 'Date',
+      render: (value) => (
+        <span className="text-sm text-gray-500">
+          {value ? new Date(value).toLocaleDateString() : 'N/A'}
+        </span>
+      )
+    }
+  ];
+
   return (
     <Layout>
       <div className="mb-6">
@@ -147,59 +215,11 @@ const StudentResults = () => {
 
       <Card title="Exam Results">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Subject
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Title/Type
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Score
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Date
-                </th>
-              </tr>
-            </thead>  
-            <tbody className="bg-white divide-y divide-gray-200">              {results.length === 0 ? (
-                <tr>
-                  <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No results available
-                  </td>
-                </tr>
-              ) : (
-                results.map((result) => (
-                  <tr key={result._id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {result.subject}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {result.title} <span className="text-xs bg-gray-100 px-2 py-1 rounded">{result.type}</span>
-                    </td>                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex items-center">
-                        <span className={`font-medium ${((result.score / result.maxScore) * 100) >= 70 ? 'text-green-600' : ((result.score / result.maxScore) * 100) >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {result.score || 0}
-                        </span>
-                        <span className="text-gray-500 ml-1">/ {result.maxScore || 100}</span>
-                        <div className="ml-4 w-16 bg-gray-200 rounded-full h-2.5">
-                          <div 
-                            className={`h-2.5 rounded-full ${((result.score / result.maxScore) * 100) >= 70 ? 'bg-green-500' : ((result.score / result.maxScore) * 100) >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                            style={{ width: `${((result.score || 0) / (result.maxScore || 100)) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(result.date).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <DynamicTable
+            data={results}
+            columns={resultsColumns}
+            emptyMessage="No results available"
+          />
         </div>
       </Card>
     </Layout>

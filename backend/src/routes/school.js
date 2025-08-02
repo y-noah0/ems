@@ -13,3 +13,4 @@ router.delete('/:id', authenticate, isAdmin, schoolController.deleteSchool);
 
 module.exports = router;
  
+ 

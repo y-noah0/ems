@@ -3,6 +3,7 @@ import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import DynamicTable from '../components/class/DynamicTable';
 import adminService from '../services/adminService';
 
 const SubjectsManagement = () => {
@@ -110,49 +111,107 @@ const SubjectsManagement = () => {
     }
   };
 
+  // Subject table columns
+  const subjectColumns = [
+    { 
+      key: 'name', 
+      title: 'Subject Name',
+      render: (value) => (
+        <span className="text-sm font-medium text-gray-900">
+          {value}
+        </span>
+      )
+    },
+    { 
+      key: 'credits', 
+      title: 'Credits',
+      render: (value) => (
+        <span className="text-sm text-gray-500">
+          {value || '-'}
+        </span>
+      )
+    },
+    { 
+      key: 'teacher', 
+      title: 'Teacher',
+      render: (value, item) => {
+        if (assigningTeacher === item._id) {
+          return (
+            <div className="flex items-center space-x-2">
+              <select
+                value={item.teacherId || ''}
+                onChange={(e) => handleTeacherAssignment(item._id, e.target.value)}
+                className="text-sm border rounded px-2 py-1"
+              >
+                <option value="">Select Teacher</option>
+                {teachers.map(teacher => (
+                  <option key={teacher._id} value={teacher._id}>
+                    {teacher.fullName}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setAssigningTeacher(null)}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          );
+        }
+        return (
+          <span className="text-sm text-gray-500">
+            {item.teacher ? item.teacher.fullName : 'Not assigned'}
+          </span>
+        );
+      }
+    }
+  ];
+
+  // Action handlers
   const handleEdit = (subject) => {
+    console.log('Edit subject:', subject);
+    setEditingSubject(subject);
     setFormData({
       name: subject.name,
-      classId: subject.class,
-      teacherId: subject.teacher?._id || '',
+      classId: subject.classId || selectedClass,
+      teacherId: subject.teacherId || '',
       description: subject.description || '',
       credits: subject.credits || 1
     });
-    setEditingSubject(subject);
     setShowForm(true);
-    setFormError('');
-    setFormSuccess('');
   };
 
-  const handleAssignTeacher = async (subjectId, teacherId) => {
-    setLoading(true);
-    setError('');
+  const handleDelete = async (subject) => {
+    if (!window.confirm('Are you sure you want to delete this subject?')) return;
+    
     try {
-      await adminService.assignTeacherToSubject(subjectId, teacherId);
-      setFormSuccess(`Teacher assigned successfully!`);
-      setAssigningTeacher(null);
+      await adminService.deleteSubject(subject._id);
       await fetchSubjects();
+      setFormSuccess('Subject deleted successfully!');
+      setTimeout(() => setFormSuccess(''), 3000);
     } catch (error) {
-      console.error('Error assigning teacher:', error);
-      setError(error.message || 'Failed to assign teacher');
-    } finally {
-      setLoading(false);
+      console.error('Error deleting subject:', error);
+      setFormError('Failed to delete subject');
+      setTimeout(() => setFormError(''), 3000);
     }
   };
 
-  const handleRemoveTeacher = async (subjectId) => {
-    setLoading(true);
-    setError('');
+  const handleAssignTeacher = (subject) => {
+    setAssigningTeacher(subject._id);
+  };
+
+  const handleTeacherAssignment = async (subjectId, teacherId) => {
     try {
-      // Use empty string to indicate removal of teacher
-      await adminService.assignTeacherToSubject(subjectId, '');
-      setFormSuccess(`Teacher removed successfully!`);
+      await adminService.assignTeacherToSubject(subjectId, teacherId);
       await fetchSubjects();
+      setAssigningTeacher(null);
+      setFormSuccess('Teacher assigned successfully!');
+      setTimeout(() => setFormSuccess(''), 3000);
     } catch (error) {
-      console.error('Error removing teacher:', error);
-      setError(error.message || 'Failed to remove teacher');
-    } finally {
-      setLoading(false);
+      console.error('Error assigning teacher:', error);
+      setFormError('Failed to assign teacher');
+      setTimeout(() => setFormError(''), 3000);
     }
   };
 
@@ -230,7 +289,7 @@ const SubjectsManagement = () => {
                   <option value="">Select a class</option>
                   {classes.map((cls) => (
                     <option key={cls._id} value={cls._id}>
-                      {cls.level}{cls.trade} - Term {cls.term} ({cls.year})
+                      {cls.level}{cls.trade.code} - Term {cls.term} ({cls.year})
                     </option>
                   ))}
                 </select>
@@ -301,7 +360,7 @@ const SubjectsManagement = () => {
           >
             {classes.map((cls) => (
               <option key={cls._id} value={cls._id}>
-                {cls.level}{cls.trade} - Term {cls.term} ({cls.year})
+                {cls.level}{cls.trade.code} - Term {cls.term} ({cls.year})
               </option>
             ))}
           </select>
@@ -316,95 +375,38 @@ const SubjectsManagement = () => {
         ) : subjects.length === 0 ? (
           <p className="text-gray-500">No subjects available for this class. Create your first subject!</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Subject Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Credits
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Teacher
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {subjects.map((subject) => (
-                  <tr key={subject._id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {subject.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {subject.credits || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {assigningTeacher === subject._id ? (
-                        <div className="flex items-center space-x-2">
-                          <select
-                            className="px-2 py-1 border border-gray-300 rounded-md shadow-sm text-xs"
-                            defaultValue=""
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleAssignTeacher(subject._id, e.target.value);
-                              }
-                            }}
-                          >
-                            <option value="">Select Teacher</option>
-                            {teachers.map((teacher) => (
-                              <option key={teacher._id} value={teacher._id}>
-                                {teacher.fullName || `${teacher.firstName} ${teacher.lastName}`}
-                              </option>
-                            ))}
-                          </select>
-                          <Button 
-                            variant="secondary" 
-                            size="xs" 
-                            onClick={() => setAssigningTeacher(null)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          {subject.teacher ? (
-                            <div className="flex items-center space-x-2">
-                              <span>{subject.teacher.fullName || `${subject.teacher.firstName} ${subject.teacher.lastName}`}</span>
-                              <Button 
-                                variant="danger" 
-                                size="xs" 
-                                onClick={() => handleRemoveTeacher(subject._id)}
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button 
-                              variant="primary" 
-                              size="xs" 
-                              onClick={() => setAssigningTeacher(subject._id)}
-                            >
-                              Assign Teacher
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-2">
-                      <Button variant="secondary" size="sm" onClick={() => handleEdit(subject)}>
-                        Edit
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DynamicTable
+            data={subjects}
+            columns={subjectColumns}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            showActions={true}
+            emptyMessage="No subjects available for this class. Create your first subject!"
+            containerWidth="100%"
+            containerHeight="auto"
+            renderCustomActions={(subject) => (
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => handleEdit(subject)}
+                  className="text-blue-600 hover:text-blue-900 transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleAssignTeacher(subject)}
+                  className="text-green-600 hover:text-green-900 transition-colors"
+                >
+                  Assign Teacher
+                </button>
+                <button
+                  onClick={() => handleDelete(subject)}
+                  className="text-red-600 hover:text-red-900 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
+          />
         )}
       </Card>
     </Layout>

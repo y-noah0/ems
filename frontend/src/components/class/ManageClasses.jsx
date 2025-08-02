@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { FiPlus, FiX } from 'react-icons/fi';
 import { getClasses, createClass } from '../../services/classService';
 import tradeService from '../../services/tradeService';
-import { getSubjects } from '../../services/subjectService';
 import { useAuth } from '../../context/AuthContext';
 
 const ManageClasses = () => {

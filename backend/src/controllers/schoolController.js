@@ -35,7 +35,7 @@ const createSchool = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { name, address, contactEmail, contactPhone, headmaster, tradesOffered, category } = req.body;
+        const { name, address, contactEmail, code, contactPhone, headmaster, tradesOffered, category } = req.body;
         const logo = req.file ? req.file.path : req.body.logo || null;
 
         const existing = await School.findOne({ name, category });
@@ -54,6 +54,7 @@ const createSchool = async (req, res) => {
         const school = new School({
             name,
             address,
+            code,
             contactEmail,
             contactPhone,
             headmaster,
@@ -160,13 +161,17 @@ const updateSchool = async (req, res) => {
         }
 
         // If updating headmaster, update the new headmaster's school field
+
         if (headmaster && headmaster !== school.headmaster?.toString()) {
             const newHeadmaster = await User.findById(headmaster);
             if (!newHeadmaster || newHeadmaster.role !== 'headmaster') {
                 logger.warn('Invalid headmaster provided for update', { headmaster, ip: req.ip });
                 return res.status(400).json({ success: false, message: 'Invalid headmaster ID or role' });
             }
+            // Assign school and ensure preference flags are booleans
             newHeadmaster.school = school._id;
+            newHeadmaster.preferences.notifications.email = !!newHeadmaster.email;
+            newHeadmaster.preferences.notifications.sms = !!newHeadmaster.phoneNumber;
             await newHeadmaster.save();
 
             // Clear the school field for the previous headmaster

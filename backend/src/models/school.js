@@ -8,6 +8,13 @@ const SchoolSchema = new Schema({
         unique: true,
         trim: true
     },
+    code: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        uppercase: true
+    },
     address: {
         type: String,
         required: true,
@@ -43,11 +50,14 @@ const SchoolSchema = new Schema({
         type: String,
         trim: true,
         validate: {
-            validator: function (v) {
-                return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
-                    /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
+            validator: function(v) {
+                if (!v) return true; // Allow null/empty values
+                // Allow both URLs and local file paths
+                const urlPattern = /^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i;
+                const pathPattern = /^uploads\/.*\.(?:png|jpg|jpeg|svg|gif)$/i;
+                return urlPattern.test(v) || pathPattern.test(v);
             },
-            message: 'Please enter a valid image URL or local upload path'
+            message: 'Please enter a valid image URL or file path'
         },
         default: null
     },

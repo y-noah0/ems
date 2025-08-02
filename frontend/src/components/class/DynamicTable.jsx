@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { FiEdit } from 'react-icons/fi';
-import { FiTrash2 } from 'react-icons/fi';
 
 const DynamicTable = ({
   data,
@@ -53,7 +51,7 @@ const DynamicTable = ({
   if (data.length === 0) {
     return (
       <div 
-        className="text-center py-8 text-gray-500 bg-white rounded-lg shadow-sm"
+        className="text-center py-8 text-gray-500"
         style={{ 
           width: containerWidth, 
           height: containerHeight,
@@ -67,109 +65,95 @@ const DynamicTable = ({
 
   return (
     <div 
-      className={`${className} overflow-hidden bg-white rounded-lg shadow-sm w-full mx-auto`}
+      className={`${className} overflow-x-auto`}
       style={{ 
         width: containerWidth, 
         height: containerHeight,
-        maxWidth: '100%' // Ensures table doesn't overflow on smaller screens
+        maxWidth: '100%'
       }}
     >
-      {/* Header section - fixed at the top */}
-      <div className="overflow-hidden w-full">
-        <table className="w-full table-fixed">
-          <thead className="bg-white z-10">
-            <tr className="border-b border-gray-200">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            {columns.map((column) => (
+              <th 
+                key={column.key} 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                style={{ width: column.width || 'auto' }}
+              >
+                {column.title}
+              </th>
+            ))}
+            {showActions && (
+              <th 
+                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                style={{ width: actionsColumn.width }}
+              >
+                {actionsColumn.title}
+              </th>
+            )}
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {data.map((item, index) => (
+            <tr 
+              key={item.id || index}
+              className="hover:bg-gray-50"
+            >
               {columns.map((column) => (
-                <th 
-                  key={column.key} 
-                  className="px-6 py-3 text-left text-sm font-medium text-gray-700 truncate"
+                <td 
+                  key={`${item.id || index}-${column.key}`} 
+                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
                   style={{ width: column.width || 'auto' }}
+                  title={item[column.key]}
                 >
-                  {column.title}
-                </th>
+                  {renderCellContent(column, item)}
+                </td>
               ))}
               {showActions && (
-                <th 
-                  className="px-6 py-3 text-right text-sm font-medium text-gray-700"
+                <td 
+                  className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
                   style={{ width: actionsColumn.width }}
                 >
-                  {actionsColumn.title}
-                </th>
+                  {renderCustomActions ? (
+                    renderCustomActions(item)
+                  ) : (
+                    <div className="flex space-x-2 justify-end">
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(item)}
+                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          aria-label="Edit"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          onClick={() => onDelete(item)}
+                          className="text-red-600 hover:text-red-900 transition-colors"
+                          aria-label="Delete"
+                        >
+                          Delete
+                        </button>
+                      )}
+                      {onView && (
+                        <button
+                          onClick={() => onView(item)}
+                          className="text-blue-600 hover:text-blue-900 transition-colors"
+                          aria-label="View"
+                        >
+                          View
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </td>
               )}
             </tr>
-          </thead>
-        </table>
-      </div>
-
-      {/* Scrollable body section */}
-      <div 
-        className="overflow-y-auto w-full" 
-        style={{ 
-          height: `calc(${containerHeight} - 41px)` // Subtract header height
-        }}
-      >
-        <table className="w-full table-fixed">
-          <tbody>
-            {data.map((item, index) => (
-              <tr 
-                key={item.id || index}
-                className="border-b border-gray-200 hover:bg-gray-50"
-              >
-                {columns.map((column) => (
-                  <td 
-                    key={`${item.id || index}-${column.key}`} 
-                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 truncate"
-                    style={{ width: column.width || 'auto' }}
-                    title={item[column.key]} // Add tooltip for truncated content
-                  >
-                    {renderCellContent(column, item)}
-                  </td>
-                ))}
-                {showActions && (
-                  <td 
-                    className="px-6 py-4 whitespace-nowrap text-right text-sm"
-                    style={{ width: actionsColumn.width }}
-                  >
-                    {renderCustomActions ? (
-                      renderCustomActions(item)
-                    ) : (
-                      <div className="flex space-x-2 justify-end">
-                        {onEdit && (
-                          <button
-                            onClick={() => onEdit(item)}
-                            className="text-white bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center hover:bg-blue-600"
-                            aria-label="Edit"
-                          >
-                            <FiEdit size={16} />
-                          </button>
-                        )}
-                        {onDelete && (
-                          <button
-                            onClick={() => onDelete(item)}
-                            className="text-white bg-red-500 rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-600"
-                            aria-label="Delete"
-                          >
-                            <FiTrash2 size={16} />
-                          </button>
-                        )}
-                        {onView && (
-                          <button
-                            onClick={() => onView(item)}
-                            className="text-blue-500 hover:text-blue-700 font-medium"
-                            aria-label="View"
-                          >
-                            View
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
