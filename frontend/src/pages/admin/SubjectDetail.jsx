@@ -3,103 +3,175 @@ import { useParams, useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Layout from "../../components/layout/Layout";
 import { ToastContext } from "../../context/ToastContext";
-import tradesData from "../../data/mockTrades.json";
-import subjectsData from "../../data/mockSubjects.json";
+import subjectService from "../../services/subjectService";
+import tradeService from "../../services/tradeService";
 
 export default function SubjectDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { showToast } = useContext(ToastContext);
     const [subject, setSubject] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [subjectTrades, setSubjectTrades] = useState([]);
     const [availableTrades, setAvailableTrades] = useState([]);
     const [showAddTrade, setShowAddTrade] = useState(false);
-    const [selectedTrade, setSelectedTrade] = useState("");
+    const [selectedTrades, setSelectedTrades] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
-        // Find the subject by ID (try both subjects and subjectCatalog)
-        const foundSubject = subjectsData.subjects.find(s => s._id === id) || 
-                           subjectsData.subjectCatalog.find(s => s._id === id);
-        
-        if (foundSubject) {
-            setSubject(foundSubject);
-            
-            // Get all available trades
-            const allTrades = tradesData.trades;
-            
-            // Get trades for this subject
-            const tradesForSubject = allTrades.filter(trade => 
-                foundSubject.trades && foundSubject.trades.includes(trade.code) ||
-                foundSubject.trade === trade.code
-            );
-            setSubjectTrades(tradesForSubject);
-            
-            // Get available trades (not already assigned to this subject)
-            const availableTradesForSubject = allTrades.filter(trade => 
-                (!foundSubject.trades || !foundSubject.trades.includes(trade.code)) &&
-                foundSubject.trade !== trade.code
-            );
-            setAvailableTrades(availableTradesForSubject);
-        } else {
-            showToast("Subject not found", "error");
-            navigate("/admin/subjects");
+        const fetchSubjectDetails = async () => {
+            try {
+                setLoading(true);
+                
+                // Fetch subject details
+                const subjectData = await subjectService.getSubjectById(id);
+                setSubject(subjectData);
+                
+                // Fetch all trades
+                const allTrades = await tradeService.getAllTrades();
+                
+                // Get trades for this subject (already populated from backend)
+                if (subjectData.trades && subjectData.trades.length) {
+                    // Ensure we have full trade objects (in case backend only sent IDs)
+                    const populatedTrades = await Promise.all(
+                        subjectData.trades.map(trade =>
+                            // if the trade is already populated (has a name), skip fetching
+                            trade.name
+                                ? Promise.resolve(trade)
+                                : tradeService.getTradeById(trade._id || trade)
+                        )
+                    );
+
+                    setSubjectTrades(populatedTrades);
+
+                    // Get available trades (not already assigned to this subject)
+                    const assignedIds = populatedTrades.map(t => t._id);
+                    const availableTradesForSubject = allTrades.filter(
+                        t => !assignedIds.includes(t._id)
+                    );
+                    setAvailableTrades(availableTradesForSubject);
+
+                } else {
+                    setSubjectTrades([]);
+                    setAvailableTrades(allTrades);
+                }
+                
+            } catch (error) {
+                showToast(`Failed to load subject details: ${error.message}`, "error");
+                navigate("/admin/subjects");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (id) {
+            fetchSubjectDetails();
         }
     }, [id, navigate, showToast]);
 
     // Filter available trades based on search
     const filteredAvailableTrades = availableTrades.filter(trade =>
         trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        trade.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        trade.type.toLowerCase().includes(searchTerm.toLowerCase())
+        (trade.code && trade.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (trade.category && trade.category.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
-    const handleAddTrade = () => {
-        if (!selectedTrade) {
-            showToast("Please select a trade", "warning");
+    const handleAddTrade = async () => {
+        if (!selectedTrades.length) {
+            showToast("Please select at least one trade", "warning");
             return;
         }
 
-        const trade = availableTrades.find(t => t._id === selectedTrade);
-        if (trade) {
-            // Add subject to trade's subjects array (this would be an API call in real app)
-            const _updatedSubject = {
-                ...subject,
-                trades: [...(subject.trades || []), trade.code]
-            };
+        try {
+            // Get the selected trade objects
+            const tradesToAdd = availableTrades.filter(t => selectedTrades.includes(t._id));
             
-            // Update local state
-            setSubjectTrades([...subjectTrades, trade]);
-            setAvailableTrades(availableTrades.filter(t => t._id !== selectedTrade));
-            setSelectedTrade("");
-            setShowAddTrade(false);
-            
-            showToast(`${trade.name} added to ${subject.name}`, "success");
+            if (tradesToAdd.length > 0) {
+                // Update subject with new trades
+                const updatedTrades = [...(subject.trades || []).map(t => t._id), ...selectedTrades];
+                const updatedSubject = await subjectService.updateSubject(subject._id, {
+                    ...subject,
+                    trades: updatedTrades,
+                    school: subject.school._id || subject.school // Ensure we send the ID
+                });
+                
+                // Update local state
+                setSubject(updatedSubject);
+                setSubjectTrades([...subjectTrades, ...tradesToAdd]);
+                setAvailableTrades(availableTrades.filter(t => !selectedTrades.includes(t._id)));
+                handleCloseModal();
+                
+                const tradeNames = tradesToAdd.map(t => t.name).join(', ');
+                showToast(`${tradeNames} added to ${subject.name}`, "success");
+            }
+        } catch (error) {
+            showToast(`Failed to add trades: ${error.message}`, "error");
         }
     };
 
-    const handleRemoveTrade = (tradeId) => {
-        const trade = subjectTrades.find(t => t._id === tradeId);
-        if (trade) {
-            // Remove subject from trade's subjects array (this would be an API call in real app)
-            const _updatedSubject = {
-                ...subject,
-                trades: (subject.trades || []).filter(tCode => tCode !== trade.code)
-            };
-            
-            // Update local state
-            setSubjectTrades(subjectTrades.filter(t => t._id !== tradeId));
-            setAvailableTrades([...availableTrades, trade]);
-            
-            showToast(`${trade.name} removed from ${subject.name}`, "success");
+    const handleRemoveTrade = async (tradeId) => {
+        try {
+            const trade = subjectTrades.find(t => t._id === tradeId);
+            if (trade) {
+                // Update subject by removing the trade
+                const updatedTrades = (subject.trades || [])
+                    .map(t => t._id)
+                    .filter(id => id !== tradeId);
+                    
+                const updatedSubject = await subjectService.updateSubject(subject._id, {
+                    ...subject,
+                    trades: updatedTrades,
+                    school: subject.school._id || subject.school // Ensure we send the ID
+                });
+                
+                // Update local state
+                setSubject(updatedSubject);
+                setSubjectTrades(subjectTrades.filter(t => t._id !== tradeId));
+                setAvailableTrades([...availableTrades, trade]);
+                
+                showToast(`${trade.name} removed from ${subject.name}`, "success");
+            }
+        } catch (error) {
+            showToast(`Failed to remove trade: ${error.message}`, "error");
         }
     };
 
-    if (!subject) {
+    const handleTradeSelection = (tradeId) => {
+        setSelectedTrades(prev => 
+            prev.includes(tradeId)
+                ? prev.filter(id => id !== tradeId)
+                : [...prev, tradeId]
+        );
+    };
+
+    const handleSelectAllTrades = () => {
+        const allTradeIds = filteredAvailableTrades.map(trade => trade._id);
+        setSelectedTrades(allTradeIds);
+    };
+
+    const handleClearAllTrades = () => {
+        setSelectedTrades([]);
+    };
+
+    const handleOpenAddTradeModal = () => {
+        setSelectedTrades([]);
+        setSearchTerm("");
+        setShowAddTrade(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowAddTrade(false);
+        setSelectedTrades([]);
+        setSearchTerm("");
+    };
+
+    if (loading || !subject) {
         return (
             <Layout>
                 <div className="flex items-center justify-center h-64">
-                    <div className="text-gray-500">Loading...</div>
+                    <div className="text-gray-500">
+                        {loading ? "Loading..." : "Subject not found"}
+                    </div>
                 </div>
             </Layout>
         );
@@ -113,28 +185,38 @@ export default function SubjectDetail() {
                     <div className="flex items-center space-x-4">
                         <Button
                             variant="outline"
+                            size='md'
                             onClick={() => navigate("/admin/subjects")}
                             className="flex items-center space-x-2"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                             </svg>
-                            <span>Back to Subjects</span>
+                            <span>Back</span>
                         </Button>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">{subject.name}</h1>
-                            <p className="text-sm text-gray-500">
-                                Code: {subject.code} • ID: {subject.id}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">{subject.description}</p>
+                        
+                    </div><div>
+                            <h1 className="text-xl font-bold text-gray-900 m-0">{subject.name}</h1>
+                            <p className="text-sm text-gray-600 mt-1">{subject.description} </p>
+                            
                         </div>
+                    <div className="flex space-x-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/subjects/edit/${subject._id}`)}
+                        >
+                            Edit Subject
+                        </Button>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleOpenAddTradeModal}
+                            disabled={availableTrades.length === 0}
+                        >
+                            Add Trade
+                        </Button>
                     </div>
-                    <Button
-                        onClick={() => setShowAddTrade(true)}
-                        disabled={availableTrades.length === 0}
-                    >
-                        Add Trade
-                    </Button>
                 </div>
 
                 {/* Trades Section */}
@@ -151,7 +233,7 @@ export default function SubjectDetail() {
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Trade/Combination
+                                            Trade Name
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Code
@@ -160,10 +242,7 @@ export default function SubjectDetail() {
                                             Category
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Level
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Type
+                                            Description
                                         </th>
                                         <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Actions
@@ -171,16 +250,11 @@ export default function SubjectDetail() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {subjectTrades.map((trade) => (
+                                    {subjectTrades && subjectTrades.map((trade) => (
                                         <tr key={trade._id}>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {trade.name}
-                                                    </div>
-                                                    <div className="text-xs text-gray-400 mt-1">
-                                                        {trade.fullName}
-                                                    </div>
+                                                <div className="text-sm font-medium text-gray-900">
+                                                    {trade.name}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -191,11 +265,8 @@ export default function SubjectDetail() {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {trade.category}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {trade.level}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{trade.type}</span>
+                                            <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                                                {trade.description || 'No description'}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <button
@@ -216,7 +287,7 @@ export default function SubjectDetail() {
                                 No trades assigned to this subject yet.
                             </div>
                             {availableTrades.length > 0 && (
-                                <Button onClick={() => setShowAddTrade(true)}>
+                                <Button onClick={handleOpenAddTradeModal}>
                                     Add First Trade
                                 </Button>
                             )}
@@ -226,12 +297,12 @@ export default function SubjectDetail() {
 
                 {/* Add Trade Modal */}
                 {showAddTrade && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="fixed inset-0 bg-black/20 bg-opacity-50 flex items-center justify-center z-50">
                         <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-medium text-gray-900">Add Trade to {subject.name}</h3>
+                                <h3 className="text-lg font-medium text-gray-900">Add Trades to {subject.name}</h3>
                                 <button
-                                    onClick={() => setShowAddTrade(false)}
+                                    onClick={handleCloseModal}
                                     className="text-gray-400 hover:text-gray-600"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,8 +311,8 @@ export default function SubjectDetail() {
                                 </button>
                             </div>
                             
-                            {/* Search */}
-                            <div className="mb-4">
+                            {/* Search and Controls */}
+                            <div className="mb-4 space-y-3">
                                 <input
                                     type="text"
                                     placeholder="Search trades..."
@@ -249,6 +320,29 @@ export default function SubjectDetail() {
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                                 />
+                                <div className="flex justify-between items-center">
+                                    <div className="text-sm text-gray-600">
+                                        {selectedTrades.length} of {filteredAvailableTrades.length} trades selected
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleSelectAllTrades}
+                                            disabled={filteredAvailableTrades.length === 0}
+                                            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+                                        >
+                                            Select All
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleClearAllTrades}
+                                            disabled={selectedTrades.length === 0}
+                                            className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
+                                        >
+                                            Clear All
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                             
                             {/* Available Trades */}
@@ -258,16 +352,16 @@ export default function SubjectDetail() {
                                         <div
                                             key={trade._id}
                                             className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                                                selectedTrade === trade._id ? 'bg-blue-50 border-blue-200' : ''
+                                                selectedTrades.includes(trade._id) ? 'bg-blue-50 border-blue-200' : ''
                                             }`}
-                                            onClick={() => setSelectedTrade(trade._id)}
+                                            onClick={() => handleTradeSelection(trade._id)}
                                         >
                                             <div className="flex items-center">
                                                 <input
-                                                    type="radio"
-                                                    checked={selectedTrade === trade._id}
-                                                    onChange={() => setSelectedTrade(trade._id)}
-                                                    className="mr-3"
+                                                    type="checkbox"
+                                                    checked={selectedTrades.includes(trade._id)}
+                                                    onChange={() => handleTradeSelection(trade._id)}
+                                                    className="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                 />
                                                 <div className="flex-1">
                                                     <div className="flex items-center space-x-2">
@@ -278,10 +372,11 @@ export default function SubjectDetail() {
                                                             {trade.category}
                                                         </span>
                                                     </div>
-                                                    <div className="text-xs text-gray-500 mt-1">
-                                                        {trade.level} • {trade.type}
-                                                        {trade.fullName && ` • ${trade.fullName}`}
-                                                    </div>
+                                                    {trade.description && (
+                                                        <div className="text-xs text-gray-500 mt-1">
+                                                            {trade.description}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -296,15 +391,15 @@ export default function SubjectDetail() {
                             <div className="flex justify-end space-x-3 mt-6">
                                 <Button
                                     variant="outline"
-                                    onClick={() => setShowAddTrade(false)}
+                                    onClick={handleCloseModal}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     onClick={handleAddTrade}
-                                    disabled={!selectedTrade}
+                                    disabled={selectedTrades.length === 0}
                                 >
-                                    Add Trade
+                                    Add Selected Trades
                                 </Button>
                             </div>
                         </div>

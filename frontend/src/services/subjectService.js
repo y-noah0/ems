@@ -37,6 +37,33 @@ const subjectService = {
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
+  },
+  
+  createSubject: async (subjectData) => {
+    try {
+      const response = await api.post('/subjects', subjectData);
+      return response.data.subject;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  updateSubject: async (id, subjectData) => {
+    try {
+      const response = await api.put(`/subjects/${id}`, subjectData);
+      return response.data.subject;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  
+  deleteSubject: async (id) => {
+    try {
+      const response = await api.delete(`/subjects/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
   }
 };
 

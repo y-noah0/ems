@@ -11,14 +11,14 @@ export default function SchoolManagement() {
     // Category grouping
     const [activeCategory, setActiveCategory] = useState('All');
     const categories = useMemo(() => {
-        const unique = Array.from(new Set(schools.map(s => s.type).filter(Boolean)));
+        const unique = Array.from(new Set(schools.map(s => s.category).filter(Boolean)));
         return ['All', ...unique];
     }, [schools]);
     // Filter schools by category
     const filteredSchools = useMemo(() => {
         return activeCategory === 'All'
             ? schools
-            : schools.filter(school => school.type === activeCategory);
+            : schools.filter(school => school.category === activeCategory);
     }, [schools, activeCategory]);
     const navigate = useNavigate();
     
@@ -71,7 +71,7 @@ export default function SchoolManagement() {
             )
         },
         { 
-            key: 'shortName', 
+            key: 'code', 
             title: 'School Code',
             render: (value) => (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -80,16 +80,16 @@ export default function SchoolManagement() {
             )
         },
         { 
-            key: 'levels', 
-            title: 'Levels Offered',
+            key: 'tradesOffered', 
+            title: 'Trades Offered',
             render: (value) => (
                 <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                    {value?.length} levels
+                    {value?.length || 0} trades
                 </span>
             )
         },
         { 
-            key: 'type', 
+            key: 'category', 
             title: 'System',
             render: (value) => (
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -102,10 +102,12 @@ export default function SchoolManagement() {
             )
         },
         { 
-            key: 'location', 
-            title: 'Location',
+            key: 'address', 
+            title: 'Address',
             render: (value) => (
-                <span className="text-sm text-gray-900">{value?.district}, {value?.province}</span>
+                <span className="text-sm text-gray-900">
+                    {value}
+                </span>
             )
         }
     ];

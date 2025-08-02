@@ -9,6 +9,7 @@ export default function SubjectCatalog() {
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteConfirmation, setDeleteConfirmation] = useState(null);
     const [undoTimeout, setUndoTimeout] = useState(null);
+    const [deletedSubject, setDeletedSubject] = useState(null);
     const [subjectsList, setSubjectsList] = useState([]);
     const navigate = useNavigate();
     const { showToast } = useContext(ToastContext);
@@ -30,8 +31,8 @@ export default function SubjectCatalog() {
         if (!searchTerm) return list;
         return list.filter((subject) =>
             subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            subject.description.toLowerCase().includes(searchTerm.toLowerCase())
+            subject.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (subject.school?.name && subject.school.name.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     };
 
@@ -62,27 +63,52 @@ export default function SubjectCatalog() {
     };
 
     // Confirm delete
-    const confirmDelete = (subject) => {
-        // Here you would typically make an API call to delete the subject
-        console.log("Deleting subject:", subject.id);
-        
-        showToast(`${subject.name} deleted successfully`, 'success');
-        
-        // Show undo option
-        const timeout = setTimeout(() => {
-            // Final deletion after timeout
-            console.log("Subject permanently deleted:", subject.id);
-        }, 5000);
-        
-        setUndoTimeout(timeout);
-        setDeleteConfirmation(null);
+    const confirmDelete = async (subject) => {
+        try {
+            // Store the subject for potential undo
+            setDeletedSubject(subject);
+            
+            // Remove from local state immediately (UI responsiveness)
+            setSubjectsList(prevSubjects => 
+                prevSubjects.filter(s => s._id !== subject._id)
+            );
+            
+            showToast(`${subject.name} deleted successfully`, 'success');
+            
+            // Set timeout for permanent deletion
+            const timeout = setTimeout(async () => {
+                try {
+                    // Actually delete from backend after timeout
+                    await subjectService.deleteSubject(subject._id);
+                    setDeletedSubject(null);
+                    console.log("Subject permanently deleted:", subject._id);
+                } catch (error) {
+                    // If deletion fails, restore the subject
+                    setSubjectsList(prevSubjects => [...prevSubjects, subject]);
+                    showToast(`Failed to delete subject: ${error.message}`, 'error');
+                    setDeletedSubject(null);
+                }
+                setUndoTimeout(null);
+            }, 5000);
+            
+            setUndoTimeout(timeout);
+            setDeleteConfirmation(null);
+        } catch (error) {
+            showToast(`Failed to prepare deletion: ${error.message}`, 'error');
+            setDeleteConfirmation(null);
+        }
     };
 
     // Handle undo
     const handleUndo = () => {
-        if (undoTimeout) {
+        if (undoTimeout && deletedSubject) {
             clearTimeout(undoTimeout);
             setUndoTimeout(null);
+            
+            // Restore the subject to the list
+            setSubjectsList(prevSubjects => [...prevSubjects, deletedSubject]);
+            setDeletedSubject(null);
+            
             showToast("Deletion cancelled", 'info');
         }
     };
@@ -139,7 +165,7 @@ export default function SubjectCatalog() {
                                         Subject
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Code
+                                        School
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Description
@@ -167,8 +193,8 @@ export default function SubjectCatalog() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {subject.code}
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                {subject.school?.name || 'N/A'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">

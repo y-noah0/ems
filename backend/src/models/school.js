@@ -8,6 +8,13 @@ const SchoolSchema = new Schema({
         unique: true,
         trim: true
     },
+    code: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        uppercase: true
+    },
     address: {
         type: String,
         required: true,
@@ -42,7 +49,16 @@ const SchoolSchema = new Schema({
     logo: {
         type: String,
         trim: true,
-        match: [/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i, 'Please enter a valid image URL'],
+        validate: {
+            validator: function(v) {
+                if (!v) return true; // Allow null/empty values
+                // Allow both URLs and local file paths
+                const urlPattern = /^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i;
+                const pathPattern = /^uploads\/.*\.(?:png|jpg|jpeg|svg|gif)$/i;
+                return urlPattern.test(v) || pathPattern.test(v);
+            },
+            message: 'Please enter a valid image URL or file path'
+        },
         default: null
     },
     isDeleted: {

@@ -40,7 +40,11 @@ const schoolService = {
   },
   createSchool: async (schoolData) => {
     try {
-      const response = await api.post('/', schoolData);
+      const response = await api.post('/', schoolData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       toast.success('School created successfully!');
       return response.data.school;
     } catch (error) {
@@ -62,7 +66,11 @@ const schoolService = {
   // Update a school by ID
   updateSchool: async (id, schoolData) => {
     try {
-      const response = await api.put(`/${id}`, schoolData);
+      const response = await api.put(`/${id}`, schoolData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       toast.success('School updated successfully!');
       return response.data.school;
     } catch (error) {

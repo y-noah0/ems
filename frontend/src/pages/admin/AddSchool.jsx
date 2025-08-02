@@ -14,6 +14,7 @@ export default function AddSchool() {
     const [searchTerm, setSearchTerm] = useState('');
     const [formData, setFormData] = useState({
         name: '',
+        code: '',
         location: { district: '', sector: '', cell: '' },
         contact: { phone: '', email: '', website: '' },
         headmaster: '',
@@ -44,6 +45,7 @@ export default function AddSchool() {
                 const [district, sector, cell] = [parts[0]||'', parts[1]||'', parts[2]||''];
                 setFormData({
                     name: school.name,
+                    code: school.code || '',
                     location: { district, sector, cell },
                     contact: { phone: school.contactPhone, email: school.contactEmail, website: '' },
                     // Prepopulate headmaster with email for edit
@@ -59,7 +61,7 @@ export default function AddSchool() {
     // Filter trades by search term and selected school type
     const filteredTrades = trades.filter(trade =>
         // match trade category to selected school type
-        trade.category === formData.type &&
+        trade.category === formData.category &&
         (
             trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             trade.code.toLowerCase().includes(searchTerm.toLowerCase())
@@ -103,9 +105,22 @@ export default function AddSchool() {
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            // Validate required fields
+            if (!formData.name) {
+                toast.error('Please provide a school name');
+                return;
+            }
+            if (!formData.code) {
+                toast.error('Please provide a school code');
+                return;
+            }
+            if (!formData.category) {
+                toast.error('Please select a school type');
+                return;
+            }
             //get headmaster ID from email
             if (!formData.headmaster) {
-                toast.error('Please provide a headmaster ID');
+                toast.error('Please provide a headmaster email');
                 return;
             }
             const headmaster = await authService.getHeadmaster(formData.headmaster);
@@ -118,6 +133,7 @@ export default function AddSchool() {
             // submit as multipart/form-data
             const data = new FormData();
             data.append('name', formData.name);
+            data.append('code', formData.code);
             data.append('address', `${formData.location.district}, ${formData.location.sector}, ${formData.location.cell}`);
             data.append('contactEmail', formData.contact.email);
             data.append('contactPhone', formData.contact.phone);
@@ -125,7 +141,10 @@ export default function AddSchool() {
             data.append('category', formData.category);
             data.append('headmaster', headmaster.id);
             selectedTrades.forEach(id => data.append('tradesOffered', id));
-            formData.logo? data.append('logo', formData.logo): data.append('logo', null);
+            // Only append logo if a file is selected
+            if (formData.logo && formData.logo instanceof File) {
+                data.append('logo', formData.logo);
+            }
             
             if (id) {
                 // update mode
@@ -199,8 +218,8 @@ export default function AddSchool() {
                                         School Type *
                                     </label>
                                     <select
-                                        name="type"
-                                        value={formData.type}
+                                        name="category"
+                                        value={formData.category}
                                         onChange={handleInputChange}
                                         required
                                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
@@ -212,20 +231,6 @@ export default function AddSchool() {
                                         <option value="UNIVERSITY">University</option>
                                         <option value="CAMBRIDGE">Cambridge</option>
                                     </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Established Year
-                                    </label>
-                                    <input
-                                        type="number"
-                                        name="establishedYear"
-                                        value={formData.establishedYear}
-                                        onChange={handleInputChange}
-                                        min="1900"
-                                        max={new Date().getFullYear()}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                                    />
                                 </div>
                             </div>
                             
@@ -424,8 +429,8 @@ export default function AddSchool() {
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={isSubmitting || !formData.name}>
-                                {isSubmitting ? 'Submitting...' : 'Add School'}
+                            <Button type="submit" disabled={isSubmitting || !formData.name || !formData.code || !formData.category}>
+                                {isSubmitting ? 'Submitting...' : (id ? 'Update School' : 'Add School')}
                             </Button>
                         </div>
                     </form>

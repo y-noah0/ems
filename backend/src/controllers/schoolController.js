@@ -35,7 +35,7 @@ const createSchool = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { name, address, contactEmail, contactPhone, headmaster, tradesOffered, category } = req.body;
+        const { name, address, contactEmail, code, contactPhone, headmaster, tradesOffered, category } = req.body;
         const logo = req.file ? req.file.path : req.body.logo || null;
 
         const existing = await School.findOne({ name, category });
@@ -54,6 +54,7 @@ const createSchool = async (req, res) => {
         const school = new School({
             name,
             address,
+            code,
             contactEmail,
             contactPhone,
             headmaster,

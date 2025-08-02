@@ -7,7 +7,7 @@ const subjectController = require('../controllers/subjectController');
 const validateSubjectCreateUpdate = [
     body('name').notEmpty().withMessage('Name is required').isString().trim(),
     body('description').optional().isString().trim(),
-    body('schoolId').notEmpty().withMessage('School is required').isMongoId().optional(),
+    body('school').notEmpty().withMessage('School is required').isMongoId(),
     body('trades').optional().isArray(),
     body('trades.*').isMongoId(),
     body('teacher').optional().isMongoId(),

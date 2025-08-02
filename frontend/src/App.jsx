@@ -50,7 +50,10 @@ import TradesCatalog from "./pages/admin/TradesCatalog";
 import TradeDetail from "./pages/admin/TradeDetail";
 import SubjectCatalog from "./pages/admin/SubjectCatalog";
 import SubjectDetail from "./pages/admin/SubjectDetail";
+import AddSubject from "./pages/admin/AddSubject";
+import EditSubject from "./pages/admin/EditSubject";
 import AddTrades from "./pages/admin/AddTrades";
+import HeadmasterManagement from "./pages/admin/HeadmasterManagement";
 import ExamManagement from "./pages/ExamManagement";
 import SubscriptionManagement from "./pages/admin/SubscriptionManagement";
 import HeadmasterDashboard from "./pages/Headmaster/HeadmasterDashboard";
@@ -1118,12 +1121,39 @@ function App() {
                             />
 
                             <Route
+                                path="/admin/subjects/add"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <AddSubject />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="/admin/subjects/edit/:id"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <EditSubject />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
                                 path="/admin/subjects/:id"
                                 element={
                                     <ProtectedRoute
                                         allowedRoles={["admin", "headmaster"]}
                                     >
                                         <SubjectDetail />
+                                    </ProtectedRoute>
+                                }
+                            />
+
+                            <Route
+                                path="/admin/headmasters"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <HeadmasterManagement />
                                     </ProtectedRoute>
                                 }
                             />

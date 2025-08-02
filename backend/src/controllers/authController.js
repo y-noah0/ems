@@ -551,7 +551,7 @@ const fetchHeadmasterByEmail = async (req, res) => {
 
     const { email } = req.body;
     const user = await User.findOne({ email: email.toLowerCase(), role: 'headmaster', isDeleted: false })
-      .select('_id');
+      .select('_id fullName email phoneNumber school profilePicture preferences');
 
     if (!user) {
       logger.warn('Headmaster not found for email', { email, ip: req.ip });
