@@ -1,12 +1,12 @@
 const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
 const winston = require('winston');
@@ -18,8 +18,6 @@ const socketHandler = require('./socketHandler');
 const Exam = require('./models/Exam');
 const Submission = require('./models/Submission');
 const schedule = require('node-schedule');
-
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -38,10 +36,9 @@ app.use(helmet());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan('dev')); // HTTP request logger
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Max 100 requests per window
-}));
+
+// --- NEW: Serve uploads folder statically for image access ---
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Attach io instance to each request
 app.use((req, res, next) => {
@@ -61,7 +58,7 @@ io.on('connection', (socket) => {
 const routes = require('./routes');
 app.use('/api', routes);
 
-// Fix missing imports and variables
+// Logger setup
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: winston.format.combine(
@@ -168,7 +165,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam
     process.exit(1);
   });
 
-// API Routes
+// API Routes (dynamically loaded)
 const routesPath = path.join(__dirname, 'routes');
 fs.readdirSync(routesPath).forEach(file => {
   if (file.endsWith('.js')) {

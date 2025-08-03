@@ -1,6 +1,7 @@
 const express = require('express');
 const { check } = require('express-validator');
 const router = express.Router();
+const upload = require('../middlewares/upload');
 
 const {
   register,
@@ -11,13 +12,15 @@ const {
   requestPasswordReset,
   resetPassword,
   enable2FA,
-  updateProfile
+  updateProfile,
+  resendVerificationCode,
+  fetchHeadmasterByEmail
 } = require('../controllers/authController');
 
 // Middleware for validation
 const registerValidation = [
   check('fullName', 'Full name is required').notEmpty().trim(),
-  check('password', 'Password is required and should be at least 6 characters'),
+  check('password', 'Password is required and should be at least 6 characters').isLength({ min: 6 }),
   check('email', 'Please include a valid email')
     .if((value, { req }) => req.body.role !== 'student')
     .isEmail()
@@ -36,10 +39,6 @@ const registerValidation = [
     .optional()
     .matches(/^\+?\d{10,15}$/)
     .withMessage('Invalid phone number'),
-  check('profilePicture', 'Please enter a valid image URL')
-    .optional()
-    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
-    .withMessage('Invalid image URL'),
   check('subjects', 'Subjects are only allowed for teachers')
     .if((value, { req }) => req.body.role !== 'teacher')
     .isEmpty()
@@ -53,19 +52,15 @@ const registerValidation = [
   check('parentPhoneNumber', 'Please enter a valid parent phone number')
     .if((value, { req }) => req.body.role === 'student' && value != null)
     .matches(/^\+?\d{10,15}$/)
-    .withMessage('Invalid parent phone number')
+    .withMessage('Invalid parent phone number'),
+  check('profilePicture', 'Please include a valid image URL')
+    .optional()
+    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
+    .withMessage('Invalid image URL')
 ];
 
 const loginValidation = [
   check('identifier', 'Identifier is required').notEmpty(),
-  check('identifier', 'Please include a valid email for non-students'),
-  // .if((value, { req }) => {
-  //   // Check if identifier looks like an email
-  //   const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-  //   return emailRegex.test(value);
-  // })
-  // .isEmail()
-  // .normalizeEmail(),
   check('password', 'Password is required').exists(),
   check('twoFactorCode', '2FA code must be a 6-digit number').optional().isNumeric().isLength({ min: 6, max: 6 })
 ];
@@ -75,14 +70,29 @@ const { authenticate } = require('../middlewares/authMiddleware');
 // @route   POST /auth/register
 // @desc    Register user
 // @access  Public
-router.post('/register', registerValidation, register);
+router.post('/register', upload.single('profilePicture'), registerValidation, register);
 
 // @route   POST /auth/verify-email
 // @desc    Verify email
 // @access  Public
 router.post('/verify-email', [
+  check('userId', 'User ID is required').notEmpty(),
   check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 })
 ], verifyEmail);
+
+// @route   POST /auth/resend-verification
+// @desc    Resend verification code
+// @access  Public
+router.post('/resend-verification', [
+  check('email', 'Please include a valid email').isEmail().normalizeEmail()
+], resendVerificationCode);
+
+// @route   POST /auth/fetch-headmaster
+// @desc    Fetch headmaster by email
+// @access  Private
+router.post('/fetch-headmaster', authenticate, [
+  check('email', 'Please include a valid email').isEmail().normalizeEmail()
+], fetchHeadmasterByEmail);
 
 // @route   POST /auth/login
 // @desc    Log in user
@@ -122,7 +132,7 @@ router.post('/enable-2fa', authenticate, enable2FA);
 // @route   PUT /auth/profile
 // @desc    Update user profile
 // @access  Private
-router.put('/profile', authenticate, [
+router.put('/profile', authenticate, upload.single('profilePicture'), [
   check('email').optional().isEmail().withMessage('Invalid email').normalizeEmail(),
   check('phoneNumber').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number'),
   check('profilePicture').optional().matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i).withMessage('Invalid image URL'),

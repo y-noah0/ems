@@ -32,7 +32,7 @@ const DeanDashboard = () => {
 
         // Fetch teachers
         const teachersData = await adminService.getAllTeachers();
-        
+
         // Calculate student count by fetching students for each class
         let totalStudents = 0;
         for (const classItem of classesData) {
@@ -77,9 +77,9 @@ const DeanDashboard = () => {
               <ClassPerformance />
             </div>
             <div className="w-full flex-shrink-0 lg:w-[300px] xl:w-[350px] 2xl:w-[400px] mt-6 lg:mt-0">
-                
-                <ExamsSection />
-              
+
+              <ExamsSection />
+
             </div>
           </div>
         </>

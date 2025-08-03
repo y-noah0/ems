@@ -1,16 +1,33 @@
 import React from 'react';
 import QuestionCard from './QuestionCard';
 
-const ExamContent = ({ questions }) => {
+const ExamContent = ({ questions, userRole = 'teacher' }) => {
+  const getHeaderTitle = () => {
+    switch (userRole) {
+      case 'student':
+        return 'Exam Questions';
+      case 'dean':
+        return 'Exam Overview';
+      case 'teacher':
+      default:
+        return 'Exam Preview';
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex-1 overflow-hidden">
       <div className="p-4 sm:p-6 border-b border-gray-100">
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">Exam Preview</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">{getHeaderTitle()}</h2>
       </div>
       
       <div className="p-4 sm:p-6 overflow-y-auto flex-1 max-h-[calc(100vh-300px)]">
         {questions.map((question, index) => (
-          <QuestionCard key={question.id} question={question} index={index} />
+          <QuestionCard 
+            key={question._id || index} 
+            question={question} 
+            index={index} 
+            userRole={userRole}
+          />
         ))}
       </div>
       

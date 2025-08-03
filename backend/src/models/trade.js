@@ -18,12 +18,18 @@ const TradeSchema = new Schema({
         type: String,
         trim: true
     },
+    category: {
+        type: String,
+        required: true,
+        enum: ['REB', 'TVET', 'PRIMARY' , 'OLEVEL' , "CAMBRIDGE" , 'UNIVERSITY'],
+        trim: true
+    },
     isDeleted: {
         type: Boolean,
         default: false
     }
 }, { timestamps: true });
 
-TradeSchema.index({ code: 1 });
+TradeSchema.index({ code: 1, category: 1 });
 
 module.exports = mongoose.model('Trade', TradeSchema);

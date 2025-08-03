@@ -1,0 +1,285 @@
+{
+  "classes": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d1",
+      "level": "L3",
+      "trade": "SOD",
+      "year": 2024,
+      "term": 1,
+      "name": "L3SOD",
+      "className": "L3SOD",
+      "subjects": [
+        "66d1e2a5f8c3d4e5f6a7b8e1",
+        "66d1e2a5f8c3d4e5f6a7b8e6"
+      ],
+      "students": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8c9",
+          "fullName": "Jean Baptiste Uwimana",
+          "registrationNumber": "STU2024001",
+          "email": "jean.uwimana@student.edu.rw"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8ca",
+          "fullName": "Marie Claire Mukamana",
+          "registrationNumber": "STU2024002",
+          "email": "marie.mukamana@student.edu.rw"
+        }
+      ],
+      "studentCount": 2,
+      "createdAt": "2024-08-30T06:00:00.000Z",
+      "updatedAt": "2024-08-30T06:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d2",
+      "level": "L3",
+      "trade": "NIT",
+      "year": 2024,
+      "term": 1,
+      "name": "L3NIT",
+      "className": "L3NIT",
+      "subjects": [
+        "66d1e2a5f8c3d4e5f6a7b8e2",
+        "66d1e2a5f8c3d4e5f6a7b8e7"
+      ],
+      "students": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8cb",
+          "fullName": "Patrick Niyonsenga",
+          "registrationNumber": "STU2024003",
+          "email": "patrick.niyonsenga@student.edu.rw"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8cc",
+          "fullName": "Aline Uwimana",
+          "registrationNumber": "STU2024004",
+          "email": "aline.uwimana@student.edu.rw"
+        }
+      ],
+      "studentCount": 2,
+      "createdAt": "2024-08-30T06:15:00.000Z",
+      "updatedAt": "2024-08-30T06:15:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d3",
+      "level": "L4",
+      "trade": "SOD",
+      "year": 2024,
+      "term": 1,
+      "name": "L4SOD",
+      "className": "L4SOD",
+      "subjects": [
+        "66d1e2a5f8c3d4e5f6a7b8e3",
+        "66d1e2a5f8c3d4e5f6a7b8e8"
+      ],
+      "students": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8cd",
+          "fullName": "Emmanuel Habimana",
+          "registrationNumber": "STU2024005",
+          "email": "emmanuel.habimana@student.edu.rw"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d8",
+          "fullName": "Grace Uwimana",
+          "registrationNumber": "STU2024006",
+          "email": "grace.uwimana@student.edu.rw"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8d9",
+          "fullName": "David Nkurunziza",
+          "registrationNumber": "STU2024007",
+          "email": "david.nkurunziza@student.edu.rw"
+        }
+      ],
+      "studentCount": 3,
+      "createdAt": "2024-08-30T06:30:00.000Z",
+      "updatedAt": "2024-08-30T06:30:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d4",
+      "level": "L5",
+      "trade": "NIT",
+      "year": 2024,
+      "term": 1,
+      "name": "L5NIT",
+      "className": "L5NIT",
+      "subjects": [
+        "66d1e2a5f8c3d4e5f6a7b8e4",
+        "66d1e2a5f8c3d4e5f6a7b8e9"
+      ],
+      "students": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8da",
+          "fullName": "Sarah Mukamana",
+          "registrationNumber": "STU2024008",
+          "email": "sarah.mukamana@student.edu.rw"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8db",
+          "fullName": "James Nsengimana",
+          "registrationNumber": "STU2024009",
+          "email": "james.nsengimana@student.edu.rw"
+        }
+      ],
+      "studentCount": 2,
+      "createdAt": "2024-08-30T06:45:00.000Z",
+      "updatedAt": "2024-08-30T06:45:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b8d5",
+      "level": "L4",
+      "trade": "MMP",
+      "year": 2024,
+      "term": 1,
+      "name": "L4MMP",
+      "className": "L4MMP",
+      "subjects": [
+        "66d1e2a5f8c3d4e5f6a7b8e5",
+        "66d1e2a5f8c3d4e5f6a7b8ea"
+      ],
+      "students": [
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8dc",
+          "fullName": "Alice Uwimana",
+          "registrationNumber": "STU2024010",
+          "email": "alice.uwimana@student.edu.rw"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8dd",
+          "fullName": "Peter Habimana",
+          "registrationNumber": "STU2024011",
+          "email": "peter.habimana@student.edu.rw"
+        },
+        {
+          "_id": "66d1e2a5f8c3d4e5f6a7b8de",
+          "fullName": "Christine Mukamana",
+          "registrationNumber": "STU2024012",
+          "email": "christine.mukamana@student.edu.rw"
+        }
+      ],
+      "studentCount": 3,
+      "createdAt": "2024-08-30T07:00:00.000Z",
+      "updatedAt": "2024-08-30T07:00:00.000Z"
+    }
+  ],
+  "classStatistics": {
+    "totalClasses": 5,
+    "totalStudents": 12,
+    "classesPerLevel": {
+      "L3": 2,
+      "L4": 2,
+      "L5": 1
+    },
+    "classesPerTrade": {
+      "SOD": 2,
+      "NIT": 2,
+      "MMP": 1
+    },
+    "averageStudentsPerClass": 2.4,
+    "classSizes": {
+      "small": 3,
+      "medium": 2,
+      "large": 0
+    }
+  },
+  "classPerformance": [
+    {
+      "classId": "66d1e2a5f8c3d4e5f6a7b8d1",
+      "className": "L3SOD",
+      "level": "L3",
+      "trade": "SOD",
+      "totalStudents": 2,
+      "examsTaken": 3,
+      "averageScore": 75.5,
+      "highestScore": 94.3,
+      "lowestScore": 48.6,
+      "passRate": 100,
+      "subjectPerformance": [
+        {
+          "subjectId": "66d1e2a5f8c3d4e5f6a7b8e1",
+          "subjectName": "Mathematics",
+          "averageScore": 71.4,
+          "examCount": 2,
+          "studentCount": 2
+        },
+        {
+          "subjectId": "66d1e2a5f8c3d4e5f6a7b8e6",
+          "subjectName": "Physics",
+          "averageScore": 79.6,
+          "examCount": 1,
+          "studentCount": 2
+        }
+      ],
+      "recentExams": [
+        {
+          "examId": "66d1e2a5f8c3d4e5f6a7b901",
+          "title": "Mathematics Mid-Term Assessment",
+          "date": "2024-09-15T09:00:00.000Z",
+          "averageScore": 71.4,
+          "submissionCount": 2
+        }
+      ]
+    },
+    {
+      "classId": "66d1e2a5f8c3d4e5f6a7b8d2",
+      "className": "L3NIT",
+      "level": "L3",
+      "trade": "NIT",
+      "totalStudents": 2,
+      "examsTaken": 2,
+      "averageScore": 82.0,
+      "highestScore": 100,
+      "lowestScore": 60,
+      "passRate": 100,
+      "subjectPerformance": [
+        {
+          "subjectId": "66d1e2a5f8c3d4e5f6a7b8e2",
+          "subjectName": "Programming",
+          "averageScore": 80.0,
+          "examCount": 2,
+          "studentCount": 2
+        }
+      ],
+      "recentExams": [
+        {
+          "examId": "66d1e2a5f8c3d4e5f6a7b906",
+          "title": "Programming Fundamentals Quiz",
+          "date": "2024-09-20T14:00:00.000Z",
+          "averageScore": 80.0,
+          "submissionCount": 2
+        }
+      ]
+    },
+    {
+      "classId": "66d1e2a5f8c3d4e5f6a7b8d3",
+      "className": "L4SOD",
+      "level": "L4",
+      "trade": "SOD",
+      "totalStudents": 3,
+      "examsTaken": 1,
+      "averageScore": 93.3,
+      "highestScore": 93.3,
+      "lowestScore": 93.3,
+      "passRate": 100,
+      "subjectPerformance": [
+        {
+          "subjectId": "66d1e2a5f8c3d4e5f6a7b8e3",
+          "subjectName": "Database Systems",
+          "averageScore": 93.3,
+          "examCount": 1,
+          "studentCount": 1
+        }
+      ],
+      "recentExams": [
+        {
+          "examId": "66d1e2a5f8c3d4e5f6a7b910",
+          "title": "Database Design Final Exam",
+          "date": "2024-09-25T08:00:00.000Z",
+          "averageScore": 93.3,
+          "submissionCount": 1
+        }
+      ]
+    }
+  ]
+}

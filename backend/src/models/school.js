@@ -33,10 +33,22 @@ const SchoolSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Trade'
     }],
+    category: {
+        type: String,
+        required: true,
+        enum: ['REB', 'TVET', 'PRIMARY', 'OLEVEL', "CAMBRIDGE", 'UNIVERSITY'],
+        trim: true
+    },
     logo: {
         type: String,
         trim: true,
-        match: [/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i, 'Please enter a valid image URL'],
+        validate: {
+            validator: function (v) {
+                return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
+                    /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
+            },
+            message: 'Please enter a valid image URL or local upload path'
+        },
         default: null
     },
     isDeleted: {
@@ -45,16 +57,31 @@ const SchoolSchema = new Schema({
     }
 }, { timestamps: true });
 
-SchoolSchema.index({ name: 1 });
+SchoolSchema.index({ name: 1, category: 1 });
 
 SchoolSchema.pre('save', async function (next) {
+    const User = mongoose.model('User');
+    const Trade = mongoose.model('Trade');
+
+    // Validate headmaster
     if (this.isModified('headmaster')) {
-        const User = mongoose.model('User');
         const user = await User.findById(this.headmaster);
         if (!user || user.role !== 'headmaster') {
             return next(new Error('Headmaster must be a user with role "headmaster"'));
         }
     }
+
+    // Validate tradesOffered against category
+    if (this.isModified('tradesOffered') || this.isModified('category')) {
+        if (this.tradesOffered.length > 0) {
+            const trades = await Trade.find({ _id: { $in: this.tradesOffered }, isDeleted: false });
+            const invalidTrades = trades.filter(trade => trade.category !== this.category);
+            if (invalidTrades.length > 0) {
+                return next(new Error(`All trades must belong to the school's category: ${this.category}`));
+            }
+        }
+    }
+
     next();
 });
 

@@ -11,7 +11,7 @@ const {
 
 const {
     authenticate,
-    requireRoles
+    requireRoles,
 } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
@@ -33,7 +33,7 @@ router.get('/', authenticate, getTrades);
 router.get('/:id', authenticate, getTradeById);
 
 // Write routes restricted to dean and admin
-router.post('/',  tradeValidation, createTrade);
+router.post('/', tradeValidation, requireRoles(['dean', 'admin']), createTrade)
 router.put('/:id', authenticate, requireRoles(['dean', 'admin']), tradeValidation, updateTrade);
 router.delete('/:id', authenticate, requireRoles(['dean', 'admin']), deleteTrade);
 

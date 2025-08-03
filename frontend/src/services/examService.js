@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -27,8 +28,11 @@ const examService = {
   createExam: async (examData) => {
     try {
       const response = await api.post('/exams', examData);
+      toast.success('Exam created successfully!');
       return response.data.exam;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to create exam';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
@@ -80,21 +84,25 @@ const examService = {
           }
           return question;
         });
-      }
-      const response = await api.put(`/exams/${id}`, examData);
+      }      const response = await api.put(`/exams/${id}`, examData);
+      toast.success('Exam updated successfully!');
       return response.data.exam;
     } catch (error) {
       console.error('Error in updateExam:', error);
+      const errorMsg = error.response?.data?.message || 'Failed to update exam';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-
   // Delete exam
   deleteExam: async (id) => {
     try {
       const response = await api.delete(`/exams/${id}`);
+      toast.success('Exam deleted successfully!');
       return response.data;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to delete exam';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
@@ -124,18 +132,23 @@ const examService = {
   activateExam: async (id) => {
     try {
       const response = await api.put(`/exams/${id}/activate`);
+      toast.success('Exam activated successfully!');
       return response.data.exam;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to activate exam';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-
   // Complete exam
   completeExam: async (id) => {
     try {
       const response = await api.put(`/exams/${id}/complete`);
+      toast.success('Exam completed successfully!');
       return response.data.exam;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to complete exam';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },

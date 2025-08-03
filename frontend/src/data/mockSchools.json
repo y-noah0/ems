@@ -1,0 +1,240 @@
+{
+  "schools": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b9001",
+      "name": "Rwanda Technical and Vocational Education Training Center",
+      "shortName": "RTVETC",
+      "type": "TVET",
+      "location": {
+        "district": "Gasabo",
+        "sector": "Remera",
+        "province": "Kigali City"
+      },
+      "contact": {
+        "phone": "+250788123456",
+        "email": "info@rtvetc.edu.rw",
+        "website": "https://rtvetc.edu.rw",
+        "address": "KG 15 Ave, Remera, Gasabo, Kigali"
+      },
+      "established": 2010,
+      "capacity": 2000,
+      "currentEnrollment": 1500,
+      "status": "active",
+      "accreditation": {
+        "body": "Rwanda Education Board",
+        "level": "Category A",
+        "validUntil": "2026-12-31"
+      },
+      "trades": ["SOD", "NIT", "MMP"],
+      "levels": ["L3", "L4", "L5"],
+      "stats": {
+        "totalStudents": 1500,
+        "totalTeachers": 85,
+        "totalClasses": 45,
+        "graduationRate": 92.5
+      },
+      "createdAt": "2024-01-15T08:00:00.000Z",
+      "updatedAt": "2024-08-30T08:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b9002",
+      "name": "Kigali Institute of Technology",
+      "shortName": "KIT",
+      "type": "TVET",
+      "location": {
+        "district": "Nyarugenge",
+        "sector": "Nyarugenge",
+        "province": "Kigali City"
+      },
+      "contact": {
+        "phone": "+250788654321",
+        "email": "admin@kit.edu.rw",
+        "website": "https://kit.edu.rw",
+        "address": "KN 3 Rd, Nyarugenge, Kigali"
+      },
+      "established": 2008,
+      "capacity": 1500,
+      "currentEnrollment": 1200,
+      "status": "active",
+      "accreditation": {
+        "body": "Rwanda Education Board",
+        "level": "Category A",
+        "validUntil": "2025-08-31"
+      },
+      "trades": ["NIT", "SOD"],
+      "levels": ["L4", "L5"],
+      "stats": {
+        "totalStudents": 1200,
+        "totalTeachers": 68,
+        "totalClasses": 32,
+        "graduationRate": 89.2
+      },
+      "createdAt": "2024-01-20T09:00:00.000Z",
+      "updatedAt": "2024-08-30T09:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b9003",
+      "name": "Southern Province TVET School",
+      "shortName": "SPTS",
+      "type": "TVET",
+      "location": {
+        "district": "Huye",
+        "sector": "Ngoma",
+        "province": "Southern Province"
+      },
+      "contact": {
+        "phone": "+250788789012",
+        "email": "info@spts.edu.rw",
+        "website": "https://spts.edu.rw",
+        "address": "Huye-Ngoma Road, Huye"
+      },
+      "established": 2012,
+      "capacity": 800,
+      "currentEnrollment": 650,
+      "status": "active",
+      "accreditation": {
+        "body": "Rwanda Education Board",
+        "level": "Category B",
+        "validUntil": "2025-12-31"
+      },
+      "trades": ["MMP", "SOD"],
+      "levels": ["L3", "L4"],
+      "stats": {
+        "totalStudents": 650,
+        "totalTeachers": 42,
+        "totalClasses": 28,
+        "graduationRate": 85.7
+      },
+      "createdAt": "2024-02-01T10:00:00.000Z",
+      "updatedAt": "2024-08-30T10:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b9004",
+      "name": "Northern Technical College",
+      "shortName": "NTC",
+      "type": "TVET",
+      "location": {
+        "district": "Musanze",
+        "sector": "Muhoza",
+        "province": "Northern Province"
+      },
+      "contact": {
+        "phone": "+250788345678",
+        "email": "contact@ntc.edu.rw",
+        "website": "https://ntc.edu.rw",
+        "address": "Ruhengeri-Musanze Road, Musanze"
+      },
+      "established": 2015,
+      "capacity": 600,
+      "currentEnrollment": 480,
+      "status": "active",
+      "accreditation": {
+        "body": "Rwanda Education Board",
+        "level": "Category B",
+        "validUntil": "2026-06-30"
+      },
+      "trades": ["NIT", "MMP"],
+      "levels": ["L3", "L4", "L5"],
+      "stats": {
+        "totalStudents": 480,
+        "totalTeachers": 35,
+        "totalClasses": 20,
+        "graduationRate": 88.1
+      },
+      "createdAt": "2024-02-15T11:00:00.000Z",
+      "updatedAt": "2024-08-30T11:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b9005",
+      "name": "Eastern Province Vocational Training Center",
+      "shortName": "EPVTC",
+      "type": "TVET",
+      "location": {
+        "district": "Rwamagana",
+        "sector": "Rwamagana",
+        "province": "Eastern Province"
+      },
+      "contact": {
+        "phone": "+250788456789",
+        "email": "info@epvtc.edu.rw",
+        "website": "https://epvtc.edu.rw",
+        "address": "Rwamagana Town, Eastern Province"
+      },
+      "established": 2014,
+      "capacity": 750,
+      "currentEnrollment": 600,
+      "status": "expired",
+      "accreditation": {
+        "body": "Rwanda Education Board",
+        "level": "Category C",
+        "validUntil": "2025-03-31"
+      },
+      "trades": ["SOD", "MMP"],
+      "levels": ["L3", "L4"],
+      "stats": {
+        "totalStudents": 600,
+        "totalTeachers": 38,
+        "totalClasses": 25,
+        "graduationRate": 82.3
+      },
+      "createdAt": "2024-03-01T12:00:00.000Z",
+      "updatedAt": "2024-08-30T12:00:00.000Z"
+    }
+  ],
+  "schoolStatistics": {
+    "totalSchools": 5,
+    "activeSchools": 4,
+    "pendingApproval": 1,
+    "totalCapacity": 5650,
+    "totalEnrollment": 4430,
+    "utilizationRate": 78.4,
+    "averageGraduationRate": 87.6,
+    "schoolsByProvince": {
+      "Kigali City": 2,
+      "Southern Province": 1,
+      "Northern Province": 1,
+      "Eastern Province": 1
+    },
+    "schoolsByAccreditation": {
+      "Category A": 2,
+      "Category B": 2,
+      "Category C": 1
+    },
+    "totalStudents": 4430,
+    "totalTeachers": 258,
+    "totalClasses": 150,
+    "studentTeacherRatio": 17.2
+  },
+  "provinces": [
+    {
+      "name": "Kigali City",
+      "districts": ["Gasabo", "Kicukiro", "Nyarugenge"],
+      "schoolCount": 2,
+      "studentCount": 2700
+    },
+    {
+      "name": "Southern Province",
+      "districts": ["Huye", "Nyanza", "Gisagara", "Nyaruguru", "Nyamagabe"],
+      "schoolCount": 1,
+      "studentCount": 650
+    },
+    {
+      "name": "Northern Province", 
+      "districts": ["Musanze", "Burera", "Gicumbi", "Rulindo", "Gakenke"],
+      "schoolCount": 1,
+      "studentCount": 480
+    },
+    {
+      "name": "Eastern Province",
+      "districts": ["Rwamagana", "Nyagatare", "Gatsibo", "Kayonza", "Kirehe", "Ngoma", "Bugesera"],
+      "schoolCount": 1,
+      "studentCount": 600
+    },
+    {
+      "name": "Western Province",
+      "districts": ["Rubavu", "Nyabihu", "Ngororero", "Rusizi", "Nyamasheke", "Rutsiro", "Karongi"],
+      "schoolCount": 0,
+      "studentCount": 0
+    }
+  ]
+}

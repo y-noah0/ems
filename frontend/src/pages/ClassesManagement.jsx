@@ -3,9 +3,11 @@ import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import DynamicTable from '../components/class/DynamicTable';
 import adminService from '../services/adminService';
 import { motion } from 'framer-motion';
 import { FiPlus, FiEdit, FiTrash2, FiLoader } from 'react-icons/fi';
+import deanService from '../services/deanService';
 
 const ClassesManagement = () => {
   const [classes, setClasses] = useState([]);
@@ -29,8 +31,21 @@ const ClassesManagement = () => {
   const fetchClasses = async () => {
     setLoading(true);
     try {
-      const classesData = await adminService.getAllClasses();
-      setClasses(classesData);
+      // Fetch classes
+      const classesData = await deanService.getAllClasses();
+      // Fetch student counts for each class
+      const classesWithCount = await Promise.all(
+        classesData.map(async classItem => {
+          try {
+            const students = await deanService.getStudentsByClass(classItem._id);
+            return { ...classItem, studentCount: students.length };
+          } catch (err) {
+            console.error(`Error fetching students for class ${classItem._id}:`, err);
+            return { ...classItem, studentCount: 0 };
+          }
+        })
+      );
+      setClasses(classesWithCount);
     } catch (error) {
       setError('Failed to load classes');
     } finally {
@@ -74,8 +89,6 @@ const ClassesManagement = () => {
     });
     setEditingClass(cls);
     setShowForm(true);
-    setFormError('');
-    setFormSuccess('');
   };
 
   const handleDelete = async (id) => {
@@ -87,6 +100,11 @@ const ClassesManagement = () => {
         setError(error.message || 'Failed to delete class');
       }
     }
+  };
+
+  const handleView = (classItem) => {
+    // Navigate to class view or implement view logic
+    console.log('View class:', classItem);
   };
 
   const handleCancel = () => {

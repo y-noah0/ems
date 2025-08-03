@@ -1,0 +1,380 @@
+{
+  "subscriptions": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7e001",
+      "schoolId": "66d1e2a5f8c3d4e5f6a7b9001",
+      "schoolName": "Rwanda Technical and Vocational Education Training Center",
+      "planType": "Premium",
+      "planFeatures": [
+        "Unlimited exams",
+        "Advanced analytics",
+        "Anti-cheat monitoring",
+        "Priority support",
+        "Custom branding",
+        "API access"
+      ],
+      "maxStudents": 2000,
+      "maxTeachers": 100,
+      "maxExams": -1,
+      "currentUsage": {
+        "students": 1500,
+        "teachers": 85,
+        "examsThisMonth": 245,
+        "storageUsed": "15.2GB"
+      },
+      "pricing": {
+        "monthlyPrice": 299.99,
+        "yearlyPrice": 2999.99,
+        "currency": "USD",
+        "billingCycle": "yearly"
+      },
+      "status": "active",
+      "startDate": "2024-01-01T00:00:00.000Z",
+      "endDate": "2024-12-31T23:59:59.000Z",
+      "renewalDate": "2025-01-01T00:00:00.000Z",
+      "autoRenewal": true,
+      "paymentStatus": "paid",
+      "lastPaymentDate": "2024-01-01T00:00:00.000Z",
+      "nextPaymentDate": "2025-01-01T00:00:00.000Z",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-08-30T00:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7e002",
+      "schoolId": "66d1e2a5f8c3d4e5f6a7b9002",
+      "schoolName": "Kigali Institute of Technology",
+      "planType": "Standard",
+      "planFeatures": [
+        "Up to 500 exams/month",
+        "Basic analytics",
+        "Email support",
+        "Standard security"
+      ],
+      "maxStudents": 1500,
+      "maxTeachers": 75,
+      "maxExams": 500,
+      "currentUsage": {
+        "students": 1200,
+        "teachers": 68,
+        "examsThisMonth": 187,
+        "storageUsed": "8.7GB"
+      },
+      "pricing": {
+        "monthlyPrice": 149.99,
+        "yearlyPrice": 1499.99,
+        "currency": "USD",
+        "billingCycle": "monthly"
+      },
+      "status": "active",
+      "startDate": "2024-02-01T00:00:00.000Z",
+      "endDate": "2025-01-31T23:59:59.000Z",
+      "renewalDate": "2024-10-01T00:00:00.000Z",
+      "autoRenewal": true,
+      "paymentStatus": "paid",
+      "lastPaymentDate": "2024-09-01T00:00:00.000Z",
+      "nextPaymentDate": "2024-10-01T00:00:00.000Z",
+      "createdAt": "2024-02-01T00:00:00.000Z",
+      "updatedAt": "2024-09-01T00:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7e003",
+      "schoolId": "66d1e2a5f8c3d4e5f6a7b9003",
+      "schoolName": "Southern Province TVET School",
+      "planType": "Basic",
+      "planFeatures": [
+        "Up to 100 exams/month",
+        "Basic reporting",
+        "Community support"
+      ],
+      "maxStudents": 800,
+      "maxTeachers": 50,
+      "maxExams": 100,
+      "currentUsage": {
+        "students": 650,
+        "teachers": 42,
+        "examsThisMonth": 78,
+        "storageUsed": "3.2GB"
+      },
+      "pricing": {
+        "monthlyPrice": 49.99,
+        "yearlyPrice": 499.99,
+        "currency": "USD",
+        "billingCycle": "yearly"
+      },
+      "status": "active",
+      "startDate": "2024-03-01T00:00:00.000Z",
+      "endDate": "2025-02-28T23:59:59.000Z",
+      "renewalDate": "2025-03-01T00:00:00.000Z",
+      "autoRenewal": false,
+      "paymentStatus": "paid",
+      "lastPaymentDate": "2024-03-01T00:00:00.000Z",
+      "nextPaymentDate": "2025-03-01T00:00:00.000Z",
+      "createdAt": "2024-03-01T00:00:00.000Z",
+      "updatedAt": "2024-08-30T00:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7e004",
+      "schoolId": "66d1e2a5f8c3d4e5f6a7b9004",
+      "schoolName": "Northern Technical College",
+      "planType": "Standard",
+      "planFeatures": [
+        "Up to 500 exams/month",
+        "Basic analytics",
+        "Email support",
+        "Standard security"
+      ],
+      "maxStudents": 600,
+      "maxTeachers": 40,
+      "maxExams": 500,
+      "currentUsage": {
+        "students": 480,
+        "teachers": 35,
+        "examsThisMonth": 95,
+        "storageUsed": "4.8GB"
+      },
+      "pricing": {
+        "monthlyPrice": 149.99,
+        "yearlyPrice": 1499.99,
+        "currency": "USD",
+        "billingCycle": "yearly"
+      },
+      "status": "trial",
+      "startDate": "2024-08-01T00:00:00.000Z",
+      "endDate": "2024-09-30T23:59:59.000Z",
+      "renewalDate": "2024-10-01T00:00:00.000Z",
+      "autoRenewal": false,
+      "paymentStatus": "pending",
+      "lastPaymentDate": null,
+      "nextPaymentDate": "2024-10-01T00:00:00.000Z",
+      "createdAt": "2024-08-01T00:00:00.000Z",
+      "updatedAt": "2024-08-30T00:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7e005",
+      "schoolId": "66d1e2a5f8c3d4e5f6a7b9005",
+      "schoolName": "Eastern Province Vocational Training Center",
+      "planType": "Basic",
+      "planFeatures": [
+        "Up to 100 exams/month",
+        "Basic reporting",
+        "Community support"
+      ],
+      "maxStudents": 750,
+      "maxTeachers": 45,
+      "maxExams": 100,
+      "currentUsage": {
+        "students": 600,
+        "teachers": 38,
+        "examsThisMonth": 124,
+        "storageUsed": "2.9GB"
+      },
+      "pricing": {
+        "monthlyPrice": 49.99,
+        "yearlyPrice": 499.99,
+        "currency": "USD",
+        "billingCycle": "monthly"
+      },
+      "status": "suspended",
+      "startDate": "2024-04-01T00:00:00.000Z",
+      "endDate": "2025-03-31T23:59:59.000Z",
+      "renewalDate": "2024-10-01T00:00:00.000Z",
+      "autoRenewal": false,
+      "paymentStatus": "overdue",
+      "lastPaymentDate": "2024-07-01T00:00:00.000Z",
+      "nextPaymentDate": "2024-09-01T00:00:00.000Z",
+      "suspendedReason": "Payment overdue",
+      "suspendedDate": "2024-08-15T00:00:00.000Z",
+      "createdAt": "2024-04-01T00:00:00.000Z",
+      "updatedAt": "2024-08-15T00:00:00.000Z"
+    }
+  ],
+  "plans": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7f001",
+      "name": "Basic",
+      "description": "Perfect for small institutions getting started",
+      "features": [
+        "Up to 100 exams per month",
+        "Basic reporting and analytics",
+        "Email support",
+        "Standard exam types",
+        "Basic anti-cheat features",
+        "1GB storage"
+      ],
+      "limits": {
+        "maxStudents": 500,
+        "maxTeachers": 25,
+        "maxExams": 100,
+        "storageLimit": "1GB",
+        "supportLevel": "email"
+      },
+      "pricing": {
+        "monthly": 49.99,
+        "yearly": 499.99,
+        "currency": "USD"
+      },
+      "popular": false,
+      "active": true
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7f002",
+      "name": "Standard",
+      "description": "Great for growing institutions with advanced needs",
+      "features": [
+        "Up to 500 exams per month",
+        "Advanced analytics and reporting",
+        "Email and chat support",
+        "All exam types",
+        "Enhanced anti-cheat monitoring",
+        "10GB storage",
+        "Custom exam templates",
+        "Grade export features"
+      ],
+      "limits": {
+        "maxStudents": 1500,
+        "maxTeachers": 75,
+        "maxExams": 500,
+        "storageLimit": "10GB",
+        "supportLevel": "email_chat"
+      },
+      "pricing": {
+        "monthly": 149.99,
+        "yearly": 1499.99,
+        "currency": "USD"
+      },
+      "popular": true,
+      "active": true
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7f003",
+      "name": "Premium",
+      "description": "For large institutions requiring maximum features",
+      "features": [
+        "Unlimited exams",
+        "Advanced analytics with custom dashboards",
+        "Priority support (phone, email, chat)",
+        "All exam types and customizations",
+        "AI-powered anti-cheat system",
+        "50GB storage",
+        "Custom branding",
+        "API access",
+        "White-label options",
+        "Dedicated account manager",
+        "Custom integrations",
+        "Advanced security features"
+      ],
+      "limits": {
+        "maxStudents": 5000,
+        "maxTeachers": 200,
+        "maxExams": -1,
+        "storageLimit": "50GB",
+        "supportLevel": "priority"
+      },
+      "pricing": {
+        "monthly": 299.99,
+        "yearly": 2999.99,
+        "currency": "USD"
+      },
+      "popular": false,
+      "active": true
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7f004",
+      "name": "Enterprise",
+      "description": "Custom solutions for large-scale deployments",
+      "features": [
+        "Unlimited everything",
+        "Custom feature development",
+        "24/7 dedicated support",
+        "On-premise deployment options",
+        "Custom security compliance",
+        "Unlimited storage",
+        "Full customization",
+        "Multi-tenant architecture",
+        "Advanced reporting suite",
+        "Custom SLA agreements"
+      ],
+      "limits": {
+        "maxStudents": -1,
+        "maxTeachers": -1,
+        "maxExams": -1,
+        "storageLimit": "unlimited",
+        "supportLevel": "dedicated"
+      },
+      "pricing": {
+        "monthly": "Custom",
+        "yearly": "Custom",
+        "currency": "USD"
+      },
+      "popular": false,
+      "active": true,
+      "contactSales": true
+    }
+  ],
+  "subscriptionStatistics": {
+    "totalSubscriptions": 5,
+    "activeSubscriptions": 3,
+    "trialSubscriptions": 1,
+    "suspendedSubscriptions": 1,
+    "expiredSubscriptions": 0,
+    "subscriptionsByPlan": {
+      "Basic": 2,
+      "Standard": 2,
+      "Premium": 1,
+      "Enterprise": 0
+    },
+    "totalRevenue": {
+      "monthly": 749.94,
+      "yearly": 6499.93,
+      "currency": "USD"
+    },
+    "averageRevenuePerSubscription": 149.99,
+    "churnRate": 2.5,
+    "renewalRate": 92.0,
+    "usageStatistics": {
+      "totalStudents": 4430,
+      "totalTeachers": 268,
+      "totalExamsThisMonth": 729,
+      "totalStorageUsed": "34.8GB"
+    }
+  },
+  "paymentHistory": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7g001",
+      "subscriptionId": "66d1e2a5f8c3d4e5f6a7e001",
+      "schoolName": "RTVETC",
+      "amount": 2999.99,
+      "currency": "USD",
+      "paymentMethod": "credit_card",
+      "paymentDate": "2024-01-01T00:00:00.000Z",
+      "status": "completed",
+      "invoiceNumber": "INV-2024-001",
+      "description": "Premium Plan - Annual Subscription"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7g002",
+      "subscriptionId": "66d1e2a5f8c3d4e5f6a7e002",
+      "schoolName": "KIT",
+      "amount": 149.99,
+      "currency": "USD",
+      "paymentMethod": "bank_transfer",
+      "paymentDate": "2024-09-01T00:00:00.000Z",
+      "status": "completed",
+      "invoiceNumber": "INV-2024-023",
+      "description": "Standard Plan - Monthly Subscription"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7g003",
+      "subscriptionId": "66d1e2a5f8c3d4e5f6a7e005",
+      "schoolName": "EPVTC",
+      "amount": 49.99,
+      "currency": "USD",
+      "paymentMethod": "credit_card",
+      "paymentDate": "2024-07-01T00:00:00.000Z",
+      "status": "failed",
+      "invoiceNumber": "INV-2024-018",
+      "description": "Basic Plan - Monthly Subscription",
+      "failureReason": "Insufficient funds"
+    }
+  ]
+}

@@ -33,7 +33,27 @@ const tradeService = {
   getTradeById: async (id) => {
     try {
       const response = await api.get(`/trade/${id}`);
-      return response.data.trades;
+      // backend returns single trade in 'trade'
+      return response.data.trade;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  // Create a new trade
+  createTrade: async (payload) => {
+    try {
+      const response = await api.post('/trade', payload);
+      // backend returns created trade in 'trade'
+      return response.data.trade;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  // Delete a trade by ID
+  deleteTrade: async (id) => {
+    try {
+      const response = await api.delete(`/trade/${id}`);
+      return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }

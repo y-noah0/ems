@@ -59,7 +59,7 @@ const createClass = async (req, res) => {
 
 // Get all classes (filtered by schoolId in query)
 const getClasses = async (req, res) => {
-    const schoolId = req.query.schoolId;
+    const {schoolId} = req.query;
 
     // Validate schoolId
     if (!schoolId || !mongoose.isValidObjectId(schoolId)) {

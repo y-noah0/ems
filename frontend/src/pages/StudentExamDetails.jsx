@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import DynamicTable from '../components/class/DynamicTable';
 import examService from '../services/examService';
 import submissionService from '../services/submissionService';
 
@@ -100,6 +101,43 @@ const StudentExamDetails = () => {
   const hasCompletedExam = () => {
     return submissions.some(submission => submission.status === 'graded');
   };
+
+  // Submissions table columns
+  const submissionsColumns = [
+    { 
+      key: 'submittedAt', 
+      title: 'Date',
+      render: (value) => (
+        <span className="text-sm text-gray-900">
+          {new Date(value).toLocaleString()}
+        </span>
+      )
+    },
+    { 
+      key: 'status', 
+      title: 'Status',
+      render: (value) => (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          value === 'graded'
+            ? 'bg-green-100 text-green-800'
+            : 'bg-yellow-100 text-yellow-800'
+        }`}>
+          {value}
+        </span>
+      )
+    },
+    { 
+      key: 'totalScore', 
+      title: 'Score',
+      render: (value) => (
+        <span className="text-sm font-medium text-gray-900">
+          {value !== undefined
+            ? `${value}/${exam?.totalPoints || 100}`
+            : '-'}
+        </span>
+      )
+    }
+  ];
 
   const handleTakeExam = () => {
     navigate(`/student/take-exam/${examId}`);
@@ -212,44 +250,11 @@ const StudentExamDetails = () => {
           {submissions.length > 0 && (
             <Card title="Your Submissions">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Score
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {submissions.map((submission) => (
-                      <tr key={submission._id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {new Date(submission.submittedAt).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`inline-block px-2 py-1 text-xs rounded-full ${submission.status === 'graded'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'}`}
-                          >
-                            {submission.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.totalScore !== undefined
-                            ? `${submission.totalScore}/${exam.totalPoints || 100}`
-                            : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <DynamicTable
+                  data={submissions}
+                  columns={submissionsColumns}
+                  emptyMessage="No submissions available"
+                />
               </div>
             </Card>
           )}

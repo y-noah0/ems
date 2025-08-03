@@ -15,7 +15,7 @@ const {
 const router = express.Router();
 
 // Roles
-const deanOrAdmin = requireRoles(['dean', 'admin']);
+const deanOrAdmin = requireRoles(['dean', 'admin' , 'headmaster']);
 
 // Read-only for all authenticated users
 router.get(

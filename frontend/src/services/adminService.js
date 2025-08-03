@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -53,6 +54,8 @@ const adminService = {
       const response = await api.post('/admin/classes', { ...classData, schoolId });
       return response.data.class;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to create class';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
@@ -62,6 +65,8 @@ const adminService = {
       const response = await api.put(`/admin/classes/${id}`, { ...classData, schoolId });
       return response.data.class;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to update class';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
@@ -132,8 +137,11 @@ const adminService = {
   createStudent: async (studentData) => {
     try {
       const response = await api.post('/admin/students', studentData);
+      toast.success('Student created successfully!');
       return response.data;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Error creating student';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Error creating student' };
     }
   },
@@ -146,8 +154,11 @@ const adminService = {
           'Content-Type': 'multipart/form-data'
         }
       });
+      toast.success('Students imported successfully!');
       return response.data;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Error importing students';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Error importing students' };
     }
   },
@@ -204,6 +215,8 @@ const adminService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
+  
+
 };
 
 export default adminService;

@@ -5,6 +5,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import examService from '../services/examService';
+import ExamCard from '../components/ui/ExamCard';
 
 const SubmissionsListPage = () => {
   const navigate = useNavigate();
@@ -123,76 +124,72 @@ const SubmissionsListPage = () => {
       ) : (
         <div className="space-y-8">
           {Object.entries(groupedSubmissions).map(([examId, { exam, submissions }]) => (
-            <div key={examId} className="border rounded-lg shadow-sm overflow-hidden">
-              <div className="bg-gray-50 p-4 border-b">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="font-semibold text-lg">{exam.title}</h2>
-                    <p className="text-gray-600 text-sm">
-                      {exam.subject?.name} • Class: {exam.class?.level}{exam.class?.trade}
-                    </p>
-                  </div>
-                  <Button
-                    as={Link}
-                    to={`/teacher/exams/${examId}/results`}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    View All Results
-                  </Button>
-                </div>
+            <div key={examId} className="mb-6">
+              <div className="flex flex-col">
+                <Link 
+                  to={`/teacher/exams/${examId}/results`}
+                  className="mb-4"
+                >
+                  <ExamCard 
+                    title={exam.title}
+                    subject={exam.subject?.name || "N/A"}
+                    classCode={exam.class ? `${exam.class.level}${exam.class.trade}` : "N/A"}
+                    description={`${submissions.length} submissions - ${submissions.filter(s => s.status === 'pending').length} pending, ${submissions.filter(s => s.status === 'graded').length} graded`}
+                    status={submissions.some(s => s.status === 'pending') ? "active" : "completed"}
+                    startTime={exam.schedule?.start ? new Date(exam.schedule.start).toLocaleString() : "N/A"}
+                    endTime={exam.schedule?.start && exam.schedule?.duration ? 
+                      new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString() : "N/A"}
+                    questions={exam.questions?.length || 0}
+                    totalPoints={exam.totalPoints || 0}
+                    progress={Math.round((submissions.filter(s => s.status === 'graded').length / submissions.length) * 100) || 0}
+                  />
+                </Link>
                 
-                <div className="mt-2 flex space-x-4 text-sm text-gray-500">
-                  <p>Total Submissions: {submissions.length}</p>
-                  <p>Pending: {submissions.filter(s => s.status === 'pending').length}</p>
-                  <p>Graded: {submissions.filter(s => s.status === 'graded').length}</p>
-                </div>
-              </div>
-              
-              <div className="divide-y">
-                {submissions.map((submission) => (
-                  <div key={submission._id} className="p-4 hover:bg-gray-50">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium">
-                          {submission.student.firstName} {submission.student.lastName}
-                        </h3>
-                        <p className="text-gray-600 text-sm">
-                          {submission.student.registrationNumber}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        {submission.status === 'pending' ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Pending Review
-                          </span>
-                        ) : (
-                          <>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Graded
+                <div className="divide-y border rounded-lg shadow-sm overflow-hidden bg-white">
+                  {submissions.map((submission) => (
+                    <div key={submission._id} className="p-4 hover:bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium">
+                            {submission.student.firstName} {submission.student.lastName}
+                          </h3>
+                          <p className="text-gray-600 text-sm">
+                            {submission.student.registrationNumber}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {submission.status === 'pending' ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              Pending Review
                             </span>
-                            <p className="text-sm font-medium mt-1">
-                              {submission.score}/{submission.totalPoints} ({Math.round((submission.score / submission.totalPoints) * 100)}%)
-                            </p>
-                          </>
-                        )}
+                          ) : (
+                            <>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Graded
+                              </span>
+                              <p className="text-sm font-medium mt-1">
+                                {submission.score}/{submission.totalPoints} ({Math.round((submission.score / submission.totalPoints) * 100)}%)
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="mt-2 flex items-center justify-between">
+                        <p className="text-sm text-gray-500">
+                          Submitted: {new Date(submission.submittedAt).toLocaleString()}
+                        </p>
+                        <Button
+                          onClick={() => navigate(`/teacher/submissions/${submission._id}/view`)}
+                          variant={submission.status === 'pending' ? "primary" : "secondary"}
+                          size="sm"
+                        >
+                          {submission.status === 'pending' ? 'Review & Grade' : 'View Details'}
+                        </Button>
                       </div>
                     </div>
-                    
-                    <div className="mt-2 flex items-center justify-between">
-                      <p className="text-sm text-gray-500">
-                        Submitted: {new Date(submission.submittedAt).toLocaleString()}
-                      </p>
-                      <Button
-                        onClick={() => navigate(`/teacher/submissions/${submission._id}/view`)}
-                        variant={submission.status === 'pending' ? "primary" : "secondary"}
-                        size="sm"
-                      >
-                        {submission.status === 'pending' ? 'Review & Grade' : 'View Details'}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           ))}

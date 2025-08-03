@@ -1,0 +1,338 @@
+{
+  "systemLogs": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c101",
+      "timestamp": "2024-08-30T14:30:25.123Z",
+      "level": "info",
+      "message": "User login successful",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8c9",
+      "userEmail": "jean.uwimana@student.edu.rw",
+      "action": "login",
+      "ip": "192.168.1.105",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "metadata": {
+        "role": "student",
+        "loginMethod": "email"
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c102",
+      "timestamp": "2024-08-30T14:25:12.456Z",
+      "level": "warn",
+      "message": "Multiple failed login attempts detected",
+      "userId": null,
+      "userEmail": "invalid@email.com",
+      "action": "failed_login",
+      "ip": "192.168.1.200",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "metadata": {
+        "attemptCount": 5,
+        "timeWindow": "5 minutes"
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c103",
+      "timestamp": "2024-08-30T14:20:45.789Z",
+      "level": "info",
+      "message": "Exam created successfully",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8ce",
+      "userEmail": "robert.kamanzi@teacher.edu.rw",
+      "action": "exam_create",
+      "ip": "192.168.1.110",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      "metadata": {
+        "examId": "66d1e2a5f8c3d4e5f6a7b901",
+        "examTitle": "Mathematics Mid-Term Assessment",
+        "examType": "assessment1"
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c104",
+      "timestamp": "2024-08-30T14:15:33.012Z",
+      "level": "error",
+      "message": "Database connection failed",
+      "userId": null,
+      "userEmail": null,
+      "action": "system_error",
+      "ip": "127.0.0.1",
+      "userAgent": "Server",
+      "metadata": {
+        "errorCode": "ECONNREFUSED",
+        "database": "mongodb",
+        "retryCount": 3
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c105",
+      "timestamp": "2024-08-30T14:10:18.345Z",
+      "level": "info",
+      "message": "Exam submission graded",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8ce",
+      "userEmail": "robert.kamanzi@teacher.edu.rw",
+      "action": "submission_graded",
+      "ip": "192.168.1.110",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      "metadata": {
+        "submissionId": "66d1e2a5f8c3d4e5f6a7c001",
+        "studentId": "66d1e2a5f8c3d4e5f6a7b8c9",
+        "score": 33,
+        "totalPoints": 35
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c106",
+      "timestamp": "2024-08-30T14:05:55.678Z",
+      "level": "warn",
+      "message": "Anti-cheat violation detected",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8cc",
+      "userEmail": "aline.uwimana@student.edu.rw",
+      "action": "violation_detected",
+      "ip": "192.168.1.150",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "metadata": {
+        "violationType": "tab_switch",
+        "examId": "66d1e2a5f8c3d4e5f6a7b906",
+        "violationCount": 2
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c107",
+      "timestamp": "2024-08-30T14:00:42.901Z",
+      "level": "info",
+      "message": "User registered successfully",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8dd",
+      "userEmail": "peter.habimana@student.edu.rw",
+      "action": "user_register",
+      "ip": "192.168.1.175",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "metadata": {
+        "role": "student",
+        "registrationNumber": "STU2024011",
+        "class": "L4MMP"
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c108",
+      "timestamp": "2024-08-30T13:55:30.234Z",
+      "level": "info",
+      "message": "Class created successfully",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8d5",
+      "userEmail": "francine.uwimana@dean.edu.rw",
+      "action": "class_create",
+      "ip": "192.168.1.120",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      "metadata": {
+        "classId": "66d1e2a5f8c3d4e5f6a7b8d5",
+        "level": "L4",
+        "trade": "MMP",
+        "year": 2024,
+        "term": 1
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c109",
+      "timestamp": "2024-08-30T13:50:15.567Z",
+      "level": "error",
+      "message": "File upload failed",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8ce",
+      "userEmail": "robert.kamanzi@teacher.edu.rw",
+      "action": "file_upload_error",
+      "ip": "192.168.1.110",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      "metadata": {
+        "fileName": "exam_materials.pdf",
+        "fileSize": "15.2MB",
+        "errorCode": "FILE_TOO_LARGE"
+      }
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c110",
+      "timestamp": "2024-08-30T13:45:08.890Z",
+      "level": "info",
+      "message": "System backup completed",
+      "userId": null,
+      "userEmail": null,
+      "action": "system_backup",
+      "ip": "127.0.0.1",
+      "userAgent": "Cron Job",
+      "metadata": {
+        "backupType": "daily",
+        "backupSize": "2.8GB",
+        "duration": "45 minutes"
+      }
+    }
+  ],
+  "authLogs": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c201",
+      "timestamp": "2024-08-30T14:30:25.123Z",
+      "level": "info",
+      "message": "Successful login",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8c9",
+      "userEmail": "jean.uwimana@student.edu.rw",
+      "action": "login_success",
+      "ip": "192.168.1.105",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "sessionId": "sess_abc123def456",
+      "loginMethod": "email_password"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c202",
+      "timestamp": "2024-08-30T14:25:12.456Z",
+      "level": "warn",
+      "message": "Failed login attempt",
+      "userId": null,
+      "userEmail": "invalid@email.com",
+      "action": "login_failed",
+      "ip": "192.168.1.200",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "sessionId": null,
+      "loginMethod": "email_password",
+      "failureReason": "invalid_credentials"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c203",
+      "timestamp": "2024-08-30T14:20:18.789Z",
+      "level": "info",
+      "message": "User logout",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8ca",
+      "userEmail": "marie.mukamana@student.edu.rw",
+      "action": "logout",
+      "ip": "192.168.1.130",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "sessionId": "sess_xyz789ghi012",
+      "logoutReason": "user_initiated"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c204",
+      "timestamp": "2024-08-30T14:15:45.012Z",
+      "level": "warn",
+      "message": "Session expired",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8cb",
+      "userEmail": "patrick.niyonsenga@student.edu.rw",
+      "action": "session_expired",
+      "ip": "192.168.1.140",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      "sessionId": "sess_mno345pqr678",
+      "expirationReason": "timeout"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c205",
+      "timestamp": "2024-08-30T14:10:30.345Z",
+      "level": "info",
+      "message": "Password changed",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8ce",
+      "userEmail": "robert.kamanzi@teacher.edu.rw",
+      "action": "password_change",
+      "ip": "192.168.1.110",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+      "sessionId": "sess_stu901vwx234",
+      "changeMethod": "user_initiated"
+    }
+  ],
+  "examLogs": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c301",
+      "timestamp": "2024-08-30T14:20:45.789Z",
+      "level": "info",
+      "message": "Exam created",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8ce",
+      "userEmail": "robert.kamanzi@teacher.edu.rw",
+      "action": "exam_create",
+      "examId": "66d1e2a5f8c3d4e5f6a7b901",
+      "examTitle": "Mathematics Mid-Term Assessment",
+      "examType": "assessment1",
+      "questionCount": 4,
+      "totalPoints": 35
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c302",
+      "timestamp": "2024-08-30T14:15:30.012Z",
+      "level": "info",
+      "message": "Exam started by student",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8c9",
+      "userEmail": "jean.uwimana@student.edu.rw",
+      "action": "exam_start",
+      "examId": "66d1e2a5f8c3d4e5f6a7b901",
+      "submissionId": "66d1e2a5f8c3d4e5f6a7c001",
+      "startTime": "2024-09-15T09:05:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c303",
+      "timestamp": "2024-08-30T14:10:18.345Z",
+      "level": "info",
+      "message": "Exam submitted by student",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8c9",
+      "userEmail": "jean.uwimana@student.edu.rw",
+      "action": "exam_submit",
+      "examId": "66d1e2a5f8c3d4e5f6a7b901",
+      "submissionId": "66d1e2a5f8c3d4e5f6a7c001",
+      "submitTime": "2024-09-15T10:45:00.000Z",
+      "duration": "1 hour 40 minutes"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c304",
+      "timestamp": "2024-08-30T14:05:55.678Z",
+      "level": "info",
+      "message": "Exam graded",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8ce",
+      "userEmail": "robert.kamanzi@teacher.edu.rw",
+      "action": "exam_grade",
+      "examId": "66d1e2a5f8c3d4e5f6a7b901",
+      "submissionId": "66d1e2a5f8c3d4e5f6a7c001",
+      "studentId": "66d1e2a5f8c3d4e5f6a7b8c9",
+      "score": 33,
+      "totalPoints": 35,
+      "percentage": 94.3
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7c305",
+      "timestamp": "2024-08-30T14:00:42.901Z",
+      "level": "warn",
+      "message": "Anti-cheat violation during exam",
+      "userId": "66d1e2a5f8c3d4e5f6a7b8cc",
+      "userEmail": "aline.uwimana@student.edu.rw",
+      "action": "violation_detected",
+      "examId": "66d1e2a5f8c3d4e5f6a7b906",
+      "submissionId": "66d1e2a5f8c3d4e5f6a7c019",
+      "violationType": "tab_switch",
+      "violationCount": 2,
+      "totalViolations": 2
+    }
+  ],
+  "logStatistics": {
+    "totalLogs": 25,
+    "logsByLevel": {
+      "info": 18,
+      "warn": 5,
+      "error": 2
+    },
+    "logsByAction": {
+      "login": 3,
+      "exam_create": 2,
+      "exam_submit": 2,
+      "exam_grade": 2,
+      "violation_detected": 2,
+      "user_register": 1,
+      "class_create": 1,
+      "file_upload_error": 1,
+      "system_backup": 1,
+      "logout": 1,
+      "session_expired": 1,
+      "password_change": 1,
+      "exam_start": 1,
+      "failed_login": 1,
+      "system_error": 1
+    },
+    "recentActivity": {
+      "last24Hours": 25,
+      "lastWeek": 156,
+      "lastMonth": 673
+    },
+    "securityAlerts": {
+      "failedLogins": 3,
+      "violations": 4,
+      "suspiciousActivity": 1
+    }
+  }
+}

@@ -1,0 +1,664 @@
+{
+  "schools": [
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b9001",
+      "name": "Rwanda Technical and Vocational Education Training Center",
+      "shortName": "RTVETC",
+      "type": "TVET",
+      "location": {
+        "district": "Gasabo",
+        "sector": "Remera",
+        "province": "Kigali City"
+      },
+      "contact": {
+        "phone": "+250788123456",
+        "email": "info@rtvetc.edu.rw",
+        "website": "https://rtvetc.edu.rw",
+        "address": "KG 15 Ave, Remera, Gasabo, Kigali"
+      },
+      "established": 2010,
+      "capacity": 2000,
+      "currentEnrollment": 1500,
+      "status": "active",
+      "accreditation": {
+        "body": "Rwanda Education Board",
+        "level": "Category A",
+        "validUntil": "2026-12-31"
+      },
+      "trades": ["SOD", "NIT", "MMP"],
+      "levels": ["L3", "L4", "L5"],
+      "stats": {
+        "totalStudents": 1500,
+        "totalTeachers": 85,
+        "totalClasses": 45,
+        "graduationRate": 92.5
+      },
+      "createdAt": "2024-01-15T08:00:00.000Z",
+      "updatedAt": "2024-08-30T08:00:00.000Z"
+    },
+    {
+      "_id": "66d1e2a5f8c3d4e5f6a7b9002",
+      "name": "Kigali Institute of Technology",
+      "shortName": "RTVETC",
+        "type": "TVET",
+        "levels": ["L5", "L4"],
+        "trades": ["BME", "MEP"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH004",
+        "name": "Imena GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["HEG", "MEG", "PCM", "PCB"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH005",
+        "name": "Indatwa Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L3", "L4"],
+        "combinations_or_trades": ["LSV", "NIT"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH006",
+        "name": "Kigali GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPC", "PCB"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH007",
+        "name": "New Vision GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPG", "HEG", "PCB", "MPC"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH008",
+        "name": "Saint Paul Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L4", "L5"],
+        "combinations_or_trades": ["MMP", "MEP", "BME"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH009",
+        "name": "Hope GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPG", "PCM"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH010",
+        "name": "Umucyo Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L3", "L4"],
+        "combinations_or_trades": ["FBT", "LSV", "EE", "SOD"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH011",
+        "name": "Saint Paul GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPG", "MPC", "HEG", "MEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH012",
+        "name": "Tumba Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L4", "L3"],
+        "combinations_or_trades": ["MEP", "BME", "MMP", "FBT"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH013",
+        "name": "Saint Andr\u00e9 GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPG", "PCB", "HEG", "MPC"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH014",
+        "name": "Saint Paul Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L3"],
+        "combinations_or_trades": ["SOD", "FBT", "NIT", "LSV"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH015",
+        "name": "Saint Andr\u00e9 GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCB", "MPG", "PCM"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH016",
+        "name": "Saint Andr\u00e9 Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L3"],
+        "combinations_or_trades": ["FBT", "LSV"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH017",
+        "name": "Imena GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["HEG", "MPC", "PCM"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH018",
+        "name": "Nyagatare GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCB", "MPC", "MEG", "PCM"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH019",
+        "name": "New Vision GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCM", "MPC", "MPG", "MEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH020",
+        "name": "Saint Paul GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPC", "MEG", "PCM", "MPG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH021",
+        "name": "Imena GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MEG", "MPC"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH022",
+        "name": "Nyagatare GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPC", "MPG", "HEG", "MEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH023",
+        "name": "Umucyo Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L4"],
+        "combinations_or_trades": ["BME", "MEP"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH024",
+        "name": "Saint Andr\u00e9 Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L3", "L5", "L4"],
+        "combinations_or_trades": ["FBT", "SOD", "MEP"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH025",
+        "name": "Umucyo Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L3", "L4"],
+        "combinations_or_trades": ["MMP", "MEP", "EE", "BME"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH026",
+        "name": "Hope College of Technology",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L4", "L3"],
+        "combinations_or_trades": ["FBT", "EE", "LSV", "SOD"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH027",
+        "name": "Indatwa GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPC", "PCB", "MEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH028",
+        "name": "Imena GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCM", "HEG", "PCB"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH029",
+        "name": "Saint Andr\u00e9 GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCB", "HEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH030",
+        "name": "Imena Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L3", "L4"],
+        "combinations_or_trades": ["EE", "FBT", "LSV"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH031",
+        "name": "Kigali GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPC", "MPG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH032",
+        "name": "Saint Paul College of Technology",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L4", "L3"],
+        "combinations_or_trades": ["MMP", "MEP", "LSV", "FBT"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH033",
+        "name": "Saint Andr\u00e9 GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCB", "MPG", "HEG", "MEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH034",
+        "name": "Imena Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L4", "L5"],
+        "combinations_or_trades": ["MMP", "FBT", "MEP"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH035",
+        "name": "Hope GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPG", "MEG", "HEG", "PCB"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH036",
+        "name": "New Vision GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCM", "HEG", "PCB", "MEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH037",
+        "name": "Nyagatare Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L4"],
+        "combinations_or_trades": ["FBT", "MEP"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH038",
+        "name": "Tumba Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L3", "L4", "L5"],
+        "combinations_or_trades": ["MEP", "SOD", "BME", "LSV"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH039",
+        "name": "Hope Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L4", "L5"],
+        "combinations_or_trades": ["BME", "LSV", "FBT"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH040",
+        "name": "New Vision Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L3"],
+        "combinations_or_trades": ["MEP", "BME", "SOD", "FBT"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH041",
+        "name": "Imena GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPG", "MPC"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH042",
+        "name": "Umucyo Technical School",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L3"],
+        "combinations_or_trades": ["MMP", "MEP"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH043",
+        "name": "Tumba Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L4", "L5", "L3"],
+        "combinations_or_trades": ["SOD", "MEP", "NIT", "MMP"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH044",
+        "name": "New Vision GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCB", "MEG", "MPC", "HEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH045",
+        "name": "Saint Paul GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MEG", "MPG", "MPC"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH046",
+        "name": "Kigali GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCM", "MEG", "PCB", "HEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH047",
+        "name": "Kigali GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["PCB", "PCM", "MPC", "MPG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH048",
+        "name": "Nyagatare Polytechnic",
+        "shortName": "RTVETC",
+        "type": "TVET",
+        "level_offered": ["L5", "L4", "L3"],
+        "combinations_or_trades": ["BME", "MEP"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH049",
+        "name": "Tumba GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["MPC", "MPG", "HEG", "MEG"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    },
+    {
+        "school_id": "SCH050",
+        "name": "Kigali GS",
+        "shortName": "RTVETC",
+        "type": "REB",
+        "level_offered": ["O-Level", "A-Level"],
+        "combinations_or_trades": ["HEG", "MEG", "PCM"],
+        "location": {
+            "district": "Kayonza",
+            "sector": "mukara",
+            "province": "Eastern Province"
+        }
+    }
+]
+}

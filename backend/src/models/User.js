@@ -6,7 +6,7 @@ const UserSchema = new Schema({
   role: {
     type: String,
     required: true,
-    enum: ['student' , 'teacher', 'dean', 'admin' , 'headmaster'],
+    enum: ['student', 'teacher', 'dean', 'admin', 'headmaster'],
     default: 'student'
   },
   fullName: {
@@ -55,8 +55,16 @@ const UserSchema = new Schema({
   profilePicture: {
     type: String,
     trim: true,
-    match: [/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i, 'Please enter a valid image URL'],
-    default: null
+    default: null,
+    validate: {
+      validator: function (v) {
+        // Allow null or a valid image URL/local path
+        if (v === null) return true;
+        return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
+          /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
+      },
+      message: 'Please enter a valid image URL or local upload path'
+    }
   },
   preferences: {
     notifications: {
@@ -72,11 +80,11 @@ const UserSchema = new Schema({
   classId: {
     type: Schema.Types.ObjectId,
     ref: 'Class',
-    required: function() {
+    required: function () {
       return this.role === 'student';
     },
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         return this.role === 'student' ? v != null : v == null;
       },
       message: 'Students must have a class, non-students must not have a class'
@@ -86,8 +94,8 @@ const UserSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Term',
     validate: {
-      validator: function (v) { return this.role === 'student' ? v.length > 0 : v.length === 0; },
-      message: 'termids are required for students and not allowed for other roles'
+      validator: function (v) { return this.role === 'student' ? v != null : v == null; },
+      message: 'Term ID is required for students and not allowed for other roles'
     }
   },
   lastLogin: {

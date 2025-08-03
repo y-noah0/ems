@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import DynamicTable from '../components/class/DynamicTable';
 import examService from '../services/examService';
 
 // Component to display submission statistics
@@ -153,6 +154,71 @@ const ExamResults = () => {
     setFilteredSubmissions(filtered);
   }, [submissions, searchTerm, statusFilter]);
 
+  // Submission table columns
+  const submissionColumns = [
+    { 
+      key: 'student', 
+      title: 'Student Name',
+      render: (value, item) => (
+        <div className="text-sm font-medium text-gray-900">
+          {item.student?.fullName || 'Unknown Student'}
+        </div>
+      )
+    },
+    { 
+      key: 'student', 
+      title: 'Registration No.',
+      render: (value, item) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          {item.student?.registrationNumber || 'N/A'}
+        </span>
+      )
+    },
+    { 
+      key: 'score', 
+      title: 'Score',
+      render: (value, item) => (
+        <span className="text-sm font-medium text-gray-900">
+          {item.status === 'graded' ? `${value || 0}/${exam?.totalPoints || 100}` : 'Not graded'}
+        </span>
+      )
+    },
+    { 
+      key: 'percentage', 
+      title: 'Percentage',
+      render: (value, item) => {
+        if (item.status === 'graded') {
+          const percentage = ((item.score || 0) / (exam?.totalPoints || 100)) * 100;
+          const colorClass = percentage >= 70 ? 'text-green-600' : percentage >= 50 ? 'text-yellow-600' : 'text-red-600';
+          return (
+            <span className={`text-sm font-medium ${colorClass}`}>
+              {percentage.toFixed(1)}%
+            </span>
+          );
+        }
+        return <span className="text-sm text-gray-500">-</span>;
+      }
+    },
+    { 
+      key: 'submittedAt', 
+      title: 'Submission Date',
+      render: (value) => (
+        <span className="text-sm text-gray-500">
+          {value ? new Date(value).toLocaleString() : 'Not submitted'}
+        </span>
+      )
+    }
+  ];
+
+  // Action handlers
+  const handleViewSubmission = (submission) => {
+    navigate(`/teacher/submissions/${submission._id}`);
+  };
+
+  const handleGradeSubmission = (submission) => {
+    navigate(`/teacher/submissions/${submission._id}/grade`);
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -270,65 +336,32 @@ const ExamResults = () => {
                 No submissions for this exam yet.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Student Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Registration No.
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Percentage
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Submission Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredSubmissions.map((submission) => (
-                      <tr key={submission._id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.student?.fullName || `${submission.student?.firstName || ''} ${submission.student?.lastName || ''}`}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.student?.registrationNumber}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.status === 'graded' 
-                            ? `${submission.score || 0} / ${exam.totalPoints || 100}` 
-                            : 'Pending'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {submission.status === 'graded' 
-                            ? `${Math.round(((submission.score || 0) / (exam.totalPoints || 100)) * 100)}%`
-                            : 'Pending'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {new Date(submission.submittedAt).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Button
-                            onClick={() => navigate(`/teacher/submissions/${submission._id}/view`)}
-                            className="text-sm"
-                          >
-                            View Details
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <DynamicTable
+                data={filteredSubmissions}
+                columns={submissionColumns}
+                showActions={true}
+                emptyMessage="No submissions for this exam yet"
+                containerWidth="100%"
+                containerHeight="auto"
+                renderCustomActions={(submission) => (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleViewSubmission(submission)}
+                      className="text-blue-600 hover:text-blue-900 transition-colors"
+                    >
+                      View Details
+                    </button>
+                    {submission.status === 'pending' && (
+                      <button
+                        onClick={() => handleGradeSubmission(submission)}
+                        className="text-green-600 hover:text-green-900 transition-colors"
+                      >
+                        Grade
+                      </button>
+                    )}
+                  </div>
+                )}
+              />
             )}
           </div>
         </Card>

@@ -4,6 +4,7 @@ import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import DynamicTable from '../components/class/DynamicTable';
 import adminService from '../services/adminService';
 
 const StudentManagement = () => {
@@ -104,6 +105,40 @@ const StudentManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Student table columns
+  const studentColumns = [
+    { 
+      key: 'fullName', 
+      title: 'Name',
+      render: (value) => (
+        <div className="text-sm font-medium text-gray-900">
+          {value}
+        </div>
+      )
+    },
+    { key: 'email', title: 'Email' },
+    { 
+      key: 'registrationNumber', 
+      title: 'Registration Number',
+      render: (value) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          {value}
+        </span>
+      )
+    }
+  ];
+
+  // Action handlers
+  const handleEdit = (student) => {
+    console.log('Edit student:', student);
+    // Add edit logic here
+  };
+
+  const handleDelete = (student) => {
+    console.log('Delete student:', student);
+    // Add delete logic here
   };
 
   return (
@@ -246,49 +281,16 @@ const StudentManagement = () => {
           </Card>
         ) : (
           <Card>
-            <div className="overflow-x-auto">
-              <table className="w-full table-auto">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Registration Number
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {students.map(student => (
-                    <tr key={student._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {student.fullName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {student.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {student.registrationNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button className="text-blue-600 hover:text-blue-900 mr-4">
-                          Edit
-                        </button>
-                        <button className="text-red-600 hover:text-red-900">
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DynamicTable
+              data={students}
+              columns={studentColumns}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              showActions={true}
+              emptyMessage="No students found in this class"
+              containerWidth="100%"
+              containerHeight="auto"
+            />
           </Card>
         )}
       </div>

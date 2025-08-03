@@ -128,7 +128,7 @@ const ImportStudents = () => {
               <option value="">Select a class</option>
               {classes.map((cls) => (
                 <option key={cls._id} value={cls._id}>
-                  {cls.level}{cls.trade} - Term {cls.term} ({cls.year})
+                  {cls.level}{cls.trade.code} - Term {cls.term} ({cls.year})
                 </option>
               ))}
             </select>

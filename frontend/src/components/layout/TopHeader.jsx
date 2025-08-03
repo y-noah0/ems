@@ -37,11 +37,11 @@ const TopHeader = () => {
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 px-2 sm:px-4 md:px-8 lg:px-64 py-2 sm:py-3">
-      <div className="flex items-center justify-between gap-2 sm:gap-3">
+    <div className="bg-white border-b border-gray-200 pr-8 sm:px-4 md:px-2 lg:px-30 py-2 sm:py-3">
+      <div className="flex items-center justify-between ">
         {/* Search Input with Right-Aligned Icon */}
         <form
-          className="flex-1 max-w-full md:max-w-xl"
+          className="flex-1 max-w-3/4 pl-14  md:max-w-xl"
           onSubmit={handleSearch}
         >
           <div className="flex items-center border border-gray-300 rounded-md overflow-hidden bg-white">
