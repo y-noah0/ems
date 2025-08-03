@@ -58,12 +58,12 @@ const requireRoles = (roles) => (req, res, next) => {
 
 // Specific roles
 const isAdmin = requireRoles(['admin']);
-const isDean = requireRoles(['dean', 'admin']);
-const isTeacher = requireRoles(['teacher', 'dean', 'admin']);
-const isStudent = requireRoles(['student']);
-const isStudentOrTeacher = requireRoles(['student', 'teacher']);
-const isTeacherOrDeanOrAdmin = requireRoles(['teacher', 'dean', 'admin']);
-const isTeacherOrDeanOrHeadmaster = requireRoles(['teacher', 'dean', 'headmaster']);
+const isDean = requireRoles(['dean', 'admin', 'headmaster']);
+const isTeacher = requireRoles(['teacher', 'admin']);
+const isStudent = requireRoles(['student', 'admin']);
+const isStudentOrTeacher = requireRoles(['student', 'teacher', 'admin']);
+const isTeacherOrDeanOrAdmin = requireRoles(['teacher', 'dean', 'admin', 'headmaster']);
+const isTeacherOrDeanOrHeadmaster = requireRoles(['teacher', 'dean', 'headmaster', 'admin']);
 
 // Login validation
 const loginValidation = [

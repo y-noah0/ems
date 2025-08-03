@@ -14,7 +14,7 @@ router.post(
 
 router.put(
     '/',
-    isTeacherOrDeanOrHeadmaster, // Allows dean, headmaster, admin
+    isTeacherOrDeanOrHeadmaster,isDean, // Allows dean, headmaster, admin
     teacherController.validateUpdateTeacher,
     teacherController.updateTeacher
 );
@@ -22,12 +22,14 @@ router.put(
 router.delete(
     '/',
     isAdmin, // Restrict to admin, headmaster (since isAdmin includes headmaster)
+    isDean, // Allows dean, headmaster
     teacherController.validateDeleteTeacher,
     teacherController.deleteTeacher
 );
 
 router.post(
     '/restore',
+    isDean, // Allows dean, headmaster
     isAdmin, // Restrict to admin, headmaster
     teacherController.validateDeleteTeacher, // Reuses same validation as delete
     teacherController.restoreTeacher
@@ -36,6 +38,7 @@ router.post(
 router.patch(
     '/status',
     isAdmin, // Restrict to admin, headmaster
+    isDean, // Allows dean, headmaster
     teacherController.validateToggleTeacherStatus,
     teacherController.toggleTeacherStatus
 );
