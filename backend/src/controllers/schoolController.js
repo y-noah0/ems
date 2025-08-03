@@ -132,6 +132,27 @@ const getSchoolById = async (req, res) => {
     }
 };
 
+// Get trades offered by school
+const getTradesOfferedBySchool = async (req, res) => {
+    try {
+        const school = await School.findById(req.params.id)
+            .populate('tradesOffered', 'code name category description');
+        if (!school || school.isDeleted) {
+            logger.warn('School not found or deleted', { schoolId: req.params.id, ip: req.ip });
+            return res.status(404).json({ success: false, message: 'School not found' });
+        }
+        logger.info('Trades offered fetched for school', { schoolId: school._id, ip: req.ip });
+        res.json({ success: true, tradesOffered: school.tradesOffered });
+    } catch (error) {
+        logger.error('Error in getTradesOfferedBySchool', { error: error.message, stack: error.stack, ip: req.ip });
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
 // Update school
 const updateSchool = async (req, res) => {
     try {
@@ -243,6 +264,7 @@ module.exports = {
     createSchool,
     getSchools,
     getSchoolById,
+    getTradesOfferedBySchool,
     updateSchool,
     deleteSchool
 };

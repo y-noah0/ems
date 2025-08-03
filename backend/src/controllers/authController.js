@@ -421,11 +421,9 @@ const login = async (req, res) => {
         registrationNumber: user.registrationNumber,
         school: user.school,
         phoneNumber: user.phoneNumber,
-        profilePicture: user.profilePicture,
         preferences: user.preferences,
       },
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -555,7 +553,7 @@ const fetchHeadmasterByEmail = async (req, res) => {
 
     const { email } = req.body;
     const user = await User.findOne({ email: email.toLowerCase(), role: 'headmaster', isDeleted: false })
-      .select('fullName email phoneNumber school profilePicture preferences');
+      .select('fullName email phoneNumber school preferences');
 
     if (!user) {
       logger.warn('Headmaster not found for email', { email, ip: req.ip });
@@ -571,7 +569,6 @@ const fetchHeadmasterByEmail = async (req, res) => {
         email: user.email,
         phoneNumber: user.phoneNumber,
         school: user.school,
-        profilePicture: user.profilePicture,
         preferences: user.preferences
       }
     });

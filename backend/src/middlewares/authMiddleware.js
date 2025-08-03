@@ -63,7 +63,7 @@ const isTeacher = requireRoles(['teacher', 'dean', 'admin']);
 const isStudent = requireRoles(['student']);
 const isStudentOrTeacher = requireRoles(['student', 'teacher']);
 const isTeacherOrDeanOrAdmin = requireRoles(['teacher', 'dean', 'admin']);
-const isTeacherOrDeanOrHeadmaster = requireRoles(['teacher', 'dean', 'headmaster']); // Add this missing function
+const isTeacherOrDeanOrHeadmaster = requireRoles(['teacher', 'dean', 'headmaster']);
 
 // Login validation
 const loginValidation = [
@@ -112,10 +112,6 @@ const registerValidation = [
     .optional()
     .matches(/^\+?\d{10,15}$/)
     .withMessage('Invalid phone number'),
-  check('profilePicture')
-    .optional()
-    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
-    .withMessage('Invalid image URL'),
   check('parentFullName')
     .if((value, { req }) => req.body.role === 'student')
     .optional()
@@ -128,7 +124,11 @@ const registerValidation = [
     .if((value, { req }) => req.body.role === 'student')
     .optional()
     .matches(/^\+?\d{10,15}$/)
-    .withMessage('Invalid parent phone number')
+    .withMessage('Invalid parent phone number'),
+  check('profilePicture')
+    .optional()
+    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
+    .withMessage('Invalid image URL')
 ];
 
 // Rate limiter middleware
@@ -147,7 +147,7 @@ module.exports = {
   isStudent,
   isStudentOrTeacher,
   isTeacherOrDeanOrAdmin,
-  isTeacherOrDeanOrHeadmaster, // Add this to exports
+  isTeacherOrDeanOrHeadmaster,
   loginValidation,
   registerValidation,
   limiter

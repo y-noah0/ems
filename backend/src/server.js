@@ -7,7 +7,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
 const winston = require('winston');
@@ -37,10 +36,6 @@ app.use(helmet());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan('dev')); // HTTP request logger
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Max 100 requests per window
-}));
 
 // --- NEW: Serve uploads folder statically for image access ---
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

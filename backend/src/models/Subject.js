@@ -18,11 +18,13 @@ const SubjectSchema = new Schema({
   },
   trades: [{
     type: Schema.Types.ObjectId,
-    ref: 'Trade'
+    ref: 'Trade',
+    default: []
   }],
   teacher: {
     type: Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    default: null
   },
   credits: {
     type: Number,

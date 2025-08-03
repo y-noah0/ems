@@ -51,9 +51,7 @@ const schoolService = {
       toast.error(error.response?.data?.message || 'Failed to create school');
       throw error;
     }
-  }
-  ,
-  // Get a school by ID
+  },
   getSchoolById: async (id) => {
     try {
       const response = await api.get(`/${id}`);
@@ -63,7 +61,6 @@ const schoolService = {
       throw error;
     }
   },
-  // Update a school by ID
   updateSchool: async (id, schoolData) => {
     try {
       const response = await api.put(`/${id}`, schoolData, {
@@ -77,8 +74,16 @@ const schoolService = {
       toast.error(error.response?.data?.message || 'Failed to update school');
       throw error;
     }
+  },
+  getTradesOfferedBySchool: async (id) => {
+    try {
+      const response = await api.get(`/${id}/trades`);
+      return response.data.tradesOffered;
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to load trades offered');
+      throw error;
+    }
   }
-  
 };
 
 export default schoolService;
