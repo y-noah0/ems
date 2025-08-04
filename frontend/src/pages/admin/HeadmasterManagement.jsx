@@ -167,11 +167,7 @@ export default function HeadmasterManagement() {
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-4">
-                    <Button variant="outline" size="xs" onClick={navigate(-1)}>
-                        ← Back
-                    </Button>
-                </div>
+                <p className="text-xl font-medium">Headmaster Management</p>
                 {/* Search */}
                 <div className="relative">
                     <input
