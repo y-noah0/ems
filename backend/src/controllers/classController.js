@@ -28,10 +28,10 @@ const createClass = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { level, trade, year, school, capacity, subjects } = req.body;
+        const { level, trade, year, schoolId, capacity, subjects } = req.body;
 
         // Validate schoolId
-        if (!school || !mongoose.isValidObjectId(school)) {
+        if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
             return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
         }
 
@@ -136,10 +136,10 @@ const updateClass = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { level, trade, year, school, capacity, subjects } = req.body;
+        const { level, trade, year, schoolId, capacity, subjects } = req.body;
 
         // Validate schoolId
-        if (!school || !mongoose.isValidObjectId(school)) {
+        if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
             return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
         }
 
