@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Trash2, Search, CheckCircle2, ArrowLeft, User, Mail, Phone } from 'lucide-react';
+import { Plus, Trash2, Search, CheckCircle2, ArrowLeft, User, Mail, Phone, AreaChart } from 'lucide-react';
 import { Dialog, Transition } from '@headlessui/react';
 import { useAuth } from '../../context/AuthContext';
 import teacherService from '../../services/teacherService';
 import TeacherManagementTableNew from './teacherMgt';
+import TeacherPerformanceBarChart from './teacherPerfomance';
 
 const TeacherManagement = () => {
   const { currentUser } = useAuth();
@@ -27,7 +28,7 @@ const TeacherManagement = () => {
   const [filterStatus, setFilterStatus] = useState('All');
   const [schools, setSchools] = useState([]);
   const [notification, setNotification] = useState(null);
-  const [showTableView, setShowTableView] = useState(false);
+  const [viewMode, setViewMode] = useState('cards'); // 'cards', 'table', or 'chart'
 
   const fetchTeachers = async () => {
     if (!currentUser?.school || loading) {
@@ -47,7 +48,7 @@ const TeacherManagement = () => {
         : error.message || 'Failed to fetch teachers.';
       console.error('Error fetching teachers:', errorMessage);
       setNotification({ type: 'error', message: errorMessage });
-      setTeachersData([]); // Ensure state is reset to avoid blank UI
+      setTeachersData([]);
     } finally {
       setLoading(false);
     }
@@ -67,7 +68,7 @@ const TeacherManagement = () => {
   useEffect(() => {
     if (!currentUser) {
       setNotification({ type: 'error', message: 'Please log in to view teachers.' });
-      setTeachersData([]); // Reset state to avoid blank UI
+      setTeachersData([]);
       return;
     }
     if (currentUser.school && !loading) {
@@ -137,19 +138,16 @@ const TeacherManagement = () => {
       };
 
       if (selectedTeacher) {
-        // Update existing teacher
         await teacherService.updateTeacher({
           ...payload,
           teacherId: selectedTeacher._id,
         });
         setNotification({ type: 'success', message: 'Teacher updated successfully!' });
       } else {
-        // Register new teacher
         await teacherService.register(payload);
         setNotification({ type: 'success', message: 'Teacher added successfully!' });
       }
 
-      // Refetch teachers to ensure UI reflects the latest server state
       await fetchTeachers();
       closeModal();
     } catch (error) {
@@ -169,7 +167,6 @@ const TeacherManagement = () => {
       try {
         await teacherService.deleteTeacher({ schoolId: currentUser.school, teacherId });
         setNotification({ type: 'success', message: 'Teacher deleted successfully!' });
-        // Refetch teachers after deletion
         await fetchTeachers();
       } catch (error) {
         const errorMessage = error.errors
@@ -201,7 +198,7 @@ const TeacherManagement = () => {
 
   useEffect(() => {
     if (notification) {
-      const timer = setTimeout(() => setNotification(null), 5000); // Increased to 5 seconds
+      const timer = setTimeout(() => setNotification(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [notification]);
@@ -210,89 +207,101 @@ const TeacherManagement = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-4 sm:mb-0 tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-semibold text-gray-900 mb-4 sm:mb-0 tracking-tight">
             Teacher Management
           </h1>
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <div className="relative w-full sm:w-72 group">
-              <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-blue-500 transition-colors duration-200"
-                size={20}
-              />
-              <input
-                type="text"
-                placeholder="Search teachers..."
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                aria-label="Search teachers"
-              />
-            </div>
-            {showTableView ? (
-              <button
-                onClick={() => setShowTableView(false)}
-                className="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <ArrowLeft size={20} /> Back to Card View
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowTableView(true)}
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <User size={20} /> Management
-              </button>
+            {viewMode !== 'chart' && (
+              <div className="relative w-full sm:w-72 group">
+                <Search
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-blue-500 transition-colors duration-200"
+                  size={20}
+                />
+                <input
+                  type="text"
+                  placeholder="Search teachers..."
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Search teachers"
+                />
+              </div>
             )}
             <button
-              onClick={() => openModal()}
+              onClick={() => setViewMode('chart')}
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
             >
-              <Plus size={20} /> Add Teacher
+              <AreaChart size={20} /> X
             </button>
+            {viewMode === 'chart' ? (
+              <button
+                onClick={() => setViewMode('cards')}
+                className="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+              >
+                <ArrowLeft size={20} /> Back to Teachers
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  <User size={20} /> Management
+                </button>
+                <button
+                  onClick={() => openModal()}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  <Plus size={20} /> Add Teacher
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-white p-5 rounded-xl shadow-lg">
-          <div className="flex items-center group">
-            <label className="text-sm font-semibold text-gray-700 mr-2">Sort by:</label>
-            <select
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
-              value={sortField}
-              onChange={(e) => setSortField(e.target.value)}
-              aria-label="Sort by"
-            >
-              <option value="fullName">Name</option>
-              <option value="email">Email</option>
-              <option value="phoneNumber">Phone</option>
-              <option value="status">Status</option>
-            </select>
+        {viewMode !== 'chart' && (
+          <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-white p-5 rounded-xl shadow-lg">
+            <div className="flex items-center group">
+              <label className="text-sm font-semibold text-gray-700 mr-2">Sort by:</label>
+              <select
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value)}
+                aria-label="Sort by"
+              >
+                <option value="fullName">Name</option>
+                <option value="email">Email</option>
+                <option value="phoneNumber">Phone</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
+            <div className="flex items-center group">
+              <label className="text-sm font-semibold text-gray-700 mr-2">Order:</label>
+              <select
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                aria-label="Sort order"
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
+              </select>
+            </div>
+            <div className="flex items-center group">
+              <label className="text-sm font-semibold text-gray-700 mr-2">Status:</label>
+              <select
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                aria-label="Filter by status"
+              >
+                <option value="All">All</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
           </div>
-          <div className="flex items-center group">
-            <label className="text-sm font-semibold text-gray-700 mr-2">Order:</label>
-            <select
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              aria-label="Sort order"
-            >
-              <option value="asc">Ascending</option>
-              <option value="desc">Descending</option>
-            </select>
-          </div>
-          <div className="flex items-center group">
-            <label className="text-sm font-semibold text-gray-700 mr-2">Status:</label>
-            <select
-              className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              aria-label="Filter by status"
-            >
-              <option value="All">All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
+        )}
 
         {notification && (
           <div
@@ -308,7 +317,9 @@ const TeacherManagement = () => {
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
           </div>
-        ) : showTableView ? (
+        ) : viewMode === 'chart' ? (
+          <TeacherPerformanceBarChart />
+        ) : viewMode === 'table' ? (
           <TeacherManagementTableNew
             teachers={filteredTeachers}
             onEdit={openModal}
@@ -330,8 +341,7 @@ const TeacherManagement = () => {
                     {teacher.fullName}
                   </h2>
                   <CheckCircle2
-                    className={`${!teacher.isDeleted ? 'text-green-500' : 'text-red-400'
-                      } animate-pulse`}
+                    className={`${!teacher.isDeleted ? 'text-green-500' : 'text-red-400'} animate-pulse`}
                     size={32}
                   />
                 </div>
@@ -354,9 +364,7 @@ const TeacherManagement = () => {
                     <Phone className="text-blue-500 mt-1" size={20} />
                     <span>
                       <span className="font-medium text-gray-600">Phone:</span>{' '}
-                      <span className="text-gray-700">
-                        {teacher.phoneNumber || 'Not provided'}
-                      </span>
+                      <span className="text-gray-700">{teacher.phoneNumber || 'Not provided'}</span>
                     </span>
                   </p>
                 </div>

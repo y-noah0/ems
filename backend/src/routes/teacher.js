@@ -21,8 +21,9 @@ router.put(
 
 router.delete(
     '/',
+    isDean,
     isAdmin, // Restrict to admin, headmaster (since isAdmin includes headmaster)
-    isDean, // Allows dean, headmaster
+     // Allows dean, headmaster
     teacherController.validateDeleteTeacher,
     teacherController.deleteTeacher
 );
