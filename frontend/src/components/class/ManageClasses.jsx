@@ -3,6 +3,9 @@ import { FiPlus, FiX } from 'react-icons/fi';
 import { getClasses, createClass } from '../../services/classService';
 import tradeService from '../../services/tradeService';
 import { useAuth } from '../../context/AuthContext';
+import subjectService from '../../services/subjectService';
+
+
 
 const ManageClasses = () => {
   const { currentUser } = useAuth();
@@ -38,7 +41,7 @@ const fetchAll = async () => {
     const [classes, trades, subjects] = await Promise.all([
       getClasses(currentUser.school),
       tradeService.getAllTrades(),
-      getSubjects(),
+      subjectService.getAllSubjects(),
     ]);
     setClassesData(classes);
     setTradeOptions(trades || []); 
