@@ -25,25 +25,25 @@ api.interceptors.request.use(
 
 // Auth service
 const authService = {
-login: async (identifier, password) => {
-  try {
-    console.log('Attempting login with:', { identifier, password });
-    const response = await api.post('/auth/login', { identifier, password });
+    login: async (identifier, password) => {
+        try {
+            console.log('Attempting login with:', { identifier, password });
+            const response = await api.post('/auth/login', { identifier, password });
 
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
-    }
+            // Extract token and user from response
+            const { token, user } = response.data;
+            if (token) {
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+            }
 
-    console.log('Login successful:', response.data);
-    return response.data;
-
-  } catch (error) {
-    console.error('Login error:', error.response?.data);
-    throw error.response ? error.response.data : { message: 'Network error' };
-  }
-},
-
+            console.log('Login successful:', user);
+            return { token, user };
+        } catch (error) {
+            console.error('Login error:', error.response?.data);
+            throw error.response ? error.response.data : { message: 'Network error' };
+        }
+    },
 
 
     // Logout user

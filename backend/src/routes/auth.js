@@ -1,6 +1,5 @@
 const express = require('express');
-const { check, body } = require('express-validator');
-const validator = require('validator');
+const { check } = require('express-validator');
 const router = express.Router();
 const upload = require('../middlewares/upload');
 
@@ -15,8 +14,7 @@ const {
   enable2FA,
   updateProfile,
   resendVerificationCode,
-  fetchHeadmasterByEmail,
-  getCurrentUser
+  fetchHeadmasterByEmail
 } = require('../controllers/authController');
 
 // Middleware for validation
@@ -41,10 +39,6 @@ const registerValidation = [
     .optional()
     .matches(/^\+?\d{10,15}$/)
     .withMessage('Invalid phone number'),
-  check('profilePicture', 'Please enter a valid image URL')
-    .optional()
-    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
-    .withMessage('Invalid image URL'),
   check('subjects', 'Subjects are only allowed for teachers')
     .if((value, { req }) => req.body.role !== 'teacher')
     .isEmpty()
@@ -58,7 +52,11 @@ const registerValidation = [
   check('parentPhoneNumber', 'Please enter a valid parent phone number')
     .if((value, { req }) => req.body.role === 'student' && value != null)
     .matches(/^\+?\d{10,15}$/)
-    .withMessage('Invalid parent phone number')
+    .withMessage('Invalid parent phone number'),
+  check('profilePicture', 'Please include a valid image URL')
+    .optional()
+    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
+    .withMessage('Invalid image URL')
 ];
 
 const loginValidation = [
@@ -78,19 +76,8 @@ router.post('/register', upload.single('profilePicture'), registerValidation, re
 // @desc    Verify email
 // @access  Public
 router.post('/verify-email', [
-  // Make userId optional and add email validation
-  check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 }),
-  // Custom validation to ensure either email or userId is provided
-  body().custom((value, { req }) => {
-    const { email, userId } = req.body;
-    if (!email && !userId) {
-      throw new Error('Either email or User ID is required');
-    }
-    if (email && !validator.isEmail(email)) {
-      throw new Error('Please include a valid email');
-    }
-    return true;
-  })
+  check('userId', 'User ID is required').notEmpty(),
+  check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 })
 ], verifyEmail);
 
 // @route   POST /auth/resend-verification
@@ -111,11 +98,6 @@ router.post('/fetch-headmaster', authenticate, [
 // @desc    Log in user
 // @access  Public
 router.post('/login', loginValidation, login);
-
-// @route   GET /auth/me
-// @desc    Get current user
-// @access  Private
-router.get('/me', authenticate, getCurrentUser);
 
 // @route   POST /auth/logout
 // @desc    Logout user

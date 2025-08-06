@@ -25,8 +25,8 @@ const headmasterService = {
     const response = await api.delete(`/headmaster/trades/${tradeId}`);
     return response.data.trades;
   },
-  getSubjectsCatalog: async () => {
-    const response = await api.get('/headmaster/subjects');
+  getSubjectsCatalog: async (schoolId) => {
+    const response = await api.get('/headmaster/subjects', {schoolId: schoolId});
     return response.data.subjects;
   },
   createSubject: async (subjectData) => {

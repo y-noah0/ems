@@ -77,7 +77,27 @@ const schoolService = {
       toast.error(error.response?.data?.message || 'Failed to update school');
       throw error;
     }
-  }
+  },
+  // Add a trade to school's offerings
+  addTradeToSchool: async (schoolId, tradeId) => {
+    try {
+      const response = await api.post(`/${schoolId}/trades/${tradeId}`);
+      return response.data.tradesOffered;
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to add trade to school');
+      throw error;
+    }
+  },
+  // Remove a trade from school's offerings
+  removeTradeFromSchool: async (schoolId, tradeId) => {
+    try {
+      const response = await api.delete(`/${schoolId}/trades/${tradeId}`);
+      return response.data.tradesOffered;
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to remove trade from school');
+      throw error;
+    }
+  },
   
 };
 

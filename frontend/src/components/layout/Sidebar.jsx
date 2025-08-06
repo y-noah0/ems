@@ -141,17 +141,17 @@ const Sidebar = ({ userRole = "student" }) => {
             roles: ["headmaster"],
         },
         {
+            title: "Subject Catalog",
+            icon: Text,
+            path: "/headmaster/subjects",
+            active: location.pathname.includes("/headmaster/subjects"),
+            roles: ["headmaster"],
+        },
+        {
             title: "User Management",
             icon: Users,
             path: "/headmaster/users",
             active: location.pathname.includes("/headmaster/users"),
-            roles: ["headmaster"],
-        },
-        {
-            title: "School Profile",
-            icon: Users,
-            path: "/headmaster/school",
-            active: location.pathname.includes("/headmaster/school"),
             roles: ["headmaster"],
         },
         {
@@ -203,7 +203,7 @@ const Sidebar = ({ userRole = "student" }) => {
             icon: Text,
             path: "/admin/subjects",
             active: location.pathname.includes("/admin/subjects"),
-            roles: ["admin", "headmaster"],
+            roles: ["admin"],
         },
         {
             title: "Subscription Management",
@@ -212,10 +212,10 @@ const Sidebar = ({ userRole = "student" }) => {
             active: location.pathname.includes("/admin/subscriptions"),
             roles: ["admin"],
         },
-            {title: "Trades Management",
+            {title: "Exams Management",
             icon: Building2,
-            path: "/headmaster/trades-offered",
-            active: location.pathname.includes("/headmaster/trades-offered"),
+            path: "/headmaster/exams",
+            active: location.pathname.includes("/headmaster/exams"),
             roles: ["headmaster"],},
         {
             title: "Trades Management",

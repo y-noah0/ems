@@ -21,10 +21,10 @@ api.interceptors.request.use(
 
 // Subject service
 const subjectService = {
-  getSubjects: async () => {
+  getSubjects: async (schoolId) => {
     try {
-      // backend route is /api/subjects
-      const response = await api.get('/subjects');
+      // backend route is /api/subjects with schoolId query param
+      const response = await api.get('/subjects', { params: { schoolId } });
       return response.data.subjects;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };

@@ -1,4 +1,3 @@
-// subjectController.js
 const Subject = require('../models/Subject');
 const School = require('../models/school');
 const Class = require('../models/Class');
@@ -17,14 +16,26 @@ const logger = winston.createLogger({
     transports: [new winston.transports.File({ filename: 'subject.log' })]
 });
 
-// Utility to validate and ensure referenced entities are active
-const ensureActiveEntity = async (Model, id, entityName) => {
+// Utility to validate and ensure referenced entities are active and belong to the school
+const ensureActiveEntity = async (Model, id, entityName, schoolId = null) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new Error(`${entityName} ID is invalid`);
     }
     const entity = await Model.findById(id);
     if (!entity || entity.isDeleted) {
         throw new Error(`${entityName} not found or has been deleted`);
+    }
+    // If schoolId is provided, validate that the entity belongs to the school
+    if (schoolId && entityName === 'Trade') {
+        const school = await School.findById(schoolId);
+        if (!school || !school.tradesOffered.includes(id)) {
+            throw new Error(`${entityName} does not belong to the specified school`);
+        }
+    }
+    if (schoolId && entityName === 'Class') {
+        if (entity.school.toString() !== schoolId.toString()) {
+            throw new Error(`${entityName} does not belong to the specified school`);
+        }
     }
     return entity;
 };
@@ -38,24 +49,34 @@ const createSubject = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { name, description, school, trades, teacher, credits } = req.body;
+        const { name, description, schoolId, classes, trades, teacher, credits } = req.body;
 
-        // Validate referenced entities
-        await ensureActiveEntity(School, school, 'School');
-        await Promise.all(classes.map(id => ensureActiveEntity(Class, id, 'Class')));
-        await Promise.all(trades.map(id => ensureActiveEntity(Trade, id, 'Trade')));
-        if (teacher) await ensureActiveEntity(User, teacher, 'Teacher');
+        // Validate referenced entities and ensure they belong to the school
+        if (classes && classes.length > 0) {
+            await Promise.all(classes.map(id => ensureActiveEntity(Class, id, 'Class', schoolId)));
+        }
+        if (trades && trades.length > 0) {
+            await Promise.all(trades.map(id => ensureActiveEntity(Trade, id, 'Trade', schoolId)));
+        }
+        if (teacher) {
+            await ensureActiveEntity(User, teacher, 'Teacher');
+            const user = await User.findById(teacher);
+            if (user.role !== 'teacher' || (user.school && user.school.toString() !== schoolId.toString())) {
+                throw new Error('Teacher does not belong to the specified school or has invalid role');
+            }
+        }
 
         // Check for duplicate subject
-        const existing = await Subject.findOne({ name, school, isDeleted: false });
+        const existing = await Subject.findOne({ name, schoolId, isDeleted: false });
         if (existing) {
+            logger.warn('Duplicate subject detected', { name, schoolId, ip: req.ip });
             return res.status(400).json({ success: false, message: 'Subject with this name already exists in this school' });
         }
 
-        const subject = new Subject({ name, description, school, trades, teacher, credits });
+        const subject = new Subject({ name, description, school:schoolId, classes: classes || [], trades: trades || [], teacher, credits });
         await subject.save();
 
-        logger.info('Subject created', { subjectId: subject._id });
+        logger.info('Subject created', { subjectId: subject._id, schoolId, ip: req.ip });
         res.status(201).json({ success: true, subject });
     } catch (error) {
         logger.error('Error in createSubject', { error: error.message, ip: req.ip });
@@ -63,47 +84,64 @@ const createSubject = async (req, res) => {
     }
 };
 
-// Get all subjects
+// Get all subjects for a specific school
 const getSubjects = async (req, res) => {
     try {
-        const subjects = await Subject.find({ isDeleted: false })
+        const { schoolId } = req.query;
+        if (!schoolId || !mongoose.Types.ObjectId.isValid(schoolId)) {
+            logger.warn('Invalid or missing schoolId in getSubjects', { schoolId, ip: req.ip });
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
+        }
+
+        await ensureActiveEntity(School, schoolId, 'School');
+
+        const subjects = await Subject.find({ school: schoolId, isDeleted: false })
             .populate('school', 'name')
-            .populate('trades', 'name')
+            .populate('classes', 'name')
+            .populate('trades', 'name code')
             .populate('teacher', 'fullName email');
 
+        logger.info('Subjects fetched for school', { schoolId, count: subjects.length, ip: req.ip });
         res.json({ success: true, subjects });
     } catch (error) {
         logger.error('Error in getSubjects', { error: error.message, ip: req.ip });
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
 
 // Get subject by ID
 const getSubjectById = async (req, res) => {
     try {
+        const { schoolId } = req.query;
+        if (!schoolId || !mongoose.Types.ObjectId.isValid(schoolId)) {
+            logger.warn('Invalid or missing schoolId in getSubjectById', { schoolId, ip: req.ip });
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
+        }
+
+        await ensureActiveEntity(School, schoolId, 'School');
         const subject = await validateEntity(Subject, req.params.id, 'Subject');
+
+        if (subject.school.toString() !== schoolId.toString()) {
+            logger.warn('Subject does not belong to specified school', { subjectId: req.params.id, schoolId, ip: req.ip });
+            return res.status(403).json({ success: false, message: 'Subject does not belong to the specified school' });
+        }
 
         await subject
             .populate('school', 'name')
-            .populate('trades', 'name')
+            .populate('classes', 'name')
+            .populate('trades', 'name code')
             .populate('teacher', 'fullName email');
 
+        logger.info('Subject fetched', { subjectId: subject._id, schoolId, ip: req.ip });
         return res.json({ success: true, subject });
     } catch (error) {
         if (error?.statusCode) {
-            // This is likely a validation error from validateEntity
-            return res.status(error.statusCode).json({
-                success: false,
-                message: error.message
-            });
+            return res.status(error.statusCode).json({ success: false, message: error.message });
         }
-
-        // Generic server error
         logger.error('Error in getSubjectById', { error: error.message, ip: req.ip });
         return res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
-
 
 // Update subject by ID
 const updateSubject = async (req, res) => {
@@ -113,21 +151,46 @@ const updateSubject = async (req, res) => {
             logger.warn('Validation failed in updateSubject', { errors: errors.array(), ip: req.ip });
             return res.status(400).json({ success: false, errors: errors.array() });
         }
-        const subject = await Subject.findById(req.params.id);
-        if (!subject || subject.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Subject not found' });
+
+        const { schoolId, name, description, school, classes, trades, teacher, credits } = req.body;
+
+        if (!schoolId || !mongoose.Types.ObjectId.isValid(schoolId)) {
+            logger.warn('Invalid or missing schoolId in updateSubject', { schoolId, ip: req.ip });
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
         }
 
-        const { name, description, school, classes, trades, teacher, credits } = req.body;
+        await ensureActiveEntity(School, schoolId, 'School');
+        const subject = await validateEntity(Subject, req.params.id, 'Subject');
 
-        if (school) await ensureActiveEntity(School, school, 'School');
-        if (classes) await Promise.all(classes.map(id => ensureActiveEntity(Class, id, 'Class')));
-        if (trades) await Promise.all(trades.map(id => ensureActiveEntity(Trade, id, 'Trade')));
-        if (teacher) await ensureActiveEntity(User, teacher, 'Teacher');
+        if (subject.school.toString() !== schoolId.toString()) {
+            logger.warn('Subject does not belong to specified school', { subjectId: req.params.id, schoolId, ip: req.ip });
+            return res.status(403).json({ success: false, message: 'Subject does not belong to the specified school' });
+        }
 
+        // Validate referenced entities and ensure they belong to the school
+        const targetSchool = school || subject.school;
+        if (school && school.toString() !== schoolId.toString()) {
+            await ensureActiveEntity(School, school, 'School');
+        }
+        if (classes && classes.length > 0) {
+            await Promise.all(classes.map(id => ensureActiveEntity(Class, id, 'Class', targetSchool)));
+        }
+        if (trades && trades.length > 0) {
+            await Promise.all(trades.map(id => ensureActiveEntity(Trade, id, 'Trade', targetSchool)));
+        }
+        if (teacher) {
+            await ensureActiveEntity(User, teacher, 'Teacher');
+            const user = await User.findById(teacher);
+            if (user.role !== 'teacher' || (user.school && user.school.toString() !== targetSchool.toString())) {
+                throw new Error('Teacher does not belong to the specified school or has invalid role');
+            }
+        }
+
+        // Check for duplicate subject
         if (name && name !== subject.name) {
-            const existing = await Subject.findOne({ name, school: school || subject.school, isDeleted: false, _id: { $ne: subject._id } });
+            const existing = await Subject.findOne({ name, school: targetSchool, isDeleted: false, _id: { $ne: subject._id } });
             if (existing) {
+                logger.warn('Duplicate subject detected on update', { name, school: targetSchool, ip: req.ip });
                 return res.status(400).json({ success: false, message: 'Another subject with this name already exists in the school' });
             }
         }
@@ -135,13 +198,14 @@ const updateSubject = async (req, res) => {
         subject.name = name || subject.name;
         subject.description = description || subject.description;
         subject.school = school || subject.school;
+        subject.classes = classes || subject.classes;
         subject.trades = trades || subject.trades;
         subject.teacher = teacher || subject.teacher;
         subject.credits = credits !== undefined ? credits : subject.credits;
 
         await subject.save();
 
-        logger.info('Subject updated', { subjectId: subject._id });
+        logger.info('Subject updated', { subjectId: subject._id, schoolId, ip: req.ip });
         res.json({ success: true, subject });
     } catch (error) {
         logger.error('Error in updateSubject', { error: error.message, ip: req.ip });
@@ -152,19 +216,72 @@ const updateSubject = async (req, res) => {
 // Soft delete subject by ID
 const deleteSubject = async (req, res) => {
     try {
-        const subject = await Subject.findById(req.params.id);
-        if (!subject || subject.isDeleted) {
-            return res.status(404).json({ success: false, message: 'Subject not found' });
+        const { schoolId } = req.query;
+        if (!schoolId || !mongoose.Types.ObjectId.isValid(schoolId)) {
+            logger.warn('Invalid or missing schoolId in deleteSubject', { schoolId, ip: req.ip });
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
+        }
+
+        await ensureActiveEntity(School, schoolId, 'School');
+        const subject = await validateEntity(Subject, req.params.id, 'Subject');
+
+        if (subject.school.toString() !== schoolId.toString()) {
+            logger.warn('Subject does not belong to specified school', { subjectId: req.params.id, schoolId, ip: req.ip });
+            return res.status(403).json({ success: false, message: 'Subject does not belong to the specified school' });
         }
 
         subject.isDeleted = true;
         await subject.save();
 
-        logger.info('Subject deleted', { subjectId: subject._id });
+        logger.info('Subject deleted', { subjectId: subject._id, schoolId, ip: req.ip });
         res.json({ success: true, message: 'Subject deleted' });
     } catch (error) {
         logger.error('Error in deleteSubject', { error: error.message, ip: req.ip });
-        res.status(500).json({ success: false, message: 'Server Error' });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
+    }
+};
+
+// Get classes studying a specific subject
+const getClassesBySubject = async (req, res) => {
+    try {
+        const { schoolId } = req.query;
+        const { id: subjectId } = req.params;
+
+        if (!schoolId || !mongoose.Types.ObjectId.isValid(schoolId)) {
+            logger.warn('Invalid or missing schoolId in getClassesBySubject', { schoolId, ip: req.ip });
+            return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
+        }
+        if (!subjectId || !mongoose.Types.ObjectId.isValid(subjectId)) {
+            logger.warn('Invalid or missing subjectId in getClassesBySubject', { subjectId, ip: req.ip });
+            return res.status(400).json({ success: false, message: 'Valid subjectId is required' });
+        }
+
+        // Validate school and subject
+        await ensureActiveEntity(School, schoolId, 'School');
+        const subject = await validateEntity(Subject, subjectId, 'Subject');
+
+        if (subject.school.toString() !== schoolId.toString()) {
+            logger.warn('Subject does not belong to specified school', { subjectId, schoolId, ip: req.ip });
+            return res.status(403).json({ success: false, message: 'Subject does not belong to the specified school' });
+        }
+
+        // Find classes where the subject is listed and belongs to the school
+        const classes = await Class.find({
+            subjects: subjectId,
+            school: schoolId,
+            isDeleted: false
+        })
+            .populate('trade', 'name code')
+            .select('level year trade className');
+
+        logger.info('Classes fetched for subject', { subjectId, schoolId, count: classes.length, ip: req.ip });
+        res.json({ success: true, classes });
+    } catch (error) {
+        if (error?.statusCode) {
+            return res.status(error.statusCode).json({ success: false, message: error.message });
+        }
+        logger.error('Error in getClassesBySubject', { error: error.message, ip: req.ip });
+        res.status(500).json({ success: false, message: error.message || 'Server Error' });
     }
 };
 
@@ -173,5 +290,6 @@ module.exports = {
     getSubjects,
     getSubjectById,
     updateSubject,
-    deleteSubject
+    deleteSubject,
+    getClassesBySubject
 };

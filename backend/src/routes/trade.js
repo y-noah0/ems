@@ -32,9 +32,9 @@ const tradeValidation = [
 router.get('/', authenticate, getTrades);
 router.get('/:id', authenticate, getTradeById);
 
-// Write routes restricted to dean and admin
-router.post('/', tradeValidation, requireRoles(['dean', 'admin']), createTrade)
-router.put('/:id', authenticate, requireRoles(['dean', 'admin']), tradeValidation, updateTrade);
-router.delete('/:id', authenticate, requireRoles(['dean', 'admin']), deleteTrade);
+// Write routes restricted to dean, admin, and headmaster
+router.post('/', authenticate, tradeValidation, requireRoles(['dean', 'admin', 'headmaster']), createTrade);
+router.put('/:id', authenticate, requireRoles(['dean', 'admin', 'headmaster']), tradeValidation, updateTrade);
+router.delete('/:id', authenticate, requireRoles(['dean', 'admin', 'headmaster']), deleteTrade);
 
 module.exports = router;

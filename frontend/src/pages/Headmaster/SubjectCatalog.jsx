@@ -4,8 +4,15 @@ import Button from '../../components/ui/Button';
 import { ToastContext } from '../../context/ToastContext';
 import headmasterService from '../../services/headmasterService';
 import DynamicTable from '../../components/class/DynamicTable';
+import { useAuth } from '../../context/AuthContext';
+import tradeService from '../../services/tradeService';
+import subjectService from '../../services/subjectService';
 
 export default function HeadmasterSubjectCatalog() {
+  const user = useAuth();
+  const schoolId = user?.currentUser.school;
+  console.log(schoolId);
+  
   const { showToast } = useContext(ToastContext);
   const [subjects, setSubjects] = useState([]);
   const [trades, setTrades] = useState([]);
@@ -20,8 +27,8 @@ export default function HeadmasterSubjectCatalog() {
   const refetchData = useCallback(async () => {
     try {
       const [subjectsData, tradesData] = await Promise.all([
-        headmasterService.getSubjectsCatalog(),
-        headmasterService.getTradesOffered()
+         subjectService.getSubjects(schoolId),
+       tradeService.getTradesBySchool(schoolId),
       ]);
       setSubjects(subjectsData);
       setTrades(tradesData);
@@ -31,20 +38,9 @@ export default function HeadmasterSubjectCatalog() {
   }, [showToast]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [subjectsData, tradesData] = await Promise.all([
-          headmasterService.getSubjectsCatalog(),
-          headmasterService.getTradesOffered()
-        ]);
-        setSubjects(subjectsData);
-        setTrades(tradesData);
-      } catch {
-        showToast('Failed to load data', 'error');
-      }
-    };
-    fetchData();
-  }, [showToast, refetchData]);
+    // Initial load via refetchData
+    refetchData();
+  }, [refetchData]);
 
   const handleCreateSubject = async () => {
     if (!newSubject.name || newSubject.trades.length === 0) {
@@ -52,13 +48,15 @@ export default function HeadmasterSubjectCatalog() {
       return;
     }
     try {
-      await headmasterService.createSubject(newSubject);
+      await subjectService.createSubject({ ...newSubject, schoolId });
       showToast('Subject created successfully', 'success');
       setShowModal(false);
       setNewSubject({ name: '', description: '', trades: [], credits: 1 });
       refetchData();
-    } catch {
-      showToast('Failed to create subject', 'error');
+    } catch (err) {
+      console.error('Error creating subject:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to create subject';
+      showToast(msg, 'error');
     }
   };
 
@@ -83,7 +81,7 @@ export default function HeadmasterSubjectCatalog() {
             <p className="text-gray-600">View subjects for your school's trades and add custom subjects</p>
           </div>
           <Button onClick={() => setShowModal(true)}>
-            Add Custom Subject
+            Add Subject
           </Button>
         </div>
 

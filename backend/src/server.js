@@ -7,7 +7,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const { Server } = require('socket.io');
 const winston = require('winston');
@@ -26,58 +25,20 @@ const server = http.createServer(app);
 // ⚡ Attach Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
     methods: ['GET', 'POST'],
   },
 });
 
 // 🔒 Security & Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
-
-// Configure helmet to allow images
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: false // Disable CSP for file serving
-}));
-
+app.use(cors());
+app.use(helmet());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan('dev')); // HTTP request logger
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Max 100 requests per window
-}));
 
 // --- NEW: Serve uploads folder statically for image access ---
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
-  setHeaders: (res, path) => {
-    res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL || 'http://localhost:5173');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  }
-}));
-
-// Alternative route for serving files with explicit CORS headers
-app.options('/uploads/*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.sendStatus(200);
-});
-
-app.get('/uploads/*', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', process.env.CLIENT_URL || 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET');
-  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
-  res.header('Content-Type', 'image/*');
-  next();
-});
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Attach io instance to each request
 app.use((req, res, next) => {

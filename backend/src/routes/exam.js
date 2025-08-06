@@ -62,7 +62,7 @@ router.get(
 // @access  Teachers, Deans, Admins
 router.put(
   '/:examId',
-  authMiddleware.isTeacherOrDeanOrAdmin,
+  authMiddleware.isTeacher,
   examController.validateUpdateExam,
   examController.updateExam
 );

@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     changePassword,
-    isAuthenticated: authService.isAuthenticated()
+    isAuthenticated: !!currentUser
   };
 
   return (

@@ -36,7 +36,7 @@ const createSchool = async (req, res) => {
         }
 
         const { name, address, contactEmail, contactPhone, headmaster, tradesOffered, category } = req.body;
-        const logo = req.file ? `/uploads/schools/${req.file.filename}` : req.body.logo || null;
+        const logo = req.file ? req.file.path : req.body.logo || null;
 
         const existing = await School.findOne({ name, category });
         if (existing) {
@@ -132,6 +132,27 @@ const getSchoolById = async (req, res) => {
     }
 };
 
+// Get trades offered by school
+const getTradesOfferedBySchool = async (req, res) => {
+    try {
+        const school = await School.findById(req.params.id)
+            .populate('tradesOffered', 'code name category description');
+        if (!school || school.isDeleted) {
+            logger.warn('School not found or deleted', { schoolId: req.params.id, ip: req.ip });
+            return res.status(404).json({ success: false, message: 'School not found' });
+        }
+        logger.info('Trades offered fetched for school', { schoolId: school._id, ip: req.ip });
+        res.json({ success: true, tradesOffered: school.tradesOffered });
+    } catch (error) {
+        logger.error('Error in getTradesOfferedBySchool', { error: error.message, stack: error.stack, ip: req.ip });
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
 // Update school
 const updateSchool = async (req, res) => {
     try {
@@ -154,8 +175,7 @@ const updateSchool = async (req, res) => {
         }
 
         if (req.file && school.logo && !school.logo.startsWith('http')) {
-            const oldLogoPath = path.join(__dirname, '..', '..', school.logo);
-            fs.unlink(oldLogoPath, (err) => {
+            fs.unlink(path.join(__dirname, '..', school.logo), (err) => {
                 if (err) logger.warn('Failed to delete old logo', { error: err.message, ip: req.ip });
             });
         }
@@ -193,7 +213,7 @@ const updateSchool = async (req, res) => {
         school.headmaster = headmaster;
         school.tradesOffered = tradesOffered || [];
         school.category = category;
-        school.logo = req.file ? `/uploads/schools/${req.file.filename}` : req.body.logo || school.logo;
+        school.logo = req.file ? req.file.path : req.body.logo || school.logo;
 
         await school.save();
         logger.info('School updated', { schoolId: school._id, name, category, ip: req.ip });
@@ -239,11 +259,69 @@ const deleteSchool = async (req, res) => {
     }
 };
 
+// Add a trade to a school's offerings
+const addTradeToSchool = async (req, res) => {
+    try {
+        const { id: schoolId, tradeId } = req.params;
+        const school = await School.findById(schoolId);
+        if (!school || school.isDeleted) {
+            return res.status(404).json({ success: false, message: 'School not found' });
+        }
+        // headmaster may only modify own school
+        if (req.user.role === 'headmaster' && school.headmaster.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+        const Trade = require('../models/trade');
+        const trade = await Trade.findById(tradeId);
+        if (!trade || trade.isDeleted) {
+            return res.status(404).json({ success: false, message: 'Trade not found' });
+        }
+        if (trade.category !== school.category) {
+            return res.status(400).json({ success: false, message: 'Trade category does not match school category' });
+        }
+        if (school.tradesOffered.includes(tradeId)) {
+            return res.status(400).json({ success: false, message: 'Trade already offered by school' });
+        }
+        school.tradesOffered.push(tradeId);
+        await school.save();
+        res.json({ success: true, tradesOffered: school.tradesOffered });
+    } catch (error) {
+        logger.error('Error in addTradeToSchool', { error: error.message, ip: req.ip });
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+// Remove a trade from a school's offerings
+const removeTradeFromSchool = async (req, res) => {
+    try {
+        const { id: schoolId, tradeId } = req.params;
+        const school = await School.findById(schoolId);
+        if (!school || school.isDeleted) {
+            return res.status(404).json({ success: false, message: 'School not found' });
+        }
+        if (req.user.role === 'headmaster' && school.headmaster.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+        if (!school.tradesOffered.includes(tradeId)) {
+            return res.status(400).json({ success: false, message: 'Trade not offered by school' });
+        }
+        school.tradesOffered = school.tradesOffered.filter(tId => tId.toString() !== tradeId);
+        await school.save();
+        res.json({ success: true, tradesOffered: school.tradesOffered });
+    } catch (error) {
+        logger.error('Error in removeTradeFromSchool', { error: error.message, ip: req.ip });
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
 module.exports = {
     schoolValidation,
     createSchool,
     getSchools,
     getSchoolById,
+    getTradesOfferedBySchool,
     updateSchool,
-    deleteSchool
+    deleteSchool,
+    addTradeToSchool,
+    removeTradeFromSchool
 };

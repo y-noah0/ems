@@ -55,16 +55,16 @@ const UserSchema = new Schema({
   profilePicture: {
     type: String,
     trim: true,
+    default: null,
     validate: {
       validator: function (v) {
-        // Allow null, undefined, or empty string
-        if (!v || v === '') return true;
+        // Allow null or a valid image URL/local path
+        if (v === null) return true;
         return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
           /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
       },
       message: 'Please enter a valid image URL or local upload path'
-    },
-    default: null
+    }
   },
   preferences: {
     notifications: {
@@ -94,8 +94,8 @@ const UserSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'Term',
     validate: {
-      validator: function (v) { return this.role === 'student' ? v.length > 0 : v.length === 0; },
-      message: 'termids are required for students and not allowed for other roles'
+      validator: function (v) { return this.role === 'student' ? v != null : v == null; },
+      message: 'Term ID is required for students and not allowed for other roles'
     }
   },
   lastLogin: {
@@ -207,11 +207,8 @@ UserSchema.methods.comparePassword = async function (password) {
 };
 
 UserSchema.methods.updateLastLogin = async function () {
-  // Use updateOne to avoid triggering validation on the entire document
-  await this.constructor.updateOne(
-    { _id: this._id },
-    { lastLogin: new Date() }
-  );
+  this.lastLogin = new Date();
+  await this.save();
 };
 
 UserSchema.methods.invalidateTokens = async function () {

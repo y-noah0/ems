@@ -421,11 +421,9 @@ const login = async (req, res) => {
         registrationNumber: user.registrationNumber,
         school: user.school,
         phoneNumber: user.phoneNumber,
-        profilePicture: user.profilePicture,
         preferences: user.preferences,
       },
     });
-
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -461,31 +459,15 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    // Support both old format (userId + token) and new format (email + token)
-    const { userId, email, token } = req.body;
-    
-    let user;
-    if (email) {
-      // New format: use email
-      user = await User.findOne({ email, emailVerificationToken: token, isDeleted: false });
-      if (!user) {
-        logger.warn('Invalid email or verification token', { email, ip: req.ip });
-        return res.status(400).json({ success: false, message: 'Invalid email or verification token' });
-      }
-    } else if (userId) {
-      // Old format: use userId for backward compatibility
-      user = await User.findOne({ _id: userId, emailVerificationToken: token, isDeleted: false });
-      if (!user) {
-        logger.warn('Invalid user ID or verification token', { userId, ip: req.ip });
-        return res.status(400).json({ success: false, message: 'Invalid user ID or verification token' });
-      }
-    } else {
-      logger.warn('Missing email or userId in verifyEmail request', { ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Email or User ID is required' });
+    const { userId, token } = req.body;
+    const user = await User.findOne({ _id: userId, emailVerificationToken: token, isDeleted: false });
+    if (!user) {
+      logger.warn('Invalid user ID or verification token', { userId, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Invalid user ID or verification token' });
     }
 
     if (user.emailVerified) {
-      logger.warn('Email already verified', { userId: user._id, email: user.email, ip: req.ip });
+      logger.warn('Email already verified', { userId, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Email already verified' });
     }
 
@@ -571,7 +553,7 @@ const fetchHeadmasterByEmail = async (req, res) => {
 
     const { email } = req.body;
     const user = await User.findOne({ email: email.toLowerCase(), role: 'headmaster', isDeleted: false })
-      .select('fullName email phoneNumber school profilePicture preferences');
+      .select('fullName email phoneNumber school preferences');
 
     if (!user) {
       logger.warn('Headmaster not found for email', { email, ip: req.ip });
@@ -587,7 +569,6 @@ const fetchHeadmasterByEmail = async (req, res) => {
         email: user.email,
         phoneNumber: user.phoneNumber,
         school: user.school,
-        profilePicture: user.profilePicture,
         preferences: user.preferences
       }
     });
@@ -770,48 +751,6 @@ const updateProfile = async (req, res) => {
   }
 };
 
-// Get current user
-const getCurrentUser = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id)
-      .select('-passwordHash -emailVerificationToken -twoFactorSecret')
-      .populate('school', 'name address')
-      .populate('classId', 'name level')
-      .populate('termId', 'name startDate endDate');
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    res.json({
-      success: true,
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        registrationNumber: user.registrationNumber,
-        school: user.school,
-        phoneNumber: user.phoneNumber,
-        profilePicture: user.profilePicture,
-        preferences: user.preferences,
-        classId: user.classId,
-        termId: user.termId,
-        emailVerified: user.emailVerified,
-        twoFactorEnabled: user.twoFactorEnabled,
-        lastLogin: user.lastLogin
-      }
-    });
-  } catch (error) {
-    console.error('Error getting current user:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
 module.exports = {
   register,
   login,
@@ -823,6 +762,5 @@ module.exports = {
   requestPasswordReset,
   resetPassword,
   enable2FA,
-  updateProfile,
-  getCurrentUser
+  updateProfile
 };
