@@ -66,7 +66,21 @@ const createSubject = async (req, res) => {
             }
         }
 
-        // Check for duplicate subject
+        // If a soft-deleted subject exists with this name in the school, restore it
+        const deleted = await Subject.findOne({ name, school: schoolId, isDeleted: true });
+        if (deleted) {
+            // Restore and update fields
+            deleted.isDeleted = false;
+            deleted.description = description || deleted.description;
+            deleted.classes = classes || deleted.classes;
+            deleted.trades = trades || deleted.trades;
+            deleted.teacher = teacher || deleted.teacher;
+            deleted.credits = credits !== undefined ? credits : deleted.credits;
+            await deleted.save();
+            logger.info('Soft-deleted subject restored', { subjectId: deleted._id, schoolId, ip: req.ip });
+            return res.status(200).json({ success: true, subject: deleted, restored: true });
+        }
+        // Check for duplicate active subject
         const existing = await Subject.findOne({ name, schoolId, isDeleted: false });
         if (existing) {
             logger.warn('Duplicate subject detected', { name, schoolId, ip: req.ip });

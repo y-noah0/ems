@@ -57,9 +57,9 @@ const subjectService = {
     }
   },
   
-  deleteSubject: async (id) => {
+  deleteSubject: async (id, schoolId) => {
     try {
-      const response = await api.delete(`/subjects/${id}`);
+      const response = await api.delete(`/subjects/${id}`, { params:  schoolId  });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
