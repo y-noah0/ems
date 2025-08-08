@@ -57,6 +57,11 @@ const registerValidation = [
     .optional()
     .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
     .withMessage('Invalid image URL')
+    .withMessage('Invalid parent phone number'),
+  check('profilePicture', 'Please include a valid image URL')
+    .optional()
+    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
+    .withMessage('Invalid image URL')
 ];
 
 const loginValidation = [

@@ -57,6 +57,15 @@ const tradeService = {
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
+  },
+  // Get trades offered by a specific school
+  getTradesBySchool: async (schoolId) => {
+    try {
+      const response = await api.get(`/schools/${schoolId}/trades`);
+      return response.data.tradesOffered;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
   }
 };
 

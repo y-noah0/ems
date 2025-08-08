@@ -124,6 +124,11 @@ const registerValidation = [
     .optional()
     .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
     .withMessage('Invalid image URL')
+    .withMessage('Invalid parent phone number'),
+  check('profilePicture')
+    .optional()
+    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
+    .withMessage('Invalid image URL')
 ];
 
 // Rate limiter middleware
@@ -137,11 +142,13 @@ module.exports = {
   authenticate,
   requireRoles,
   isAdmin,
+  isAdminorHeadmaster,
   isDean,
   isTeacher,
   isStudent,
   isStudentOrTeacher,
   isTeacherOrDeanOrAdmin,
+  isTeacherOrDeanOrHeadmaster,
   isTeacherOrDeanOrHeadmaster,
   loginValidation,
   registerValidation,

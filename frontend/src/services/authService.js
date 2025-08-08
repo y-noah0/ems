@@ -25,25 +25,25 @@ api.interceptors.request.use(
 
 // Auth service
 const authService = {
-login: async (identifier, password) => {
-  try {
-    console.log('Attempting login with:', { identifier, password });
-    const response = await api.post('/auth/login', { identifier, password });
+    login: async (identifier, password) => {
+        try {
+            console.log('Attempting login with:', { identifier, password });
+            const response = await api.post('/auth/login', { identifier, password });
 
-    if (response.data.token) {
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
-    }
+            // Extract token and user from response
+            const { token, user } = response.data;
+            if (token) {
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+            }
 
-    console.log('Login successful:', response.data);
-    return response.data;
-
-  } catch (error) {
-    console.error('Login error:', error.response?.data);
-    throw error.response ? error.response.data : { message: 'Network error' };
-  }
-},
-
+            console.log('Login successful:', user);
+            return { token, user };
+        } catch (error) {
+            console.error('Login error:', error.response?.data);
+            throw error.response ? error.response.data : { message: 'Network error' };
+        }
+    },
 
 
     // Logout user
@@ -53,12 +53,47 @@ login: async (identifier, password) => {
         toast.success("Logout successful");
     },
 
-    // Get current user
-    getCurrentUser: async () => {
+    // Get current user (prioritize localStorage, fallback to server)
+    getCurrentUser: async (forceRefresh = false) => {
         try {
+            // First try to get user from localStorage
+            const storedUser = localStorage.getItem("user");
+            const token = localStorage.getItem("token");
+            
+            if (storedUser && token && !forceRefresh) {
+                const user = JSON.parse(storedUser);
+                // Check if user data is recent (less than 30 minutes old)
+                const lastLogin = user.lastLogin ? new Date(user.lastLogin) : null;
+                const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+                
+                if (lastLogin && lastLogin > thirtyMinutesAgo) {
+                    console.log('Using cached user data from localStorage');
+                    return user;
+                }
+            }
+            
+            // If no cached data, data is old, or forced refresh, fetch from server
+            console.log('Fetching fresh user data from server');
             const response = await api.get("/auth/me");
-            return response.data.user;
+            const userData = response.data.user;
+            
+            // Update localStorage with fresh data
+            localStorage.setItem("user", JSON.stringify(userData));
+            
+            return userData;
         } catch (error) {
+            console.error('Error getting current user:', error);
+            
+            // If server request fails, try to return cached data as fallback
+            const storedUser = localStorage.getItem("user");
+            const token = localStorage.getItem("token");
+            
+            if (storedUser && token) {
+                console.log('Server failed, using cached user data');
+                return JSON.parse(storedUser);
+            }
+            
+            // If no cached data and server fails, throw error
             throw error.response
                 ? error.response.data
                 : { message: "Network error" };
@@ -97,21 +132,37 @@ login: async (identifier, password) => {
         return localStorage.getItem("token") !== null;
     },
 
-    // Get user from localStorage
+    // Update user data in localStorage
+    updateStoredUser: (userData) => {
+        localStorage.setItem("user", JSON.stringify(userData));
+    },
+
+    // Get user from localStorage (no server call)
+    getStoredUser: () => {
+        const user = localStorage.getItem("user");
+        return user ? JSON.parse(user) : null;
+    },
+
+    // Get user from localStorage (deprecated - use getStoredUser instead)
     getUser: () => {
         const user = localStorage.getItem("user");
         return user ? JSON.parse(user) : null;
     },
 
-    verifyEmail: async (tk) => {
-      const token = {token: tk}
+    verifyEmail: async (data) => {
         try {
-            const response = await api.post("/auth/verify-email", token);
-            toast.success("Password changed successfully");
+            // Support both old format (just token) and new format (email + token)
+            const payload = typeof data === 'string' 
+                ? { token: data } 
+                : { email: data.email, token: data.token };
+                
+            const response = await api.post("/auth/verify-email", payload);
+            toast.success("Email verified successfully");
             return response.data;
         } catch (error) {
+            console.error("Email verification error:", error);
             toast.error(
-                error.response?.data?.message || "Password change failed"
+                error.response?.data?.message || "Email verification failed"
             );
             throw error.response
                 ? error.response.data

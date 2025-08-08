@@ -120,120 +120,118 @@ const Sidebar = ({ userRole = "student" }) => {
 
     //Headmaster specifics
 
-    {
-      title: "Class management",
-      icon: Building2,
-      isCollapsible: true,
-      active:
-        location.pathname.includes("/headmaster/classes") ||
-        location.pathname.includes("/headmaster/create-class"),
-      roles: ["headmaster"],
-      children: [
         {
-          title: "Class List",
-          path: "/headmaster/classes",
-          active: location.pathname.includes("/headmaster/classes"),
+            title: "Class management",
+            icon: Building2,
+            isCollapsible: true,
+            active:
+                location.pathname.includes("/headmaster/classes") ||
+                location.pathname.includes("/headmaster/create-class"),
+            roles: ["headmaster"],
+            children: [
+                {
+                    title: "Class List",
+                    path: "/headmaster/classes",
+                    active: location.pathname.includes("/headmaster/classes"),
+                },
+                {
+                    title: "Class Performance",
+                    path: "/headmaster/classes/performance",
+                    active: location.pathname.includes("/headmaster/classes/performance"),
+                },
+            ],
         },
         {
-          title: "Class Performance",
-          path: "/headmaster/classes/performance",
-          active: location.pathname.includes("/headmaster/classes/performance"),
+            title: "Trades Management",
+            icon: Building2,
+            path: "/headmaster/trades-offered",
+            active: location.pathname.includes("/headmaster/trades-offered"),
+            roles: ["headmaster"],
         },
-      ],
-    },
-    {
-      title: "Trades Management",
-      icon: Building2,
-      path: "/headmaster/trades-offered",
-      active: location.pathname.includes("/headmaster/trades-offered"),
-      roles: ["headmaster"],
-    },
-    {
-      title: "User Management",
-      icon: Users,
-      path: "/headmaster/users",
-      active: location.pathname.includes("/headmaster/users"),
-      roles: ["headmaster"],
-    },
-    {
-      title: "School Profile",
-      icon: Users,
-      path: "/headmaster/school",
-      active: location.pathname.includes("/headmaster/school"),
-      roles: ["headmaster"],
-    },
-    {
-      title: "Reporting",
-      icon: BarChart3,
-      path: "/headmaster/reports",
-      active: location.pathname.includes("/headmaster/reports"),
-      roles: ["headmaster"],
-    },
-    // Teacher specific items
-    {
-      title: "Submissions",
-      icon: FileText,
-      path: "/teacher/submissions",
-      active: location.pathname.includes("/teacher/submissions"),
-      roles: ["teacher"],
-    },
-    {
-      title: "Drafts",
-      icon: FileText,
-      path: "/teacher/drafts",
-      active: location.pathname.includes("/teacher/drafts"),
-      roles: ["teacher"],
-    },
-    // Admin specific items
-    {
-      title: "School Management",
-      icon: Building2,
-      path: "/admin/schools",
-      active: location.pathname.includes("/admin/schools"),
-      roles: ["admin"],
-    },
-    {
-      title: "Headmasters Management",
-      icon: Users,
-      path: "/admin/headmasters",
-      active: location.pathname.includes("/admin/headmasters"),
-      roles: ["admin"],
-    },
-    {
-      title: "Trades Catalog",
-      icon: Building2,
-      path: "/admin/trades",
-      active: location.pathname.includes("/admin/trades"),
-      roles: ["admin"],
-    },
-    {
-      title: "Subject Catalog",
-      icon: Text,
-      path: "/admin/subjects",
-      active: location.pathname.includes("/admin/subjects"),
-      roles: ["admin", "headmaster"],
-    },
-    {
-      title: "Subscription Management",
-      icon: Ticket,
-      path: "/admin/subscriptions",
-      active: location.pathname.includes("/admin/subscriptions"),
-      roles: ["admin"],
-    },
-    {
-      title: "Trades Management",
-      icon: Building2,
-      path: "/headmaster/trades-offered",
-      active: location.pathname.includes("/headmaster/trades-offered"),
-      roles: ["headmaster"],
-    },
-    {
-      title: "Trades Management",
-      icon: Building2,
-      path: "/headmaster/trades-offered",
-      active: location.pathname.includes("/headmaster/trades-offered"),
-      roles: ["headmaster"],
-    },
+        {
+            title: "Subject Catalog",
+            icon: Text,
+            path: "/headmaster/subjects",
+            active: location.pathname.includes("/headmaster/subjects"),
+            roles: ["headmaster"],
+        },
+        {
+            title: "User Management",
+            icon: Users,
+            path: "/headmaster/users",
+            active: location.pathname.includes("/headmaster/users"),
+            roles: ["headmaster"],
+        },
+        {
+            title: "Reporting",
+            icon: BarChart3,
+            path: "/headmaster/reports",
+            active: location.pathname.includes("/headmaster/reports"),
+            roles: ["headmaster"],
+        },
+        // Teacher specific items
+        {
+            title: "Submissions",
+            icon: FileText,
+            path: "/teacher/submissions",
+            active: location.pathname.includes("/teacher/submissions"),
+            roles: ["teacher"],
+        },
+        {
+            title: "Drafts",
+            icon: FileText,
+            path: "/teacher/drafts",
+            active: location.pathname.includes("/teacher/drafts"),
+            roles: ["teacher"],
+        },
+        // Admin specific items
+        {
+            title: "School Management",
+            icon: Building2,
+            path: "/admin/schools",
+            active: location.pathname.includes("/admin/schools"),
+            roles: ["admin"],
+        },
+         {
+            title: "Headmasters Management",
+            icon: Users,
+            path: "/admin/headmasters",
+            active: location.pathname.includes("/admin/headmasters"),
+            roles: ["admin"],
+        },
+        {
+            title: "Trades Catalog",
+            icon: Building2,
+            path: "/admin/trades",
+            active: location.pathname.includes("/admin/trades"),
+            roles: ["admin"],
+        },
+        {
+            title: "Subject Catalog",
+            icon: Text,
+            path: "/admin/subjects",
+            active: location.pathname.includes("/admin/subjects"),
+            roles: ["admin"],
+        },
+        {
+            title: "Subscription Management",
+            icon: Ticket,
+            path: "/admin/subscriptions",
+            active: location.pathname.includes("/admin/subscriptions"),
+            roles: ["admin"],
+        },
+            {title: "Exams Management",
+            icon: Building2,
+            path: "/headmaster/exams",
+            active: location.pathname.includes("/headmaster/exams"),
+            roles: ["headmaster"],},
+        {
+            title: "Trades Management",
+            icon: Building2,
+            path: "/headmaster/trades-offered",
+            active: location.pathname.includes("/headmaster/trades-offered"),
+            roles: ["headmaster"],
+        },
 
 
     //student specific items

@@ -8,7 +8,7 @@ const systemAdminController = {};
 systemAdminController.getAllStaff = async (req, res) => {
   try {
     const staffMembers = await User.find({ 
-      role: { $in: ['teacher', 'dean', 'admin'] } 
+      role: { $in: ['teacher', 'dean'] } 
     }).select('-passwordHash').sort({ role: 1, fullName: 1 });
 
     res.json({
@@ -59,7 +59,7 @@ systemAdminController.createStaff = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, fullName, role, subjects } = req.body;
+    const { email, password, fullName, role, subjects, school, phoneNumber } = req.body;
 
     // Validate role
     if (!['teacher', 'dean', 'admin'].includes(role)) {
@@ -81,7 +81,9 @@ systemAdminController.createStaff = async (req, res) => {
       email,
       passwordHash: password, // Will be hashed in pre-save hook
       fullName,
-      role
+      role,
+      school,
+      phoneNumber
     });
 
     // For non-student roles, make sure registrationNumber is not required

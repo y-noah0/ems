@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 const bcrypt = require('bcryptjs');
+
+const Schema = mongoose.Schema;
 
 const UserSchema = new Schema({
   role: {
@@ -18,7 +19,7 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please Enter a valid email'],
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
     required: function () { return this.role !== 'student'; },
     sparse: true,
     unique: true
@@ -53,7 +54,6 @@ const UserSchema = new Schema({
     default: null,
     validate: {
       validator: function (v) {
-        // Allow null or a valid image URL/local path
         if (v === null) return true;
         return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
           /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
@@ -103,7 +103,6 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     default: null,
-    required: false,
     validate: {
       validator: function (v) {
         if (this.role === 'student' && v != null) return v.length > 0;
@@ -116,7 +115,6 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     default: null,
-    required: false,
     validate: {
       validator: function (v) {
         if (this.role === 'student' && v != null) return v.length > 0;
@@ -129,18 +127,15 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     match: [/^\+?\d{10,15}$/, 'Please enter a valid phone number'],
-    default: null,
-    required: false
+    default: null
   },
   graduated: {
     type: Boolean,
-    default: false,
-    required: false
+    default: false
   },
   graduationDate: {
     type: Date,
-    default: null,
-    required: false
+    default: null
   }
 }, { timestamps: true });
 
@@ -160,8 +155,8 @@ UserSchema.pre('save', async function (next) {
     }
   }
 
-  if (this.role === 'teacher') {
-    if (!this.school) return next(new Error('Teacher must be assigned to a school'));
+  if (this.role === 'teacher' && !this.school) {
+    return next(new Error('Teacher must be assigned to a school'));
   }
 
   if (this.role === 'headmaster' && this.school) {

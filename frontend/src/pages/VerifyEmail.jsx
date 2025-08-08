@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import authService from "../services/authService";
 import Card from "../components/ui/Card";
@@ -7,23 +8,43 @@ import Button from "../components/ui/Button";
 
 export default function VerifyEmail() {
     const [token, setToken] = useState("");
+    const [email, setEmail] = useState("");
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        // Get email from navigation state
+        if (location.state?.email) {
+            setEmail(location.state.email);
+        }
+    }, [location.state]);
 
     const handleVerify = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+        setError("");
+        
+        console.log("Verifying email:", email, "with token:", token);
+        
+        if (!email) {
+            setError("Email is required for verification");
+            setIsSubmitting(false);
+            return;
+        }
+        
         try {
-            const response = await authService.verifyEmail(token);
+            const response = await authService.verifyEmail({ email, token });
             if (response) {
                 toast.success("Email verified successfully!");
-                window.location.href = "/login";
+                navigate("/login");
             }
         } catch (error) {
             console.error("Verification error:", error);
-            toast.error(
-                error.response?.data?.message || "Email verification failed"
-            );
+            const errorMessage = error.response?.data?.message || error.message || "Email verification failed";
+            setError(errorMessage);
+            toast.error(errorMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -52,14 +73,17 @@ export default function VerifyEmail() {
                     )}
 
                     <form onSubmit={handleVerify}>
+                
                         <Input
                             label="Verification Code"
                             id="code"
                             name="code"
-                            type="code"
+                            type="text"
                             required
+                            value={token}
                             onChange={(e) => setToken(e.target.value)}
-                            placeholder="Enter your code"
+                            placeholder="Enter your verification code"
+                            maxLength="6"
                         />
 
                         <div className="mt-6">

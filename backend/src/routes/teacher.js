@@ -23,7 +23,7 @@ router.delete(
     '/',
     isDean,
     isAdmin, // Restrict to admin, headmaster (since isAdmin includes headmaster)
-     // Allows dean, headmaster
+    isDean, // Allows dean, headmaster
     teacherController.validateDeleteTeacher,
     teacherController.deleteTeacher
 );

@@ -50,9 +50,16 @@ const LoginPage = () => {
       } else {
         navigate('/');
       }
-    } catch (error) {
-      setError(error.message || 'Invalid login credentials');
-      console.error('Login error:', error);
+    } catch (err) {
+      setError(err.message || 'Invalid login credentials');
+      console.error('Login error:', err);
+      if (err.message == "Email not verified") {
+        navigate('/verify-email', { 
+          state: { email: formData.identifier } 
+        });
+      }else if (err.message == "2FA code required") {
+        navigate('/two-factor');
+      }
     } finally {
       setIsSubmitting(false);
     }

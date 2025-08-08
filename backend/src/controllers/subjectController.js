@@ -5,8 +5,7 @@ const Trade = require('../models/trade');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
-const { validateEntity, validateEntities } = require('../utils/entityValidator');
-const { toUTC } = require('../utils/dateUtils');
+const { validateEntity } = require('../utils/entityValidator');
 const mongoose = require('mongoose');
 
 // Logger setup
@@ -25,7 +24,6 @@ const ensureActiveEntity = async (Model, id, entityName, schoolId = null) => {
     if (!entity || entity.isDeleted) {
         throw new Error(`${entityName} not found or has been deleted`);
     }
-    // If schoolId is provided, validate that the entity belongs to the school
     if (schoolId && entityName === 'Trade') {
         const school = await School.findById(schoolId);
         if (!school || !school.tradesOffered.includes(id)) {
@@ -51,9 +49,6 @@ const createSubject = async (req, res) => {
 
         const { name, description, schoolId, classes, trades, teacher, credits } = req.body;
 
-        // Validate school
-        // await ensureActiveEntity(School, schoolId, 'School');
-
         // Validate referenced entities and ensure they belong to the school
         if (classes && classes.length > 0) {
             await Promise.all(classes.map(id => ensureActiveEntity(Class, id, 'Class', schoolId)));
@@ -70,13 +65,21 @@ const createSubject = async (req, res) => {
         }
 
         // Check for duplicate subject
-        const existing = await Subject.findOne({ name, schoolId, isDeleted: false });
+        const existing = await Subject.findOne({ name, school: schoolId, isDeleted: false });
         if (existing) {
             logger.warn('Duplicate subject detected', { name, schoolId, ip: req.ip });
             return res.status(400).json({ success: false, message: 'Subject with this name already exists in this school' });
         }
 
-        const subject = new Subject({ name, description, school:schoolId, classes: classes || [], trades: trades || [], teacher, credits });
+        const subject = new Subject({
+            name,
+            description,
+            school: schoolId,
+            classes: classes || [],
+            trades: trades || [],
+            teacher,
+            credits
+        });
         await subject.save();
 
         logger.info('Subject created', { subjectId: subject._id, schoolId, ip: req.ip });

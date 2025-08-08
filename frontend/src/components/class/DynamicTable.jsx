@@ -48,7 +48,7 @@ const DynamicTable = ({
     return value;
   };
 
-  if (data.length === 0) {
+  if (data &&data.length === 0) {
     return (
       <div 
         className="text-center py-8 text-gray-500"
@@ -95,7 +95,7 @@ const DynamicTable = ({
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {data.map((item, index) => (
+          {data &&data.map((item, index) => (
             <tr 
               key={item.id || index}
               className="hover:bg-gray-50"
