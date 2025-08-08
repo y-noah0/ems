@@ -118,6 +118,17 @@ const adminService = {
     }
   },
 
+  getAllStudents: async (schoolId) => {
+    try {
+      const response = await api.get('/admin/students', {
+        params: { schoolId }
+      });
+      return response.data.students;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
   // Students
   getStudentsByClass: async (classId) => {
     try {

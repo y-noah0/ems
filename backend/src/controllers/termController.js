@@ -59,7 +59,7 @@ const createTerm = async (req, res) => {
 // Get all terms (filtered by schoolId in body)
 const getTerms = async (req, res) => {
     try {
-        const { schoolId } = req.body;
+        const { schoolId } = req.query;
 
         // Validate schoolId
         if (!schoolId || !mongoose.isValidObjectId(schoolId)) {

@@ -65,6 +65,7 @@ import HeadmasterSubjectCatalog from "./pages/Headmaster/SubjectCatalog";
 import VerifyEmail from "./pages/VerifyEmail";
 import TwoFactor from "./pages/TwoFactor";
 import ExamView from "./pages/ExamView";
+import ManageClasses from "./components/class/ManageClasses";
 
 // Role-Based Redirect Component
 const RoleBasedRedirect = () => {
@@ -661,7 +662,7 @@ function App() {
                                 path="/dean/classes"
                                 element={
                                     <ProtectedRoute allowedRoles={["dean"]}>
-                                        <ClassesPage />
+                                        <ManageClasses />
                                     </ProtectedRoute>
                                 }
                             />

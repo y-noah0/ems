@@ -187,6 +187,7 @@ const generateRegistrationNumber = async () => {
 
 // Register a new user
 const register = async (req, res) => {
+  console.log('Registering user:', req.body);
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -254,22 +255,23 @@ const register = async (req, res) => {
 
     const verificationCode = role !== 'student' ? Math.floor(100000 + Math.random() * 900000).toString() : undefined;
 
-    const user = new User({
-      fullName,
-      passwordHash: password,
-      role,
-      school: ['student', 'teacher', 'dean'].includes(role) ? schoolId : null,
-      registrationNumber,
-      email: role !== 'student' ? email : email || undefined,
-      phoneNumber,
-      profilePicture: profilePicturePath,
-      preferences: { notifications: { email: !!email, sms: !!phoneNumber }, theme: 'light' },
-      class: role === 'student' && classId ? classId : undefined,
-      emailVerificationToken: verificationCode,
-      parentFullName: role === 'student' ? parentFullName : undefined,
-      parentNationalId: role === 'student' ? parentNationalId : undefined,
-      parentPhoneNumber: role === 'student' ? parentPhoneNumber : undefined
-    });
+  const user = new User({
+  fullName,
+  passwordHash: password,
+  role,
+  school: ['student', 'teacher', 'dean'].includes(role) ? schoolId : null,
+  registrationNumber,
+  email: role !== 'student' ? email : email || undefined,
+  phoneNumber,
+  profilePicture: profilePicturePath,
+  preferences: { notifications: { email: !!email, sms: !!phoneNumber }, theme: 'light' },
+  classId: role === 'student' ? classId : undefined,      // <-- FIXED
+  termId: role === 'student' ? termId : undefined,        // <-- FIXED
+  emailVerificationToken: verificationCode,
+  parentFullName: role === 'student' ? parentFullName : undefined,
+  parentNationalId: role === 'student' ? parentNationalId : undefined,
+  parentPhoneNumber: role === 'student' ? parentPhoneNumber : undefined
+});
 
     await user.save();
     logger.info('User registered', { userId: user._id, role, ip: req.ip });

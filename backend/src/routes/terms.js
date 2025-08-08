@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { body, param } = require('express-validator');
+const mongoose = require('mongoose');
+const { body, param, query } = require('express-validator');
 const {
     createTerm,
     getTerms,
@@ -32,7 +33,9 @@ router.post('/', authenticate, deanOrAdmin, termValidationRules, createTerm);
 router.get(
     '/',
     authenticate,
-    [body('schoolId').isMongoId().withMessage('Valid schoolId is required in request body')],
+    [
+        query('school').isMongoId().withMessage('Valid school query parameter is required')
+    ],
     getTerms
 );
 

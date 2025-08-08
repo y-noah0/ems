@@ -21,40 +21,118 @@ const isAuthorizedForSchool = (req, schoolId) => {
 
 // Create Class (only dean or admin, restricted to school)
 const createClass = async (req, res) => {
-    try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            logger.warn('Validation failed in createClass', { errors: errors.array(), ip: req.ip });
-            return res.status(400).json({ success: false, errors: errors.array() });
-        }
-
-        const { level, trade, year, schoolId, capacity, subjects } = req.body;
-
-        // Validate schoolId
-        if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
-            return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
-        }
-
-        // Check if user is authorized for the school
-        if (!isAuthorizedForSchool(req, school)) {
-            return res.status(403).json({ success: false, message: 'Access denied for this school' });
-        }
-
-        const existing = await Class.findOne({ level, trade, year, school, isDeleted: false });
-        if (existing) {
-            return res.status(400).json({ success: false, message: 'Class already exists in this school' });
-        }
-
-        const newClass = new Class({ level, trade, year, school: schoolId, capacity, subjects });
-        await newClass.save();
-
-        logger.info('Class created', { classId: newClass._id, school });
-        res.status(201).json({ success: true, class: newClass });
-    } catch (error) {
-        logger.error('Error in createClass', { error: error.message, ip: req.ip });
-        res.status(500).json({ success: false, message: 'Server Error' });
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation failed in createClass', { errors: errors.array(), ip: req.ip });
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
+
+    const { level, trade, year, schoolId, capacity, subjects } = req.body;
+
+    if (!schoolId || !mongoose.isValidObjectId(schoolId)) {
+      return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
+    }
+    if (!mongoose.isValidObjectId(trade)) {
+      return res.status(400).json({ success: false, message: 'Valid trade ID is required' });
+    }
+    if (!Array.isArray(subjects)) {
+      return res.status(400).json({ success: false, message: 'Subjects must be an array' });
+    }
+    if (!subjects.every(id => mongoose.isValidObjectId(id))) {
+      return res.status(400).json({ success: false, message: 'One or more subject IDs are invalid' });
+    }
+
+    if (!isAuthorizedForSchool(req, schoolId)) {
+      return res.status(403).json({ success: false, message: 'Access denied for this school' });
+    }
+
+    // Normalize and cast inputs properly
+    const normalizedLevel = level.trim().toUpperCase();
+    const normalizedYear = Number(year);
+    if (isNaN(normalizedYear)) {
+      return res.status(400).json({ success: false, message: 'Year must be a number' });
+    }
+    const subjectIds = subjects.map(id => mongoose.Types.ObjectId(id));
+
+    // Helper to compare subject arrays (assumes both arrays of ObjectId or strings)
+    const sameSubjects = (arr1, arr2) => {
+      if (arr1.length !== arr2.length) return false;
+      const sorted1 = arr1.map(String).sort();
+      const sorted2 = arr2.map(String).sort();
+      return sorted1.every((val, idx) => val === sorted2[idx]);
+    };
+
+    // Check if a class with same level, year, school exists with exact same subjects
+    const existingClasses = await Class.find({
+      level: normalizedLevel,
+      year: normalizedYear,
+      school: schoolId,
+      isDeleted: false
+    });
+
+    const duplicate = existingClasses.find(c => sameSubjects(c.subjects, subjectIds));
+
+    if (duplicate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class with same level, year, school, and subjects already exists'
+      });
+    }
+
+    // Additionally check DB unique index on level+trade+year+school to catch duplicates by trade
+    const existingByTrade = await Class.findOne({
+      level: normalizedLevel,
+      trade: mongoose.Types.ObjectId(trade),
+      year: normalizedYear,
+      school: schoolId,
+      isDeleted: false
+    });
+    if (existingByTrade) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class with same level, trade, year, and school already exists'
+      });
+    }
+
+    const newClass = new Class({
+      level: normalizedLevel,
+      trade,
+      year: normalizedYear,
+      school: schoolId,
+      capacity,
+      subjects: subjectIds
+    });
+
+    const validationError = newClass.validateSync();
+    if (validationError) {
+      logger.warn('Validation error on newClass', { error: validationError });
+      return res.status(400).json({ success: false, message: validationError.message });
+    }
+
+    await newClass.save();
+
+    res.status(201).json({ success: true, class: newClass });
+
+    try {
+      logger.info('Class created', { classId: newClass._id, school: schoolId });
+    } catch (logErr) {
+      console.error('Logging failed:', logErr);
+    }
+
+  } catch (error) {
+    logger.error('Error in createClass', {
+      message: error.message,
+      stack: error.stack,
+      ip: req.ip,
+      body: req.body,
+    });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
 };
+
+
+
 
 
 // Get all classes (filtered by schoolId in query)

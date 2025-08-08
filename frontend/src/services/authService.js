@@ -42,7 +42,18 @@ login: async (identifier, password) => {
     console.error('Login error:', error.response?.data);
     throw error.response ? error.response.data : { message: 'Network error' };
   }
-},
+    },
+    register: async (studentData) => {
+        try {
+    const res = await api.post('/auth/register', studentData);
+    return res.data;
+  } catch (error) {
+    const message = error.response?.data?.errors?.[0]?.msg ||
+                    error.response?.data?.message ||
+                    'Failed to create student';
+    throw new Error(message);
+  }
+    },
 
 
 

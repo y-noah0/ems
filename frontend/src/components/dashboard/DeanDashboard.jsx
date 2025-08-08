@@ -33,18 +33,22 @@ const DeanDashboard = () => {
         // Fetch teachers
         const teachersData = await adminService.getAllTeachers();
 
-        // Calculate student count by fetching students for each class
-        let totalStudents = 0;
-        for (const classItem of classesData) {
-          const students = await adminService.getStudentsByClass(classItem._id);
-          totalStudents += students.length;
-        }
+        // Fetch all students directly
+        const studentsData = await adminService.getAllStudents(currentUser.school);
 
         // Set stats
         setStats({
           classCount: classesData.length,
           teacherCount: teachersData.length,
-          studentCount: totalStudents,
+          studentCount: studentsData.length,
+          examCount: 0 // Will be updated with a proper API call in the future
+        });
+
+        // Set stats
+        setStats({
+          classCount: classesData.length,
+          teacherCount: teachersData.length,
+          studentCount: studentsData.length,
           examCount: 0 // Will be updated with a proper API call in the future
         });
       } catch (error) {
