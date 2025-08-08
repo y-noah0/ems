@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import Layout from '../components/layout/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -38,8 +39,10 @@ const Notification = ({ message, type = 'success', onClose }) => {
 const SubmissionView = () => {
   const { submissionId } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useAuth(); // Retrieve currentUser from AuthContext
   const [submission, setSubmission] = useState(null);
-  const [exam, setExam] = useState(null); const [loading, setLoading] = useState(true);
+  const [exam, setExam] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState({ message: null, type: 'success' });
   const [editedAnswers, setEditedAnswers] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -48,16 +51,28 @@ const SubmissionView = () => {
 
   // Function to fetch submission data
   const fetchSubmissionData = async () => {
+    if (!currentUser || !currentUser.school) {
+      setNotification({
+        message: 'Please log in to view submission details.',
+        type: 'error'
+      });
+      setLoading(false);
+      navigate('/login');
+      return;
+    }
+
+    const schoolId = currentUser.school;
+
     try {
       setLoading(true);
-      // Fetch submission details
-      const submissionData = await examService.getSubmissionById(submissionId);
+      // Fetch submission details using submissionService
+      const submissionData = await submissionService.getSubmissionDetails(submissionId, schoolId);
       setSubmission(submissionData);
 
       // Fetch exam details if we have it
       if (submissionData.exam) {
         const examId = typeof submissionData.exam === 'object' ? submissionData.exam._id : submissionData.exam;
-        const examData = await examService.getExamById(examId);
+        const examData = await examService.getExamById(examId, schoolId);
         setExam(examData);
 
         // Initialize editedAnswers with current answers data
@@ -65,14 +80,14 @@ const SubmissionView = () => {
           setEditedAnswers(submissionData.answers.map(answer => ({
             ...answer,
             feedback: answer.feedback || '',
-            points: answer.points || 0,
+            points: answer.points || answer.score || 0,
             isEdited: false
           })));
         }
-        
-        // Fetch all submissions for this exam
+
+        // Fetch all submissions for this exam using submissionService
         try {
-          const examSubmissions = await examService.getExamSubmissions(examId);
+          const examSubmissions = await submissionService.getExamSubmissions(examId, schoolId);
           setAllSubmissions(examSubmissions || []);
         } catch (err) {
           console.error('Error fetching exam submissions:', err);
@@ -117,8 +132,20 @@ const SubmissionView = () => {
     };
     setEditedAnswers(newAnswers);
   };
+
   // Save all grading changes
   const saveGrades = async () => {
+    if (!currentUser || !currentUser.school) {
+      setNotification({
+        message: 'Please log in to save grades.',
+        type: 'error'
+      });
+      navigate('/login');
+      return;
+    }
+
+    const schoolId = currentUser.school;
+
     try {
       setSaving(true);
       setNotification({ message: null, type: 'info' });
@@ -133,8 +160,8 @@ const SubmissionView = () => {
         feedback: answer.feedback || ''
       }));
 
-      // Use submissionService instead of examService
-      await submissionService.updateSubmissionGrades(submissionId, grades);
+      // Update grades using submissionService
+      await submissionService.updateSubmissionGrades(submissionId, grades, schoolId);
 
       // Update local state with the updated submission
       const updatedSubmission = {
@@ -162,8 +189,6 @@ const SubmissionView = () => {
       setSaving(false);
     }
   };
-  // Check if any answers have been edited
-  const hasUnsavedChanges = editedAnswers.some(answer => answer.isEdited);
 
   // Auto-grade multiple-choice questions
   const autoGradeMultipleChoice = () => {
@@ -207,7 +232,8 @@ const SubmissionView = () => {
       }
     });
 
-    setEditedAnswers(newAnswers); return autoGradedCount;
+    setEditedAnswers(newAnswers);
+    return autoGradedCount;
   };
 
   // Handle viewing submission
@@ -219,8 +245,8 @@ const SubmissionView = () => {
 
   // Submissions table columns
   const submissionsColumns = [
-    { 
-      key: 'student', 
+    {
+      key: 'student',
       title: 'Student',
       render: (value) => (
         <div>
@@ -233,8 +259,8 @@ const SubmissionView = () => {
         </div>
       )
     },
-    { 
-      key: 'submittedAt', 
+    {
+      key: 'submittedAt',
       title: 'Submission Time',
       render: (value) => (
         <div>
@@ -247,19 +273,18 @@ const SubmissionView = () => {
         </div>
       )
     },
-    { 
-      key: 'status', 
+    {
+      key: 'status',
       title: 'Status',
       render: (value) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-        }`}>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${value === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+          }`}>
           {value === 'graded' ? 'Graded' : 'Pending'}
         </span>
       )
     },
-    { 
-      key: 'score', 
+    {
+      key: 'score',
       title: 'Score',
       render: (value, item) => {
         return item.status === 'graded' ? (
@@ -282,7 +307,8 @@ const SubmissionView = () => {
       <Layout>
         <div className="flex justify-center items-center py-16">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>      </Layout>
+        </div>
+      </Layout>
     );
   }
 
@@ -310,7 +336,8 @@ const SubmissionView = () => {
             <Button onClick={() => navigate('/teacher/submissions')}>
               Return to Submissions List
             </Button>
-          </div>        </Card>
+          </div>
+        </Card>
       </Layout>
     );
   }
@@ -349,11 +376,11 @@ const SubmissionView = () => {
             onClose={() => setNotification({ message: null, type: notification.type })}
           />
         )}
-        
+
         {/* Exam Card */}
         {exam && (
           <div className="mb-6">
-            <ExamCard 
+            <ExamCard
               title={exam.title}
               subject={exam.subject?.name || "N/A"}
               classCode={
@@ -364,7 +391,7 @@ const SubmissionView = () => {
               description={exam.description || `An exam on ${exam.title.toLowerCase()}`}
               status={exam.status}
               startTime={exam.schedule?.start ? new Date(exam.schedule.start).toLocaleString() : "Not scheduled"}
-              endTime={exam.schedule?.start && exam.schedule?.duration ? 
+              endTime={exam.schedule?.start && exam.schedule?.duration ?
                 new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString() : "Not scheduled"}
               questions={exam.questions?.length || 0}
               totalPoints={exam.totalPoints || 0}
@@ -372,15 +399,15 @@ const SubmissionView = () => {
             />
           </div>
         )}
-        
+
         {/* Tabs Navigation */}
         <div className="mb-6 border-b">
           <nav className="flex flex-wrap -mb-px">
             <button
               onClick={() => setActiveTab('submission')}
               className={`mr-4 py-2 px-1 border-b-2 font-medium text-sm
-                ${activeTab === 'submission' 
-                  ? 'border-blue-500 text-blue-600' 
+                ${activeTab === 'submission'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             >
               Current Submission
@@ -388,8 +415,8 @@ const SubmissionView = () => {
             <button
               onClick={() => setActiveTab('exam')}
               className={`mr-4 py-2 px-1 border-b-2 font-medium text-sm
-                ${activeTab === 'exam' 
-                  ? 'border-blue-500 text-blue-600' 
+                ${activeTab === 'exam'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             >
               Exam Questions
@@ -397,8 +424,8 @@ const SubmissionView = () => {
             <button
               onClick={() => setActiveTab('allSubmissions')}
               className={`py-2 px-1 border-b-2 font-medium text-sm
-                ${activeTab === 'allSubmissions' 
-                  ? 'border-blue-500 text-blue-600' 
+                ${activeTab === 'allSubmissions'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
             >
               All Submissions
@@ -516,7 +543,8 @@ const SubmissionView = () => {
                                   option.isCorrect)?.text) || 'Not specified'}
                             </div>
                           </div>
-                        )}                    <div className="my-4">
+                        )}
+                        <div className="my-4">
                           <div className="flex flex-wrap items-center gap-3 mb-3">
                             <label htmlFor={`points-${index}`} className="font-medium">Points:</label>
                             <input
@@ -548,7 +576,8 @@ const SubmissionView = () => {
                       </div>
                     ))}
                   </div>
-                )}              {/* Grade summary */}
+                )}
+                {/* Grade summary */}
                 <div className="mt-6 p-4 bg-gray-50 rounded-lg mb-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -600,7 +629,7 @@ const SubmissionView = () => {
           <Card>
             <div className="p-4">
               <h2 className="text-xl font-semibold mb-4">Exam Questions</h2>
-              
+
               <div className="space-y-6">
                 {exam.questions.map((question, index) => (
                   <div key={question._id || index} className="border rounded-lg p-4">
@@ -612,15 +641,15 @@ const SubmissionView = () => {
                         </div>
                       </div>
                       <div className="mt-1">{question.text}</div>
-                      
+
                       {/* Question options if it's multiple choice */}
                       {question.type === 'MCQ' || question.type === 'multiple-choice' ? (
                         <div className="mt-2 pl-4">
                           {Array.isArray(question.options) && question.options.map((option, optIndex) => {
                             const optText = typeof option === 'object' ? option.text : option;
-                            const isCorrect = typeof option === 'object' ? option.isCorrect : 
+                            const isCorrect = typeof option === 'object' ? option.isCorrect :
                               question.correctAnswer === option;
-                              
+
                             return (
                               <div key={optIndex} className="flex items-start mb-1">
                                 <span className={`inline-block w-4 h-4 mr-2 rounded-full mt-1 ${isCorrect ? 'bg-green-500' : 'bg-gray-200'}`}></span>
@@ -631,9 +660,9 @@ const SubmissionView = () => {
                         </div>
                       ) : (
                         <div className="mt-2 pl-4 italic text-gray-600">
-                          {question.type === 'text' ? 'Free text answer' : 
-                           question.type === 'essay' ? 'Essay question' : 
-                           'Answer type: ' + question.type}
+                          {question.type === 'text' ? 'Free text answer' :
+                            question.type === 'essay' ? 'Essay question' :
+                              'Answer type: ' + question.type}
                         </div>
                       )}
                     </div>
@@ -643,12 +672,12 @@ const SubmissionView = () => {
             </div>
           </Card>
         )}
-        
+
         {activeTab === 'allSubmissions' && (
           <Card>
             <div className="p-4">
               <h2 className="text-xl font-semibold mb-4">All Submissions</h2>
-              
+
               {allSubmissions.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   No submissions found for this exam.

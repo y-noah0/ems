@@ -291,6 +291,21 @@ adminController.getAllTeachers = async (req, res) => {
   }
 };
 
+// Get all students
+adminController.getAllStudents = async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student' })
+      .select('-passwordHash')
+      .sort({ fullName: 1 });
+
+    res.json({ success: true, students });
+  } catch (error) {
+    console.error(error.message);
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
+
+
 // Get all students by class
 adminController.getStudentsByClass = async (req, res) => {
   try {
@@ -299,7 +314,7 @@ adminController.getStudentsByClass = async (req, res) => {
     const classExists = await Class.findById(classId);
     if (!classExists) return res.status(404).json({ success: false, message: 'Class not found' });
 
-    const students = await User.find({ role: 'student', class: classId })
+    const students = await User.find({ role: 'student', classId: classId })
       .select('-passwordHash')
       .sort({ fullName: 1 });
 

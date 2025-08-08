@@ -6,7 +6,7 @@ const { authenticate, requireRoles } = require('../middlewares/authMiddleware');
 
 // All actions require authentication
 router.post('/', upload.single("logo"), schoolController.createSchool);
-router.get('/', authenticate, schoolController.getSchools);
+router.get('/', schoolController.getSchools);
 router.get('/:id', authenticate, schoolController.getSchoolById);
 router.get('/:id/trades', authenticate, schoolController.getTradesOfferedBySchool);
 

@@ -20,7 +20,7 @@ const deanOrAdmin = requireRoles(['dean', 'admin' , 'headmaster']);
 // Read-only for all authenticated users
 router.get(
     '/',
-    // authenticate,
+    authenticate,
     [check('schoolId').isMongoId().withMessage('Valid schoolId is required in request body')],
     getClasses
 );

@@ -209,6 +209,7 @@ const generateRegistrationNumber = async (role) => {
 
 // Register a new user
 const register = async (req, res) => {
+  console.log('Registering user:', req.body);
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

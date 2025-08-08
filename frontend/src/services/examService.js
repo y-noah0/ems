@@ -42,16 +42,18 @@ const examService = {
   // Create exam
   createExam: async (examData, schoolId) => {
     try {
+      console.log('Sending exam data:', examData, 'School ID:', schoolId); // Debug log
       const response = await api.post('/exams', examData, { schoolId });
+      console.log('Response:', response.data); // Debug log
       toast.success('Exam created successfully!');
       return response.data.exam;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Failed to create exam';
+      console.error('Create exam error:', error.response?.data); // Debug log
+      const errorMsg = error.response?.data?.message || error.response?.data?.errors?.map(e => e.msg).join(', ') || 'Failed to create exam';
       toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-
   // Get teacher's exams
   getTeacherExams: async (schoolId) => {
     try {

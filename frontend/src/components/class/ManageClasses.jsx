@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { FiPlus, FiX } from 'react-icons/fi';
+import { FiPlus, FiX, FiChevronRight, FiUsers, FiBook, FiCalendar, FiMaximize2 } from 'react-icons/fi';
 import { getClasses, createClass } from '../../services/classService';
 import tradeService from '../../services/tradeService';
 import { useAuth } from '../../context/AuthContext';
 import subjectService from '../../services/subjectService';
-
-
+import Layout from '../layout/Layout';
+import AddStudentModal from './AddStudentModal';
+import adminService from '../../services/adminService';
 
 const ManageClasses = () => {
   const { currentUser } = useAuth();
@@ -16,7 +17,7 @@ const ManageClasses = () => {
     level: '',
     trade: '',
     year: '',
-    schoolId: '', // will be set automatically
+    schoolId: '',
     capacity: 30,
     subjects: [],
   });
@@ -25,39 +26,41 @@ const ManageClasses = () => {
   const [tradeOptions, setTradeOptions] = useState([]);
   const [subjectOptions, setSubjectOptions] = useState([]);
   const [students, setStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsError, setStudentsError] = useState('');
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
-  // Fetch all data on mount
-useEffect(() => {
-  if (currentUser?.school) {
-    fetchAll();
-  }
-}, [currentUser?.school]);
+  useEffect(() => {
+    if (currentUser?.school) {
+      fetchAll();
+    }
+  }, [currentUser?.school]);
 
-const fetchAll = async () => {
-  if (!currentUser?.school) return;
+  const fetchAll = async () => {
+    if (!currentUser?.school) return;
 
-  setLoading(true);
-  try {
-    const [classes, trades, subjects] = await Promise.all([
-      getClasses(currentUser.school),
-      tradeService.getAllTrades(),
-      subjectService.getAllSubjects(),
-    ]);
-    setClassesData(classes);
-    setTradeOptions(trades || []); 
-    setSubjectOptions(subjects  || []);
-  } catch (error) {
-    console.error(error);
-  }
-  setLoading(false);
-};
+    setLoading(true);
+    try {
+      const [classes, trades, subjects] = await Promise.all([
+        getClasses(currentUser.school),
+        tradeService.getAllTrades(),
+        subjectService.getSubjects(currentUser.school),
+      ]);
+      setClassesData(classes);
+      setTradeOptions(trades || []);
+      setSubjectOptions(subjects || []);
+    } catch (error) {
+      console.error(error);
+    }
+    setLoading(false);
+  };
 
   const handleAddClass = () => {
     setNewClass({
       level: '',
       trade: '',
       year: '',
-      schoolId: currentUser.school, // set automatically
+      schoolId: currentUser.school,
       capacity: 30,
       subjects: [],
     });
@@ -79,43 +82,53 @@ const fetchAll = async () => {
     }
   };
 
-const handleAddSubmit = async (e) => {
-  e.preventDefault();
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!['L3', 'L4', 'L5'].includes(newClass.level)) {
-    alert('Please select a valid class level.');
-    return;
-  }
-  if (!newClass.trade || newClass.trade.length !== 24) {
-    alert('Please select a valid trade.');
-    return;
-  }
-  if (!newClass.schoolId || newClass.schoolId.length !== 24) {
-    alert('Invalid school ID.');
-    return;
-  }
-  if (!newClass.year || newClass.year < 2000) {
-    alert('Please enter a valid year.');
-    return;
-  }
+    if (!['L3', 'L4', 'L5'].includes(newClass.level)) {
+      alert('Please select a valid class level.');
+      return;
+    }
+    if (!newClass.trade || newClass.trade.length !== 24) {
+      alert('Please select a valid trade.');
+      return;
+    }
+    if (!newClass.schoolId || newClass.schoolId.length !== 24) {
+      alert('Invalid school ID.');
+      return;
+    }
+    if (!newClass.year || newClass.year < 2000) {
+      alert('Please enter a valid year.');
+      return;
+    }
 
-  // Log the payload before sending
-  console.log('Creating class with data:', newClass);
-
-  try {
-  await createClass(newClass);
-  setShowAddModal(false);
-  fetchAll();
-} catch (error) {
-  console.error('Error creating class:', error);
-  alert(error.message);
-}
-};
+    try {
+      await createClass(newClass);
+      setShowAddModal(false);
+      fetchAll();
+    } catch (error) {
+      console.error('Error creating class:', error);
+      alert(error.message);
+    }
+  };
 
   const handleViewClass = (cls) => {
     setSelectedClass(cls);
-    // TODO: fetch students for this class from your API
-    setStudents([]); // Replace with real fetch
+    setStudents([]);
+    setStudentsLoading(true);
+    setStudentsError('');
+    adminService
+      .getStudentsByClass(cls._id)
+      .then((students) => {
+        setStudents(students);
+        setStudentsLoading(false);
+      })
+      .catch((error) => {
+        setStudents([]);
+        setStudentsError(error.message || 'Failed to fetch students');
+        setStudentsLoading(false);
+        console.error('Error fetching students:', error);
+      });
   };
 
   const handleBack = () => {
@@ -123,271 +136,405 @@ const handleAddSubmit = async (e) => {
   };
 
   const handleAddStudent = () => {
-    alert('Add student functionality goes here.');
+    setShowAddStudentModal(true);
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-medium text-gray-800">Manage Classes</h1>
-        {!selectedClass ? (
-          <button
-            onClick={handleAddClass}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-1"
-          >
-            <FiPlus size={18} />
-            <span>Add class</span>
-          </button>
-        ) : (
-          <button
-            onClick={handleAddStudent}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center gap-1"
-          >
-            <FiPlus size={18} />
-            <span>Add student</span>
-          </button>
-        )}
-      </div>
-
-      {/* Show class cards or class details */}
-      {!selectedClass ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-          {loading ? (
-            <div>Loading...</div>
-          ) : classesData.length === 0 ? (
-            <p className="text-gray-500">No classes available. Create your first class!</p>
-          ) : (
-            classesData.classes.map((cls) => (
-       <div
-  key={cls._id}
-  className="relative bg-white bg-opacity-90 rounded-2xl shadow-2xl hover:shadow-blue-200 transition-shadow duration-300 p-6 flex flex-col items-center justify-between border border-blue-100 group max-w-xs mx-auto sm:max-w-sm md:max-w-md"
->
-  <div className="absolute top-4 right-4 pointer-events-none select-none">
-    <span
-      className="text-6xl sm:text-7xl md:text-8xl"
-      style={{
-        filter: 'drop-shadow(0 4px 16px rgba(59,130,246,0.18))',
-        opacity: 0.18,
-        transition: 'opacity 0.3s',
-      }}
-    >
-      📚
-    </span>
-  </div>
-  <div className="flex flex-col items-center mb-6 text-center">
-    <div className="text-2xl sm:text-3xl font-extrabold text-blue-700 mb-1 tracking-wide drop-shadow-sm">
-      {cls.level}
-<span className="ml-2 text-xl sm:text-2xl font-semibold text-blue-600">
-  {typeof cls.trade === 'object' && cls.trade !== null
-    ? cls.trade.name
-    : tradeOptions.find((t) => t._id === cls.trade)?.name || 'Unknown Trade'}
-</span>
-    </div>
-    <div className="text-xs uppercase tracking-widest text-blue-400 font-semibold bg-blue-50 px-3 py-1 rounded-full shadow-sm">
-      Academic Class
-    </div>
-  </div>
-  <button
-    className="mt-4 w-full bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-semibold py-2 rounded-xl shadow-lg hover:shadow-blue-300 transition-all duration-200 text-base tracking-wide"
-    onClick={() => handleViewClass(cls)}
-  >
-    View Details
-  </button>
-</div>
-            ))
-          )}
-        </div>
-      ) : (
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">
-              {selectedClass.level}
-              {tradeOptions.find((t) => t._id === selectedClass.trade)?.code || ''} Details
-            </h2>
-            <button
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded"
-              onClick={handleBack}
-            >
-              Back to Classes
-            </button>
+    <Layout>
+      <div className="p-6 space-y-8 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Manage Classes</h1>
+            <p className="text-gray-500 mt-1">
+              {!selectedClass 
+                ? "View and manage all classes" 
+                : `Managing ${selectedClass.level} ${tradeOptions.find((t) => t._id === selectedClass.trade)?.name || ''}`}
+            </p>
           </div>
-          <div className="mb-4 flex justify-between items-center">
-            <span className="font-medium">Students</span>
-          </div>
-          {students.length === 0 ? (
-            <p className="text-gray-500">No students in this class yet.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {students.map((student) => (
-                    <tr key={student._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {student.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {student.studentId}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Add Class Modal */}
-      {showAddModal && (
-        <div
-          className="fixed inset-0 backdrop-blur-sm bg-opacity-30 flex items-center justify-center z-50"
-          onClick={() => setShowAddModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg w-full max-w-lg p-8 relative shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-blue-700">Add Class</h2>
+          <div>
+            {!selectedClass ? (
               <button
-                className="text-gray-500 hover:text-gray-700 bg-gray-200 rounded-full h-8 w-8 flex items-center justify-center"
-                onClick={() => setShowAddModal(false)}
+                onClick={handleAddClass}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition-all hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                <FiX size={18} />
+                <FiPlus size={18} />
+                <span>Add Class</span>
               </button>
-            </div>
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="level" className="block text-sm font-medium text-gray-700 mb-1">
-                  Level
-                </label>
-                <select
-                  id="level"
-                  name="level"
-                  value={newClass.level || ''}
-                  onChange={handleAddInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select level</option>
-                  <option value="L3">L3</option>
-                  <option value="L4">L4</option>
-                  <option value="L5">L5</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="trade" className="block text-sm font-medium text-gray-700 mb-1">
-                  Trade
-                </label>
-                <select
-  name="trade"
-  id="trade"
-  value={newClass.trade || ''}
-  onChange={handleAddInputChange}
-  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-  required
->
-  <option value="">Select trade</option>
-  {Array.isArray(tradeOptions) && tradeOptions.map((trade) => (
-    <option key={trade._id} value={trade._id}>
-      {trade.name} ({trade.code})
-    </option>
-  ))}
-</select>
-              </div>
-              <div>
-                <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">
-                  Year
-                </label>
-                <input
-                  type="number"
-                  id="year"
-                  name="year"
-                  value={newClass.year || ''}
-                  onChange={handleAddInputChange}
-                  min={2000}
-                  max={2100}
-                  placeholder="e.g. 2025"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              {/* School is set automatically, just show the name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  School
-                </label>
-                <input
-                  type="text"
-                  value={currentUser.school || 'Your School'}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
-                />
-              </div>
-              <div>
-                <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
-                  Capacity
-                </label>
-                <input
-                  type="number"
-                  id="capacity"
-                  name="capacity"
-                  value={newClass.capacity || 30}
-                  onChange={handleAddInputChange}
-                  min={1}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="subjects" className="block text-sm font-medium text-gray-700 mb-1">
-                  Subjects
-                </label>
-                <select
-                     id="subjects"
-                     name="subjects"
-                     multiple
-                     value={newClass.subjects || []}
-                     onChange={(e) => {
-                       const options = Array.from(e.target.selectedOptions, (opt) => opt.value);
-                       setNewClass((prev) => ({ ...prev, subjects: options }));
-                     }}
-                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                     required
-                   >
-                     {Array.isArray(subjectOptions) && subjectOptions.map((subject) => (
-                       <option key={subject._id} value={subject._id}>
-                         {subject.name}
-                       </option>
-                     ))}
-                   </select>
-                <span className="text-xs text-gray-400">
-                  Hold Ctrl (Windows) or Cmd (Mac) to select multiple
-                </span>
-              </div>
-              <div className="pt-2">
+            ) : (
+              <div className="flex gap-3">
                 <button
-                  type="submit"
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md font-semibold"
+                  onClick={handleBack}
+                  className="flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg shadow-sm transition-all"
                 >
-                  Add
+                  Back to Classes
+                </button>
+                <button
+                  onClick={handleAddStudent}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition-all hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  <FiPlus size={18} />
+                  <span>Add Student</span>
                 </button>
               </div>
-            </form>
+            )}
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Classes Grid or Selected Class Details */}
+        {!selectedClass ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                <p className="text-blue-600 font-medium">Loading classes...</p>
+              </div>
+            ) : classesData.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <div className="mx-auto w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <FiBook className="text-blue-500 text-3xl" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-700">No classes found</h3>
+                <p className="text-gray-500 mt-1 mb-4">Create your first class to get started</p>
+                <button
+                  onClick={handleAddClass}
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition-all"
+                >
+                  <FiPlus size={16} />
+                  Add Class
+                </button>
+              </div>
+            ) : (
+              classesData.classes.map((cls) => (
+                <div
+                  key={cls._id}
+                  className="relative bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden group cursor-pointer"
+                  onClick={() => handleViewClass(cls)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && handleViewClass(cls)}
+                >
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-blue-300"></div>
+                  <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-800">
+                          {cls.level} - {typeof cls.trade === 'object' 
+                            ? cls.trade.name 
+                            : tradeOptions.find((t) => t._id === cls.trade)?.name || 'Unknown'}
+                        </h3>
+                        <p className="text-gray-500 text-sm mt-1">
+                          {cls.year} • Capacity: {cls.capacity}
+                        </p>
+                      </div>
+                      <div className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                        {cls.subjects?.length || 0} subjects
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between mt-6">
+                      <div className="flex items-center text-gray-500 text-sm">
+                        <FiUsers className="mr-1.5" />
+                        <span>{cls.studentCount || 0} students</span>
+                      </div>
+                      <button
+                        className="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 text-sm font-medium"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewClass(cls);
+                        }}
+                      >
+                        View details <FiChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Class Header */}
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <span className="bg-blue-100 text-blue-800 p-1.5 rounded-lg">
+                      {selectedClass.level}
+                    </span>
+                    <span>
+                      {tradeOptions.find((t) => t._id === selectedClass.trade)?.name || 'Unknown Trade'}
+                    </span>
+                  </h2>
+                  <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <FiCalendar size={14} /> {selectedClass.year}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FiUsers size={14} /> {students.length} students
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="text-sm bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg shadow-xs transition-all flex items-center gap-1">
+                    <FiMaximize2 size={14} /> Export
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Students Table */}
+            <div className="overflow-hidden">
+              {studentsLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+                  <p className="text-blue-600 font-medium">Loading students...</p>
+                </div>
+              ) : studentsError ? (
+                <div className="p-6 text-center">
+                  <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                    <FiX className="text-red-500 text-2xl" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-700">Error loading students</h3>
+                  <p className="text-red-500 mt-1 mb-4">{studentsError}</p>
+                  <button
+                    onClick={() => handleViewClass(selectedClass)}
+                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition-all"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : students.length === 0 ? (
+                <div className="p-6 text-center">
+                  <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                    <FiUsers className="text-gray-500 text-2xl" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-700">No students in this class</h3>
+                  <p className="text-gray-500 mt-1 mb-4">Add students to get started</p>
+                  <button
+                    onClick={handleAddStudent}
+                    className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow-md transition-all"
+                  >
+                    <FiPlus size={16} />
+                    Add Student
+                  </button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Student Name
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Registration Number
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {students.map((student) => (
+                        <tr key={student._id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium">
+                                {student.fullName.charAt(0)}
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{student.fullName}</div>
+                                <div className="text-sm text-gray-500">{student.gender || 'N/A'}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">
+                            {student.registrationNumber}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {student.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex justify-end gap-2">
+                              <button className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-md text-sm transition-colors">
+                                Edit
+                              </button>
+                              <button className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-md text-sm transition-colors">
+                                Remove
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Add Class Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div 
+              className="bg-white rounded-xl w-full max-w-md shadow-xl transform transition-all"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-900">Create New Class</h3>
+                <button 
+                  onClick={() => setShowAddModal(false)}
+                  className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+              
+              <form onSubmit={handleAddSubmit} className="p-6 space-y-5">
+                <div>
+                  <label htmlFor="level" className="block text-sm font-medium text-gray-700 mb-1">
+                    Class Level <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="level"
+                    name="level"
+                    value={newClass.level}
+                    onChange={handleAddInputChange}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Select level</option>
+                    <option value="L3">Level 3 (L3)</option>
+                    <option value="L4">Level 4 (L4)</option>
+                    <option value="L5">Level 5 (L5)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="trade" className="block text-sm font-medium text-gray-700 mb-1">
+                    Trade <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="trade"
+                    name="trade"
+                    value={newClass.trade}
+                    onChange={handleAddInputChange}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  >
+                    <option value="">Select trade</option>
+                    {tradeOptions.map((trade) => (
+                      <option key={trade._id} value={trade._id}>
+                        {trade.name} ({trade.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">
+                    Academic Year <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    id="year"
+                    name="year"
+                    value={newClass.year}
+                    onChange={handleAddInputChange}
+                    min="2000"
+                    max="2100"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="e.g. 2025"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
+                    Class Capacity
+                  </label>
+                  <input
+                    type="number"
+                    id="capacity"
+                    name="capacity"
+                    value={newClass.capacity}
+                    onChange={handleAddInputChange}
+                    min="1"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="subjects" className="block text-sm font-medium text-gray-700 mb-1">
+                    Subjects <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="subjects"
+                    name="subjects"
+                    multiple
+                    value={newClass.subjects}
+                    onChange={(e) => {
+                      const options = Array.from(e.target.selectedOptions, (opt) => opt.value);
+                      setNewClass((prev) => ({ ...prev, subjects: options }));
+                    }}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 h-auto min-h-[100px]"
+                    required
+                  >
+                    {subjectOptions.map((subject) => (
+                      <option key={subject._id} value={subject._id}>
+                        {subject.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Hold Ctrl (Windows) or Command (Mac) to select multiple subjects
+                  </p>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  >
+                    Create Class
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Add Student Modal */}
+        {showAddStudentModal && (
+          <AddStudentModal
+            onClose={() => setShowAddStudentModal(false)}
+            selectedClass={selectedClass}
+            currentUser={currentUser}
+            onRegistered={async () => {
+              setShowAddStudentModal(false);
+              if (selectedClass) {
+                setStudentsLoading(true);
+                setStudentsError('');
+                try {
+                  const students = await adminService.getStudentsByClass(selectedClass._id);
+                  setStudents(students);
+                } catch (error) {
+                  setStudents([]);
+                  setStudentsError(error.message || 'Failed to fetch students');
+                }
+                setStudentsLoading(false);
+              }
+            }}
+          />
+        )}
+      </div>
+    </Layout>
   );
 };
 

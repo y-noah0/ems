@@ -25,6 +25,17 @@ api.interceptors.request.use(
 
 // Auth service
 const authService = {
+    register: async (studentData) => {
+        try {
+            const res = await api.post('/auth/register', studentData);
+            return res.data;
+        } catch (error) {
+            const message = error.response?.data?.errors?.[0]?.msg ||
+                error.response?.data?.message ||
+                'Failed to create student';
+            throw new Error(message);
+        }
+    },
     login: async (identifier, password) => {
         try {
             console.log('Attempting login with:', { identifier, password });

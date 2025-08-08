@@ -92,6 +92,7 @@ router.put(
 // @desc    Get all teachers
 // @access  Dean
 router.get('/teachers', adminController.getAllTeachers);
+router.get('/students', adminController.getAllStudents);
 
 // @route   GET api/admin/classes/:classId/students
 // @desc    Get students by class
