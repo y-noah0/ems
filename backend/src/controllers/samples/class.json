@@ -1,4 +1,5 @@
 {
+    "data1":{
     "level": "L4",
     "trade": "687e056dba2a7f58e83750a0",
     "year": 2025,
@@ -8,4 +9,20 @@
         "688f6dd6b23e963ba8f4c6ec",
         "688f6c1ec249a34b4077f216"
     ]
+},
+"data2": {
+    "name": "Green Valley TVET School",
+    "address": "Kigali, Rwanda",
+    "contactEmail": "info@greenvalley.ac.rw",
+    "contactPhone": "+250788000111",
+    "headmaster": "6895e0e2c3dbc03e44b15725",
+    "category": "TVET",
+    "logo": "https://example.com/images/school-logo.png",
+    "tradesOffered": [
+        "6895e0e2c3dbc03e44b1573a",
+        "6895e0e2c3dbc03e44b1573b",
+        "6895e0e2c3dbc03e44b1573c"
+    ]
+}
+
 }

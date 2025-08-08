@@ -142,7 +142,6 @@ module.exports = {
   authenticate,
   requireRoles,
   isAdmin,
-  isAdminorHeadmaster,
   isDean,
   isTeacher,
   isStudent,

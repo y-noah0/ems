@@ -178,6 +178,9 @@ const generateRegistrationNumber = async (role) => {
     case 'dean':
       prefix = 'DN';
       break;
+    case 'admin':
+      prefix = 'AD';
+      break;
     default:
       throw new Error('Invalid role for registration number generation');
   }
@@ -231,13 +234,27 @@ const register = async (req, res) => {
       password
     } = req.body;
 
+    // Validate role-based required fields
+    if (role !== 'student' && !email) {
+      logger.warn('Email is required for non-student role', { role, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Email is required for this role' });
+    }
+
+    if (['student', 'teacher', 'dean'].includes(role) && !schoolId) {
+      logger.warn('School ID is required for role', { role, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'School ID is required for this role' });
+    }
+
+    // Validate parent-related fields
+    if (role !== 'student' && (parentFullName || parentNationalId || parentPhoneNumber)) {
+      logger.warn('Parent-related fields provided for non-student role', { role, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Parent-related fields are only allowed for students' });
+    }
+
     const profilePicturePath = req.file ? req.file.path : profilePicture || null;
 
-    if (['student', 'teacher', 'dean'].includes(role)) {
-      if (!schoolId) {
-        logger.warn('Missing school ID for required role', { role, ip: req.ip });
-        return res.status(400).json({ success: false, message: 'School ID is required for this role' });
-      }
+    // Validate school ID if provided
+    if (schoolId) {
       const school = await School.findById(schoolId);
       if (!school) {
         logger.warn('Invalid school ID', { schoolId, ip: req.ip });
@@ -245,6 +262,7 @@ const register = async (req, res) => {
       }
     }
 
+    // Check for existing email (for non-students)
     if (email && role !== 'student') {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
@@ -263,19 +281,20 @@ const register = async (req, res) => {
         logger.warn('Password is required for admin role', { role, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Password is required for admin role' });
       }
-      registrationNumber = await generateRegistrationNumber('dean'); // Use dean prefix for admin to satisfy schema
+      registrationNumber = await generateRegistrationNumber('admin'); // Use admin prefix for admin
       userPassword = password;
     } else {
       logger.warn('Invalid role', { role, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Invalid role' });
     }
 
+    // Validate subjects
     if (role === 'student' && subjects?.length) {
       logger.warn('Subjects provided for student', { role, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Students cannot have subjects' });
     }
 
-    if (['dean', 'admin'].includes(role) && subjects?.length) {
+    if (['dean', 'admin', 'headmaster'].includes(role) && subjects?.length) {
       logger.warn('Subjects provided for non-teacher role', { role, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Subjects are only allowed for teachers' });
     }
@@ -286,15 +305,15 @@ const register = async (req, res) => {
       fullName,
       passwordHash: userPassword,
       role,
-      school: ['student', 'teacher', 'dean'].includes(role) ? schoolId : schoolId || null,
+      school: schoolId || null,
       registrationNumber,
-      email: role !== 'student' ? email : email || undefined,
-      phoneNumber,
+      email: email || null,
+      phoneNumber: phoneNumber || null,
       profilePicture: profilePicturePath,
       preferences: { notifications: { email: !!email, sms: !!phoneNumber }, theme: 'light' },
-      parentFullName: role === 'student' ? parentFullName : undefined,
-      parentNationalId: role === 'student' ? parentNationalId : undefined,
-      parentPhoneNumber: role === 'student' ? parentPhoneNumber : undefined,
+      parentFullName: role === 'student' ? parentFullName || null : null,
+      parentNationalId: role === 'student' ? parentNationalId || null : null,
+      parentPhoneNumber: role === 'student' ? parentPhoneNumber || null : null,
       emailVerificationToken: verificationCode
     });
 
@@ -364,7 +383,7 @@ const register = async (req, res) => {
   }
 };
 
-// Login user (reverted to original)
+// Login user
 const login = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -747,11 +766,48 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    const updates = req.body;
-    delete updates.passwordHash;
-    delete updates.role;
-    delete updates.emailVerificationToken;
-    delete updates.tokenVersion;
+    const {
+      email,
+      phoneNumber,
+      profilePicture,
+      parentFullName,
+      parentNationalId,
+      parentPhoneNumber,
+      schoolId,
+      ...otherUpdates
+    } = req.body;
+
+    // Validate role-based fields
+    if (user.role !== 'student' && email && email !== user.email) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+        logger.warn('Email already exists', { email, userId: user._id, ip: req.ip });
+        return res.status(400).json({ success: false, message: 'Email already exists' });
+      }
+    }
+
+    if (user.role !== 'student' && !email) {
+      logger.warn('Email cannot be removed for non-student role', { role: user.role, userId: user._id, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Email is required for this role' });
+    }
+
+    if (['student', 'teacher', 'dean'].includes(user.role) && schoolId && schoolId !== user.school?.toString()) {
+      const school = await School.findById(schoolId);
+      if (!school) {
+        logger.warn('Invalid school ID', { schoolId, userId: user._id, ip: req.ip });
+        return res.status(400).json({ success: false, message: 'Invalid school ID' });
+      }
+    }
+
+    if (['student', 'teacher', 'dean'].includes(user.role) && !schoolId && !user.school) {
+      logger.warn('School ID is required for role', { role: user.role, userId: user._id, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'School ID is required for this role' });
+    }
+
+    if (user.role !== 'student' && (parentFullName || parentNationalId || parentPhoneNumber)) {
+      logger.warn('Parent-related fields provided for non-student role', { role: user.role, userId: user._id, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Parent-related fields are only allowed for students' });
+    }
 
     // Handle profile picture upload
     if (req.file && user.profilePicture && !user.profilePicture.startsWith('http')) {
@@ -760,7 +816,22 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    updates.profilePicture = req.file ? req.file.path : updates.profilePicture || user.profilePicture;
+    const updates = {
+      ...otherUpdates,
+      email: email || user.email,
+      phoneNumber: phoneNumber || user.phoneNumber,
+      profilePicture: req.file ? req.file.path : profilePicture || user.profilePicture,
+      school: schoolId || user.school,
+      parentFullName: user.role === 'student' ? parentFullName || user.parentFullName : null,
+      parentNationalId: user.role === 'student' ? parentNationalId || user.parentNationalId : null,
+      parentPhoneNumber: user.role === 'student' ? parentPhoneNumber || user.parentPhoneNumber : null
+    };
+
+    // Prevent restricted fields from being updated
+    delete updates.passwordHash;
+    delete updates.role;
+    delete updates.emailVerificationToken;
+    delete updates.tokenVersion;
 
     Object.assign(user, updates);
     await user.save();

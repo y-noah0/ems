@@ -20,48 +20,85 @@ const {
 // Middleware for validation
 const registerValidation = [
   check('fullName', 'Full name is required').notEmpty().trim(),
-  check('email', 'Please include a valid email')
-    .if((value, { req }) => req.body.role === 'admin')
+  check('role', 'Invalid role').optional().isIn(['student', 'teacher', 'dean', 'admin', 'headmaster']),
+  // Email validation
+  check('email', 'Email is required for this role')
+    .if((value, { req }) => ['teacher', 'dean', 'admin', 'headmaster'].includes(req.body.role))
+    .notEmpty()
     .isEmail()
+    .withMessage('Invalid email format')
     .normalizeEmail(),
+  check('email')
+    .if((value, { req }) => req.body.role === 'student')
+    .optional()
+    .isEmail()
+    .withMessage('Invalid email format')
+    .normalizeEmail(),
+  // Password for admin
   check('password', 'Password is required for admin role')
     .if((value, { req }) => req.body.role === 'admin')
     .notEmpty()
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters for admin role'),
-  check('role', 'Invalid role').optional().isIn(['student', 'teacher', 'dean', 'admin', 'headmaster']),
-  check('schoolId', 'School ID is required for student, teacher, dean, or headmaster')
-    .if((value, { req }) => ['student', 'teacher', 'dean', 'headmaster'].includes(req.body.role))
-    .notEmpty(),
+  // School ID validation
+  check('schoolId', 'School ID is required for this role')
+    .if((value, { req }) => ['student', 'teacher', 'dean'].includes(req.body.role))
+    .notEmpty()
+    .isMongoId()
+    .withMessage('Invalid school ID'),
+  check('schoolId')
+    .if((value, { req }) => ['admin', 'headmaster'].includes(req.body.role))
+    .optional()
+    .isMongoId()
+    .withMessage('Invalid school ID'),
+  // Student-specific fields
   check('classId', 'Class ID is required for students')
     .if((value, { req }) => req.body.role === 'student')
-    .notEmpty(),
+    .notEmpty()
+    .isMongoId()
+    .withMessage('Invalid class ID'),
   check('termId', 'Term ID is required for students')
     .if((value, { req }) => req.body.role === 'student')
-    .notEmpty(),
-  check('phoneNumber', 'Please enter a valid phone number')
+    .notEmpty()
+    .isMongoId()
+    .withMessage('Invalid term ID'),
+  // Phone number validation
+  check('phoneNumber', 'Invalid phone number')
     .optional()
     .matches(/^\+?\d{10,15}$/)
     .withMessage('Invalid phone number'),
+  // Parent fields validation
+  check('parentFullName', 'Parent-related fields are only allowed for students')
+    .if((value, { req }) => req.body.role !== 'student' && value != null)
+    .isEmpty(),
   check('parentFullName', 'Parent full name must not be empty if provided')
     .if((value, { req }) => req.body.role === 'student' && value != null)
-    .notEmpty(),
+    .notEmpty()
+    .trim(),
+  check('parentNationalId', 'Parent-related fields are only allowed for students')
+    .if((value, { req }) => req.body.role !== 'student' && value != null)
+    .isEmpty(),
   check('parentNationalId', 'Parent national ID must not be empty if provided')
     .if((value, { req }) => req.body.role === 'student' && value != null)
-    .notEmpty(),
-  check('parentPhoneNumber', 'Please enter a valid parent phone number')
+    .notEmpty()
+    .trim(),
+  check('parentPhoneNumber', 'Parent-related fields are only allowed for students')
+    .if((value, { req }) => req.body.role !== 'student' && value != null)
+    .isEmpty(),
+  check('parentPhoneNumber', 'Invalid parent phone number')
     .if((value, { req }) => req.body.role === 'student' && value != null)
     .matches(/^\+?\d{10,15}$/)
     .withMessage('Invalid parent phone number'),
-  check('profilePicture', 'Please include a valid image URL')
+  // Profile picture validation
+  check('profilePicture', 'Invalid profile picture URL')
     .optional()
-    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
-    .withMessage('Invalid image URL')
-    .withMessage('Invalid parent phone number'),
-  check('profilePicture', 'Please include a valid image URL')
-    .optional()
-    .matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i)
-    .withMessage('Invalid image URL')
+    .custom((value, { req }) => {
+      if (value === null || value === undefined) return true;
+      if (req.file) return true; // Allow file uploads
+      return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(value) ||
+        /^\/Uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(value);
+    })
+    .withMessage('Invalid profile picture URL')
 ];
 
 const loginValidation = [
@@ -140,7 +177,6 @@ router.post('/enable-2fa', authenticate, enable2FA);
 router.put('/profile', authenticate, upload.single('profilePicture'), [
   check('email').optional().isEmail().withMessage('Invalid email').normalizeEmail(),
   check('phoneNumber').optional().matches(/^\+?\d{10,15}$/).withMessage('Invalid phone number'),
-  check('profilePicture').optional().matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i).withMessage('Invalid image URL'),
   check('preferences.notifications.email').optional().isBoolean(),
   check('preferences.notifications.sms').optional().isBoolean(),
   check('preferences.theme').optional().isIn(['light', 'dark']).withMessage('Invalid theme')
