@@ -59,7 +59,8 @@ const validateCreateExam = [
 ];
 
 const validateUpdateExam = [
-  check('schoolId').optional().isMongoId().withMessage('Valid school ID is required'),
+  param('examId').isMongoId().withMessage('Invalid exam ID format'),
+  check('schoolId').isMongoId().withMessage('Valid school ID is required'),
   check('title').optional().notEmpty().withMessage('Title cannot be empty'),
   check('type').optional().isIn(allowedExamTypes).withMessage('Invalid exam type'),
   check('classIds').optional().isArray({ min: 1 }).withMessage('At least one class ID is required'),
@@ -74,13 +75,27 @@ const validateUpdateExam = [
 ];
 
 const validateExamIdParam = [
-  param('examId').isMongoId().withMessage('Invalid exam ID format')
+  param('examId').isMongoId().withMessage('Invalid exam ID format'),
+  check('schoolId').isMongoId().withMessage('Valid school ID is required')
 ];
 
 const validateScheduleExam = [
+  param('examId').isMongoId().withMessage('Invalid exam ID format'),
   check('schoolId').isMongoId().withMessage('Valid school ID is required'),
   check('start').isISO8601().toDate().withMessage('Invalid start date format'),
   check('duration').isInt({ min: 5 }).withMessage('Duration must be at least 5 minutes')
+];
+
+const validateGetTeacherClasses = [
+  check('schoolId').isMongoId().withMessage('Valid school ID is required')
+];
+
+const validateGetTeacherSubjects = [
+  check('schoolId').isMongoId().withMessage('Valid school ID is required')
+];
+
+const validateGetSchoolExams = [
+  check('schoolId').isMongoId().withMessage('Valid school ID is required')
 ];
 
 // Create new exam
@@ -268,10 +283,18 @@ exports.getExamById = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { examId } = req.params;
+    const { examId, schoolId } = req.params;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to access exams for this school'
+      });
+    }
+
     const exam = await Exam.findOne({
       _id: examId,
-      school: req.user.school,
+      school: schoolId,
       isDeleted: false
     })
       .populate('classes', 'level trade year term')
@@ -285,7 +308,7 @@ exports.getExamById = async (req, res) => {
     // Role-based access control
     if (req.user.role === 'student') {
       const student = await User.findById(req.user.id).select('class school');
-      if (!student || student.school.toString() !== exam.school.toString() || !exam.classes.some(cls => cls._id.toString() === student.class.toString())) {
+      if (!student || student.school.toString() !== schoolId || !exam.classes.some(cls => cls._id.toString() === student.class.toString())) {
         return res.status(403).json({ success: false, message: 'You are not enrolled in this exam\'s class or school' });
       }
     } else if (req.user.role === 'teacher' && exam.teacher._id.toString() !== req.user.id) {
@@ -317,7 +340,6 @@ exports.updateExam = async (req, res) => {
     }
 
     const { examId } = req.params;
-    const sanitizedExamId = sanitize(examId);
     const {
       schoolId,
       title,
@@ -330,8 +352,8 @@ exports.updateExam = async (req, res) => {
       subjectId
     } = req.body;
 
-    // Verify user's school matches provided schoolId (if provided)
-    if (schoolId && req.user.school.toString() !== schoolId) {
+    // Verify user's school matches provided schoolId
+    if (req.user.school.toString() !== schoolId) {
       logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
       return res.status(403).json({
         success: false,
@@ -339,14 +361,14 @@ exports.updateExam = async (req, res) => {
       });
     }
 
-    const exam = await Exam.findOne({ _id: sanitizedExamId, school: req.user.school });
-    if (!exam || exam.isDeleted) {
-      logger.warn('Exam not found for update', { examId: sanitizedExamId, userId: req.user.id });
+    const exam = await Exam.findOne({ _id: examId, school: schoolId, isDeleted: false });
+    if (!exam) {
+      logger.warn('Exam not found for update', { examId, userId: req.user.id });
       return res.status(404).json({ success: false, message: 'Exam not found or not in your school' });
     }
 
     if (exam.teacher.toString() !== req.user.id && !['admin', 'dean'].includes(req.user.role)) {
-      logger.warn('Unauthorized attempt to update exam', { userId: req.user.id, examId: sanitizedExamId });
+      logger.warn('Unauthorized attempt to update exam', { userId: req.user.id, examId });
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to update this exam'
@@ -355,7 +377,7 @@ exports.updateExam = async (req, res) => {
 
     if (exam.status === 'active' || exam.status === 'completed') {
       if (questions || schedule || classIds || subjectId || (status && status !== exam.status)) {
-        logger.warn('Attempt to modify active/completed exam fields not allowed', { examId: sanitizedExamId, status: exam.status, userId: req.user.id });
+        logger.warn('Attempt to modify active/completed exam fields not allowed', { examId, status: exam.status, userId: req.user.id });
         return res.status(400).json({
           success: false,
           message: `Cannot modify questions, schedule, classes, subject, or change status of exam with status '${exam.status}'.`
@@ -370,30 +392,29 @@ exports.updateExam = async (req, res) => {
       exam.instructions = sanitize(instructions) || exam.instructions;
 
       if (classIds && Array.isArray(classIds)) {
-        const sanitizedClassIds = classIds.map(id => sanitize(id));
-        const classes = await Class.find({ _id: { $in: sanitizedClassIds }, school: exam.school }).lean();
-        if (classes.length !== sanitizedClassIds.length) {
-          logger.warn('One or more classes not found for update', { classIds: sanitizedClassIds, userId: req.user.id });
+        const classes = await Class.find({ _id: { $in: classIds }, school: schoolId, isDeleted: false }).lean();
+        if (classes.length !== classIds.length) {
+          logger.warn('One or more classes not found for update', { classIds, userId: req.user.id });
           return res.status(404).json({ success: false, message: 'One or more classes not found or not in your school' });
         }
-        exam.classes = sanitizedClassIds;
+        exam.classes = classIds;
       }
 
       if (subjectId) {
-        const subject = await Subject.findOne({ _id: sanitize(subjectId), school: exam.school }).lean();
+        const subject = await Subject.findOne({ _id: subjectId, school: schoolId, isDeleted: false }).lean();
         if (!subject) {
           logger.warn('Subject not found for update', { subjectId, userId: req.user.id });
           return res.status(404).json({ success: false, message: 'Subject not found or not in your school' });
         }
-        exam.subject = sanitize(subjectId);
+        exam.subject = subjectId;
       }
 
       if (schedule) {
         if (schedule.start && schedule.duration) {
-          const startDate = new Date(sanitize(schedule.start));
+          const startDate = toUTC(sanitize(schedule.start));
           if (status === 'scheduled' || exam.status === 'scheduled') {
             if (startDate <= new Date()) {
-              logger.warn('Invalid start date in update: must be in the future', { examId: sanitizedExamId, startDate, userId: req.user.id });
+              logger.warn('Invalid start date in update: must be in the future', { examId, startDate, userId: req.user.id });
               return res.status(400).json({
                 success: false,
                 message: 'Exam start time must be in the future'
@@ -448,7 +469,7 @@ exports.updateExam = async (req, res) => {
     exam.updatedAt = new Date();
     await exam.save();
 
-    logger.info('Exam updated successfully', { examId: sanitizedExamId, teacherId: req.user.id, schoolId: exam.school });
+    logger.info('Exam updated successfully', { examId, teacherId: req.user.id, schoolId });
     res.status(200).json({ success: true, exam: exam.toObject(), message: 'Exam updated successfully' });
   } catch (error) {
     logger.error('Error in updateExam', { error: error.message, stack: error.stack, userId: req.user.id });
@@ -465,17 +486,23 @@ exports.deleteExam = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { examId } = req.params;
-    const sanitizedExamId = sanitize(examId);
+    const { examId, schoolId } = req.params;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to delete exams for this school'
+      });
+    }
 
-    const exam = await Exam.findOne({ _id: sanitizedExamId, school: req.user.school });
-    if (!exam || exam.isDeleted) {
-      logger.warn('Exam not found for deletion', { examId: sanitizedExamId, userId: req.user.id });
+    const exam = await Exam.findOne({ _id: examId, school: schoolId, isDeleted: false });
+    if (!exam) {
+      logger.warn('Exam not found for deletion', { examId, userId: req.user.id });
       return res.status(404).json({ success: false, message: 'Exam not found or not in your school' });
     }
 
     if (exam.teacher.toString() !== req.user.id && !['admin', 'dean'].includes(req.user.role)) {
-      logger.warn('Unauthorized attempt to delete exam', { userId: req.user.id, examId: sanitizedExamId });
+      logger.warn('Unauthorized attempt to delete exam', { userId: req.user.id, examId });
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to delete this exam'
@@ -483,7 +510,7 @@ exports.deleteExam = async (req, res) => {
     }
 
     if (exam.status !== 'draft') {
-      logger.warn('Cannot delete exam with status', { examId: sanitizedExamId, status: exam.status, userId: req.user.id });
+      logger.warn('Cannot delete exam with status', { examId, status: exam.status, userId: req.user.id });
       return res.status(400).json({
         success: false,
         message: `Cannot delete exam with status '${exam.status}'. Only 'draft' exams can be deleted.`
@@ -494,7 +521,7 @@ exports.deleteExam = async (req, res) => {
     exam.updatedAt = new Date();
     await exam.save();
 
-    logger.info('Exam deleted successfully', { examId: sanitizedExamId, teacherId: req.user.id, schoolId: exam.school });
+    logger.info('Exam deleted successfully', { examId, teacherId: req.user.id, schoolId });
     res.status(200).json({ success: true, message: 'Exam deleted successfully' });
   } catch (error) {
     logger.error('Error in deleteExam', { error: error.message, stack: error.stack, userId: req.user.id });
@@ -505,6 +532,15 @@ exports.deleteExam = async (req, res) => {
 // Get upcoming exams for a student
 exports.getUpcomingExamsForStudent = async (req, res) => {
   try {
+    const { schoolId } = req.query;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to access exams for this school'
+      });
+    }
+
     const student = await User.findById(req.user.id).lean();
     if (!student || !student.class) {
       logger.warn('Student class not found for upcoming exams', { userId: req.user.id });
@@ -514,10 +550,10 @@ exports.getUpcomingExamsForStudent = async (req, res) => {
     const now = new Date();
     const exams = await Exam.find({
       classes: student.class,
-      school: req.user.school,
+      school: schoolId,
       status: 'scheduled',
       'schedule.start': { $gte: now },
-      isDeleted: false,
+      isDeleted: false
     })
       .populate('subject', 'name')
       .populate('teacher', 'fullName')
@@ -531,10 +567,10 @@ exports.getUpcomingExamsForStudent = async (req, res) => {
       questions: exam.questions ? exam.questions.map(q => {
         const { correctAnswer, ...rest } = q;
         return rest;
-      }) : [],
+      }) : []
     }));
 
-    logger.info('Upcoming exams fetched for student', { userId: req.user.id, classId: student.class, schoolId: req.user.school });
+    logger.info('Upcoming exams fetched for student', { userId: req.user.id, classId: student.class, schoolId });
     res.status(200).json({ success: true, exams: filteredExams, message: 'Upcoming exams retrieved successfully' });
   } catch (error) {
     logger.error('Error in getUpcomingExamsForStudent', { error: error.message, stack: error.stack, userId: req.user.id });
@@ -545,6 +581,15 @@ exports.getUpcomingExamsForStudent = async (req, res) => {
 // Get all exams for student's class
 exports.getStudentClassExams = async (req, res) => {
   try {
+    const { schoolId } = req.query;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to access exams for this school'
+      });
+    }
+
     const student = await User.findById(req.user.id).select('class school');
     if (!student || !student.class) {
       logger.warn('Student class not found', { userId: req.user.id });
@@ -553,9 +598,9 @@ exports.getStudentClassExams = async (req, res) => {
 
     const exams = await Exam.find({
       classes: student.class,
-      school: req.user.school,
+      school: schoolId,
       status: { $in: ['scheduled', 'active'] },
-      isDeleted: false,
+      isDeleted: false
     })
       .populate('subject', 'name')
       .populate('teacher', 'fullName')
@@ -568,14 +613,14 @@ exports.getStudentClassExams = async (req, res) => {
       questions: exam.questions ? exam.questions.map(q => {
         const { correctAnswer, ...rest } = q;
         return rest;
-      }) : [],
+      }) : []
     }));
 
     logger.info('Class exams fetched for student', {
       classId: student.class,
       userId: req.user.id,
       examCount: exams.length,
-      schoolId: req.user.school,
+      schoolId
     });
     res.status(200).json({ success: true, exams: filteredExams, message: 'Student class exams retrieved successfully' });
   } catch (error) {
@@ -596,10 +641,17 @@ exports.activateExam = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { examId } = req.params;
+    const { examId, schoolId } = req.params;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to activate exams for this school'
+      });
+    }
 
     try {
-      const exam = await validateEntity(Exam, examId, 'Exam', req.user.school);
+      const exam = await validateEntity(Exam, examId, 'Exam', schoolId);
 
       if (exam.status !== 'scheduled') {
         logger.warn('Cannot activate exam with status', {
@@ -636,10 +688,10 @@ exports.activateExam = async (req, res) => {
         'status_change',
         req.user.id,
         { status: previousStatus },
-        { status: 'active', school: exam.school }
+        { status: 'active', school: schoolId }
       );
 
-      logger.info('Exam activated successfully', { examId, teacherId: req.user.id, schoolId: exam.school });
+      logger.info('Exam activated successfully', { examId, teacherId: req.user.id, schoolId });
       res.status(200).json({
         success: true,
         message: 'Exam activated successfully',
@@ -666,10 +718,17 @@ exports.completeExam = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { examId } = req.params;
+    const { examId, schoolId } = req.params;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to complete exams for this school'
+      });
+    }
 
     try {
-      const exam = await validateEntity(Exam, examId, 'Exam', req.user.school);
+      const exam = await validateEntity(Exam, examId, 'Exam', schoolId);
 
       if (exam.status !== 'active') {
         logger.warn('Cannot complete exam with status', {
@@ -694,10 +753,10 @@ exports.completeExam = async (req, res) => {
         'status_change',
         req.user.id,
         { status: previousStatus },
-        { status: 'completed', school: exam.school }
+        { status: 'completed', school: schoolId }
       );
 
-      logger.info('Exam completed successfully', { examId, teacherId: req.user.id, schoolId: exam.school });
+      logger.info('Exam completed successfully', { examId, teacherId: req.user.id, schoolId });
       res.status(200).json({
         success: true,
         message: 'Exam marked as completed',
@@ -718,9 +777,18 @@ exports.completeExam = async (req, res) => {
 // Get all exams created by teacher
 exports.getTeacherExams = async (req, res) => {
   try {
+    const { schoolId } = req.query;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to access exams for this school'
+      });
+    }
+
     const exams = await Exam.find({
       teacher: req.user.id,
-      school: req.user.school,
+      school: schoolId,
       isDeleted: false
     })
       .populate('classes', 'level trade year term')
@@ -731,10 +799,10 @@ exports.getTeacherExams = async (req, res) => {
     logger.info('Teacher exams fetched', {
       teacherId: req.user.id,
       examCount: exams.length,
-      schoolId: req.user.school
+      schoolId
     });
 
-    res.status(200).json({ success: true, exams });
+    res.status(200).json({ success: true, exams, message: 'Teacher exams retrieved successfully' });
   } catch (error) {
     logger.error('Error fetching teacher exams', {
       error: error.message,
@@ -757,7 +825,6 @@ exports.scheduleExam = async (req, res) => {
     const { examId } = req.params;
     const { schoolId, start, duration } = req.body;
 
-    // Verify user's school matches provided schoolId
     if (req.user.school.toString() !== schoolId) {
       logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
       return res.status(403).json({
@@ -877,50 +944,78 @@ exports.scheduleExam = async (req, res) => {
   }
 };
 
-// Get classes for logged in teacher
+// Get classes for logged-in teacher
 exports.getClassesForTeacher = async (req, res) => {
   try {
-    const teacher = await User.findById(req.user.id).lean();
-    if (!teacher) {
-      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation errors in getClassesForTeacher', { errors: errors.array(), userId: req.user.id });
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    // Find subjects this teacher teaches
-    const subjects = await Subject.find({ teacher: req.user.id, school: req.user.school, isDeleted: false })
-      .select('classes')
-      .lean();
+    const { schoolId } = req.query;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to access classes for this school'
+      });
+    }
+
+    // Verify teacher exists and has correct role
+    const teacher = await User.findById(req.user.id).lean();
+    if (!teacher || teacher.role !== 'teacher') {
+      logger.warn('Teacher not found or invalid role', { userId: req.user.id });
+      return res.status(404).json({ success: false, message: 'Teacher not found or invalid role' });
+    }
+
+    // Find subjects taught by the teacher
+    const subjects = await Subject.find({
+      teacher: req.user.id,
+      school: schoolId,
+      isDeleted: false
+    }).select('_id').lean();
 
     if (!subjects || subjects.length === 0) {
-      return res.status(200).json({ success: true, classes: [] });
+      logger.info('No subjects found for teacher', { teacherId: req.user.id, schoolId });
+      return res.status(200).json({ success: true, classes: [], message: 'No subjects assigned to teacher' });
     }
 
-    // Get all class IDs from subjects
-    const classIds = [];
-    subjects.forEach(subject => {
-      if (subject.classes && subject.classes.length > 0) {
-        subject.classes.forEach(classId => {
-          if (!classIds.includes(classId.toString())) {
-            classIds.push(classId.toString());
-          }
-        });
-      }
-    });
+    // Extract subject IDs
+    const subjectIds = subjects.map(subject => subject._id);
 
-    // Get class details
+    // Find classes that include any of the teacher's subjects
     const classes = await Class.find({
-      _id: { $in: classIds },
-      school: req.user.school,
+      subjects: { $in: subjectIds },
+      school: schoolId,
       isDeleted: false
     })
+      .populate('trade', 'name code')
+      .populate('subjects', 'name')
       .lean();
+
+    // Format class data
+    const formattedClasses = classes.map(cls => ({
+      _id: cls._id,
+      className: `${cls.level}${cls.trade?.code || ''}`,
+      level: cls.level,
+      trade: cls.trade,
+      year: cls.year,
+      capacity: cls.capacity,
+      subjects: cls.subjects.map(sub => ({ _id: sub._id, name: sub.name }))
+    }));
 
     logger.info('Classes for teacher fetched', {
       teacherId: req.user.id,
       classCount: classes.length,
-      schoolId: req.user.school
+      schoolId
     });
 
-    res.status(200).json({ success: true, classes });
+    res.status(200).json({
+      success: true,
+      classes: formattedClasses,
+      message: 'Classes retrieved successfully'
+    });
   } catch (error) {
     logger.error('Error fetching classes for teacher', {
       error: error.message,
@@ -934,18 +1029,36 @@ exports.getClassesForTeacher = async (req, res) => {
 // Get teacher subjects
 exports.getTeacherSubjects = async (req, res) => {
   try {
-    const teacher = await User.findById(req.user.id).lean();
-    if (!teacher) {
-      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation errors in getTeacherSubjects', { errors: errors.array(), userId: req.user.id });
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
+
+    const { schoolId } = req.query;
+    if (req.user.school.toString() !== schoolId) {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to access subjects for this school'
+      });
+    }
+
+    const teacher = await User.findById(req.user.id).lean();
+    if (!teacher || teacher.role !== 'teacher') {
+      logger.warn('Teacher not found or invalid role', { userId: req.user.id });
+      return res.status(404).json({ success: false, message: 'Teacher not found or invalid role' });
+    }
+
     const subjects = await Subject.find({
       teacher: req.user.id,
-      school: req.user.school,
+      school: schoolId,
       isDeleted: false
     })
       .populate('school', 'name')
       .lean();
-    logger.info('Teacher subjects retrieved', { teacherId: req.user.id, subjectCount: subjects.length, schoolId: req.user.school });
+
+    logger.info('Teacher subjects retrieved', { teacherId: req.user.id, subjectCount: subjects.length, schoolId });
     res.json({ success: true, subjects, message: 'Teacher subjects retrieved successfully' });
   } catch (error) {
     logger.error('getTeacherSubjects error', { error: error.message, userId: req.user.id });
@@ -956,15 +1069,31 @@ exports.getTeacherSubjects = async (req, res) => {
 // Get all exams for a school (dean/headmaster)
 exports.getSchoolExams = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('school');
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation errors in getSchoolExams', { errors: errors.array(), userId: req.user.id });
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { schoolId } = req.query;
+    if (req.user.school.toString() !== schoolId && req.user.role !== 'headmaster') {
+      logger.warn('School ID mismatch', { userId: req.user.id, schoolId, userSchool: req.user.school });
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to access exams for this school'
+      });
+    }
+
     const exams = await Exam.find({
-      school: user.school,
-      isDeleted: false,
+      school: schoolId,
+      isDeleted: false
     })
       .populate('teacher', 'fullName')
       .populate('subject', 'name')
       .populate('classes', 'level trade year term')
       .lean();
+
+    logger.info('School exams retrieved', { userId: req.user.id, examCount: exams.length, schoolId });
     res.json({ success: true, exams, message: 'School exams retrieved successfully' });
   } catch (error) {
     logger.error('getSchoolExams error', { error: error.message, userId: req.user.id });
@@ -990,5 +1119,8 @@ module.exports = {
   validateCreateExam,
   validateUpdateExam,
   validateExamIdParam,
-  validateScheduleExam
+  validateScheduleExam,
+  validateGetTeacherClasses,
+  validateGetTeacherSubjects,
+  validateGetSchoolExams
 };

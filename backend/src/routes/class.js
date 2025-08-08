@@ -20,7 +20,7 @@ const deanOrAdmin = requireRoles(['dean', 'admin' , 'headmaster']);
 // Read-only for all authenticated users
 router.get(
     '/',
-    authenticate,
+    // authenticate,
     [check('schoolId').isMongoId().withMessage('Valid schoolId is required in request body')],
     getClasses
 );
@@ -34,8 +34,8 @@ router.get(
 // Only dean and admin can create
 router.post(
     '/',
-    authenticate,
-    deanOrAdmin,
+    // authenticate,
+    // deanOrAdmin,
     [
         check('level').isIn(['L3', 'L4', 'L5']).withMessage('Invalid class level'),
         check('trade').isMongoId().withMessage('Valid trade ID is required'),

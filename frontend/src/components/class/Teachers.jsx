@@ -17,7 +17,6 @@ const TeacherManagement = () => {
     fullName: '',
     email: '',
     phoneNumber: '',
-    password: '',
     preferences: { notifications: { email: true, sms: false }, theme: 'light' },
     status: 'Active',
   });
@@ -86,7 +85,8 @@ const TeacherManagement = () => {
     if (formData.phoneNumber && !/^\+250[1-9]\d{8}$/.test(formData.phoneNumber))
       errors.phoneNumber =
         'Phone number must start with +250 followed by 9 digits, no leading zero';
-    if (!selectedTeacher && !formData.password) errors.password = 'Password is required';
+    if (selectedTeacher && formData.password && formData.password.length < 6)
+      errors.password = 'Password must be at least 6 characters';
     return errors;
   };
 
@@ -100,7 +100,6 @@ const TeacherManagement = () => {
           fullName: '',
           email: '',
           phoneNumber: '',
-          password: '',
           preferences: { notifications: { email: true, sms: false }, theme: 'light' },
           status: 'Active',
         }
@@ -131,11 +130,14 @@ const TeacherManagement = () => {
         email: formData.email,
         phoneNumber: formData.phoneNumber || null,
         schoolId: currentUser.school,
-        password: formData.password || undefined,
         preferences: formData.preferences,
         status: formData.status,
         isDeleted: formData.status === 'Inactive',
       };
+
+      if (selectedTeacher && formData.password) {
+        payload.password = formData.password;
+      }
 
       if (selectedTeacher) {
         await teacherService.updateTeacher({
@@ -494,26 +496,27 @@ const TeacherManagement = () => {
                         </p>
                       )}
                     </div>
-                    <div className="relative group">
-                      <div className="flex items-center gap-3">
-                        <User className="text-blue-500 group-hover:scale-110 transition-transform duration-200" size={20} />
-                        <input
-                          type="password"
-                          placeholder="Password"
-                          className={`w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md ${formErrors.password ? 'border-red-500' : ''
-                            }`}
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          aria-label="Password"
-                          required={!selectedTeacher}
-                        />
+                    {selectedTeacher && (
+                      <div className="relative group">
+                        <div className="flex items-center gap-3">
+                          <User className="text-blue-500 group-hover:scale-110 transition-transform duration-200" size={20} />
+                          <input
+                            type="password"
+                            placeholder="New Password (optional)"
+                            className={`w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md ${formErrors.password ? 'border-red-500' : ''
+                              }`}
+                            value={formData.password}
+                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            aria-label="Password"
+                          />
+                        </div>
+                        {formErrors.password && (
+                          <p className="text-red-500 text-sm mt-1 pl-9 animate-fade-in">
+                            {formErrors.password}
+                          </p>
+                        )}
                       </div>
-                      {formErrors.password && (
-                        <p className="text-red-500 text-sm mt-1 pl-9 animate-fade-in">
-                          {formErrors.password}
-                        </p>
-                      )}
-                    </div>
+                    )}
                     <div className="relative group">
                       <div className="flex items-center gap-3">
                         <CheckCircle2 className="text-blue-500 group-hover:scale-110 transition-transform duration-200" size={20} />

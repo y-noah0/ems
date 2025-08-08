@@ -26,13 +26,8 @@ const UserSchema = new Schema({
   registrationNumber: {
     type: String,
     unique: true,
-    sparse: true,
-    required: function () { return this.role === 'student'; },
-    trim: true,
-    validate: {
-      validator: function (v) { return this.role !== 'student' ? !v : true; },
-      message: 'Registration number is only allowed for students'
-    }
+    required: true,
+    trim: true
   },
   passwordHash: {
     type: String,
@@ -75,27 +70,6 @@ const UserSchema = new Schema({
       type: String,
       enum: ['light', 'dark'],
       default: 'light'
-    }
-  },
-  classId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Class',
-    required: function () {
-      return this.role === 'student';
-    },
-    validate: {
-      validator: function (v) {
-        return this.role === 'student' ? v != null : v == null;
-      },
-      message: 'Students must have a class, non-students must not have a class'
-    }
-  },
-  termId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Term',
-    validate: {
-      validator: function (v) { return this.role === 'student' ? v != null : v == null; },
-      message: 'Term ID is required for students and not allowed for other roles'
     }
   },
   lastLogin: {

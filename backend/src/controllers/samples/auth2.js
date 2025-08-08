@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const speakeasy = require('speakeasy');
 const { validationResult } = require('express-validator');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -108,9 +107,9 @@ const emailTemplate = (userFullName, message, subject) => `
 
 // Send notification (email, SMS, and socket.io)
 const sendNotification = async (user, message, subject, req) => {
-  // Only send notifications for deans, headmasters, or teachers
+  // Only restrict notifications to deans, headmasters, or teachers for non-registration actions
   const notifyRoles = ['dean', 'headmaster', 'teacher'];
-  if (!notifyRoles.includes(user.role)) {
+  if (subject !== 'EMS Account Registration' && !notifyRoles.includes(user.role)) {
     logger.info('Notification skipped: User role not in target roles', { userId: user._id, role: user.role, ip: req.ip });
     return true; // Skip silently but return true to avoid blocking the action
   }
@@ -187,8 +186,8 @@ const generateRegistrationNumber = async (role) => {
   let attempts = 0;
 
   while (!isUnique && attempts < maxAttempts) {
-    // For teachers, headmasters, and deans, include a timestamp to ensure uniqueness over long periods
-    const timestamp = (role === 'teacher' || role === 'headmaster' || role === 'dean') ? Date.now().toString(36) : '';
+    // For teachers, headmasters, and deans, include a timestamp to ensure uniqueness
+    const timestamp = (role !== 'student') ? Date.now().toString(36) : '';
     const randomNum = Math.floor(10000 + Math.random() * 90000).toString().padStart(5, '0');
     registrationNumber = `${prefix}${year}${timestamp}${randomNum}`;
     const existingUser = await User.findOne({ registrationNumber });
@@ -221,7 +220,6 @@ const register = async (req, res) => {
       role = 'student',
       schoolId,
       phoneNumber,
-      subjects,
       profilePicture,
       classId,
       termId,
@@ -233,7 +231,7 @@ const register = async (req, res) => {
 
     const profilePicturePath = req.file ? req.file.path : profilePicture || null;
 
-    if (['student', 'teacher', 'dean'].includes(role)) {
+    if (['student', 'teacher', 'dean', 'headmaster'].includes(role)) {
       if (!schoolId) {
         logger.warn('Missing school ID for required role', { role, ip: req.ip });
         return res.status(400).json({ success: false, message: 'School ID is required for this role' });
@@ -254,48 +252,38 @@ const register = async (req, res) => {
     }
 
     let registrationNumber;
-    let userPassword;
+    let finalPassword;
     if (['student', 'teacher', 'headmaster', 'dean'].includes(role)) {
       registrationNumber = await generateRegistrationNumber(role);
-      userPassword = registrationNumber; // Set password to registration number
+      finalPassword = registrationNumber; // Set password to registration number
     } else if (role === 'admin') {
       if (!password) {
         logger.warn('Password is required for admin role', { role, ip: req.ip });
         return res.status(400).json({ success: false, message: 'Password is required for admin role' });
       }
-      registrationNumber = await generateRegistrationNumber('dean'); // Use dean prefix for admin to satisfy schema
-      userPassword = password;
+      finalPassword = password;
     } else {
-      logger.warn('Invalid role', { role, ip: req.ip });
+      logger.warn('Invalid role provided', { role, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Invalid role' });
-    }
-
-    if (role === 'student' && subjects?.length) {
-      logger.warn('Subjects provided for student', { role, ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Students cannot have subjects' });
-    }
-
-    if (['dean', 'admin'].includes(role) && subjects?.length) {
-      logger.warn('Subjects provided for non-teacher role', { role, ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Subjects are only allowed for teachers' });
     }
 
     const verificationCode = role !== 'student' ? Math.floor(100000 + Math.random() * 900000).toString() : undefined;
 
     const user = new User({
       fullName,
-      passwordHash: userPassword,
+      passwordHash: finalPassword,
       role,
-      school: ['student', 'teacher', 'dean'].includes(role) ? schoolId : schoolId || null,
-      registrationNumber,
+      school: ['student', 'teacher', 'dean', 'headmaster'].includes(role) ? schoolId : null,
+      registrationNumber: ['student', 'teacher', 'headmaster', 'dean'].includes(role) ? registrationNumber : undefined,
       email: role !== 'student' ? email : email || undefined,
       phoneNumber,
       profilePicture: profilePicturePath,
       preferences: { notifications: { email: !!email, sms: !!phoneNumber }, theme: 'light' },
+      class: role === 'student' && classId ? classId : undefined,
+      emailVerificationToken: verificationCode,
       parentFullName: role === 'student' ? parentFullName : undefined,
       parentNationalId: role === 'student' ? parentNationalId : undefined,
-      parentPhoneNumber: role === 'student' ? parentPhoneNumber : undefined,
-      emailVerificationToken: verificationCode
+      parentPhoneNumber: role === 'student' ? parentPhoneNumber : undefined
     });
 
     await user.save();
@@ -336,16 +324,21 @@ const register = async (req, res) => {
       logger.info('Student enrolled', { enrollmentId: enrollment._id, userId: user._id, ip: req.ip });
     }
 
-    if (role !== 'student' && email) {
-      const message = `Welcome to the EMS! Your account has been successfully registered. Your verification code is: <strong>${user.emailVerificationToken}</strong>. Please use this code to verify your email in the EMS application. Your password is: <strong>${userPassword}</strong>.`;
+    // Send notification with registration number for applicable roles
+    if (['student', 'teacher', 'headmaster', 'dean'].includes(role)) {
+      const message = `Welcome to the EMS! Your account has been successfully registered. Your registration number and password is: <strong>${registrationNumber}</strong>. ${role !== 'student' ? `Your verification code is: <strong>${user.emailVerificationToken}</strong>. Please use this code to verify your email in the EMS application.` : ''}`;
+      const sent = await sendNotification(user, message, 'EMS Account Registration', req);
+      if (!sent) {
+        logger.error('Failed to send registration notification', { userId: user._id, ip: req.ip });
+        return res.status(500).json({ success: false, message: 'User registered, but failed to send registration notification', userId: user._id, registrationNumber });
+      }
+    } else if (role === 'admin' && email) {
+      const message = `Welcome to the EMS! Your account has been successfully registered. Your verification code is: <strong>${user.emailVerificationToken}</strong>. Please use this code to verify your email in the EMS application.`;
       const sent = await sendNotification(user, message, 'EMS Account Registration', req);
       if (!sent) {
         logger.error('Failed to send registration notification', { userId: user._id, ip: req.ip });
         return res.status(500).json({ success: false, message: 'User registered, but failed to send registration notification', userId: user._id });
       }
-    } else if (role === 'student') {
-      const message = `Welcome, ${user.fullName}! Your registration number and password is ${registrationNumber}.`;
-      await sendNotification(user, message, 'Welcome to EMS', req); // Skipped due to role check
     }
 
     res.status(201).json({
@@ -364,7 +357,7 @@ const register = async (req, res) => {
   }
 };
 
-// Login user (reverted to original)
+// Login user
 const login = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -707,21 +700,32 @@ const resetPassword = async (req, res) => {
 // Enable 2FA
 const enable2FA = async (req, res) => {
   try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Validation errors in enable2FA', { errors: errors.array(), ip: req.ip });
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
     const user = await User.findById(req.user._id);
+    if (!user) {
+      logger.warn('User not found for enabling 2FA', { userId: req.user._id, ip: req.ip });
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
     if (user.twoFactorEnabled) {
       logger.warn('2FA already enabled', { userId: user._id, ip: req.ip });
       return res.status(400).json({ success: false, message: '2FA already enabled' });
     }
 
-    const secret = speakeasy.generateSecret();
+    const secret = speakeasy.generateSecret({ name: `EMS:${user.email}` });
     user.twoFactorSecret = secret.base32;
-    user.twoFactorEnabled = true;
+    user.twoFactorEnabled = false; // Enable only after verification
     await user.save();
 
-    await sendNotification(user, 'Two-factor authentication has been successfully enabled for your EMS account.', 'EMS 2FA Enabled', req);
-    logger.info('2FA enabled', { userId: user._id, ip: req.ip });
+    await sendNotification(user, 'Two-factor authentication setup initiated. Please scan the QR code in your authenticator app and verify the code.', 'EMS 2FA Setup', req);
+    logger.info('2FA setup initiated', { userId: user._id, ip: req.ip });
 
-    res.json({ success: true, message: '2FA enabled', secret: secret.otpauth_url });
+    res.json({ success: true, message: 'Scan the QR code with your authenticator app and verify with the code', secret: secret.base32, otpauthUrl: secret.otpauth_url });
   } catch (error) {
     logger.error('Error in enable2FA', { error: error.message, stack: error.stack, ip: req.ip });
     res.status(500).json({

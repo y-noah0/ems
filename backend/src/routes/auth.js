@@ -20,14 +20,18 @@ const {
 // Middleware for validation
 const registerValidation = [
   check('fullName', 'Full name is required').notEmpty().trim(),
-  check('password', 'Password is required and should be at least 6 characters').isLength({ min: 6 }),
   check('email', 'Please include a valid email')
-    .if((value, { req }) => req.body.role !== 'student')
+    .if((value, { req }) => req.body.role === 'admin')
     .isEmail()
     .normalizeEmail(),
+  check('password', 'Password is required for admin role')
+    .if((value, { req }) => req.body.role === 'admin')
+    .notEmpty()
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters for admin role'),
   check('role', 'Invalid role').optional().isIn(['student', 'teacher', 'dean', 'admin', 'headmaster']),
-  check('schoolId', 'School ID is required for student, teacher, or dean')
-    .if((value, { req }) => ['student', 'teacher', 'dean'].includes(req.body.role))
+  check('schoolId', 'School ID is required for student, teacher, dean, or headmaster')
+    .if((value, { req }) => ['student', 'teacher', 'dean', 'headmaster'].includes(req.body.role))
     .notEmpty(),
   check('classId', 'Class ID is required for students')
     .if((value, { req }) => req.body.role === 'student')
@@ -39,10 +43,6 @@ const registerValidation = [
     .optional()
     .matches(/^\+?\d{10,15}$/)
     .withMessage('Invalid phone number'),
-  check('subjects', 'Subjects are only allowed for teachers')
-    .if((value, { req }) => req.body.role !== 'teacher')
-    .isEmpty()
-    .withMessage('Subjects are only allowed for teachers'),
   check('parentFullName', 'Parent full name must not be empty if provided')
     .if((value, { req }) => req.body.role === 'student' && value != null)
     .notEmpty(),

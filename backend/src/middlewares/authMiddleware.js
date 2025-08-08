@@ -74,54 +74,49 @@ const loginValidation = [
 
 // Registration validation
 const registerValidation = [
-  check('fullName').notEmpty().withMessage('Full name is required'),
-  check('password')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(.*[@$!%*?&])?[A-Za-z\d@$!%*?&]{8,}$/)
-    .withMessage('Password must be at least 8 characters with uppercase, lowercase, and number'),
-  check('role').isIn(['student', 'teacher', 'dean', 'admin', 'headmaster']).withMessage('Invalid role'),
-  check('schoolId')
-    .if((value, { req }) => ['student', 'teacher', 'dean'].includes(req.body.role))
-    .isMongoId().withMessage('Invalid school ID'),
+  check('fullName').notEmpty().withMessage('Full name is required').trim(),
+  check('role').notEmpty().isIn(['student', 'teacher', 'dean', 'admin', 'headmaster']).withMessage('Invalid role'),
   check('email')
-    .if((value, { req }) => req.body.role !== 'student')
+    .if((value, { req }) => req.body.role === 'admin')
     .isEmail().withMessage('Invalid email')
-    .notEmpty().withMessage('Email is required for non-student roles'),
+    .notEmpty().withMessage('Email is required for admin role')
+    .normalizeEmail(),
   check('email')
-    .if((value, { req }) => req.body.role === 'student')
+    .if((value, { req }) => req.body.role !== 'admin' && value)
     .optional()
-    .isEmail().withMessage('Invalid email'),
+    .isEmail().withMessage('Invalid email')
+    .normalizeEmail(),
+  check('password')
+    .if((value, { req }) => req.body.role === 'admin')
+    .notEmpty().withMessage('Password is required for admin role')
+    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters for admin role'),
+  check('schoolId')
+    .if((value, { req }) => ['student', 'teacher', 'dean', 'headmaster'].includes(req.body.role))
+    .notEmpty().withMessage('School ID is required for student, teacher, dean, or headmaster')
+    .isMongoId().withMessage('Invalid school ID'),
   check('registrationNumber')
     .if((value, { req }) => req.body.role === 'student')
     .notEmpty().withMessage('Registration number is required for students'),
-  check('subjects')
-    .if((value, { req }) => req.body.role !== 'teacher')
-    .optional({ nullable: true, checkFalsy: true })
-    .custom((value) => {
-      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
-        return true;
-      }
-      throw new Error('Subjects are only allowed for teachers');
-    }),
   check('classId')
     .if((value, { req }) => req.body.role === 'student')
+    .notEmpty().withMessage('Class ID is required for students')
     .isMongoId().withMessage('Invalid class ID'),
   check('termId')
     .if((value, { req }) => req.body.role === 'student')
+    .notEmpty().withMessage('Term ID is required for students')
     .isMongoId().withMessage('Invalid term ID'),
   check('phoneNumber')
     .optional()
     .matches(/^\+?\d{10,15}$/)
     .withMessage('Invalid phone number'),
   check('parentFullName')
-    .if((value, { req }) => req.body.role === 'student')
-    .optional()
+    .if((value, { req }) => req.body.role === 'student' && value)
     .notEmpty().withMessage('Parent full name must not be empty if provided'),
   check('parentNationalId')
-    .if((value, { req }) => req.body.role === 'student')
-    .optional()
+    .if((value, { req }) => req.body.role === 'student' && value)
     .notEmpty().withMessage('Parent national ID must not be empty if provided'),
   check('parentPhoneNumber')
-    .if((value, { req }) => req.body.role === 'student')
+    .if((value, { req }) => req.body.role === 'student' && value)
     .optional()
     .matches(/^\+?\d{10,15}$/)
     .withMessage('Invalid parent phone number'),
