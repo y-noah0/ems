@@ -127,17 +127,6 @@ router.post(
   submissionController.gradeOpenQuestions
 );
 
-// Add this if not already present
-router.post(
-  '/submissions/:submissionId/grade',
-  [
-    authMiddleware.authenticate,
-    authMiddleware.isTeacher,
-    check('grades', 'Grades array is required').isArray()
-  ],
-  submissionController.gradeOpenQuestions
-);
-
 // @route   GET api/submissions/student/results
 // @desc    Get student's exam results by term
 // @access  Students

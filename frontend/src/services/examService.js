@@ -11,93 +11,125 @@ const api = axios.create({
   }
 });
 
-// Add interceptor to include auth token in requests
+// Add interceptor to include auth token and schoolId in requests
 api.interceptors.request.use(
-  config => {
+  (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    // schoolId must be passed by the calling component
+    if (config.schoolId) {
+      if (['get', 'delete'].includes(config.method.toLowerCase())) {
+        config.params = { ...config.params, schoolId: config.schoolId };
+      } else if (['post', 'put'].includes(config.method.toLowerCase())) {
+        config.data = { ...config.data, schoolId: config.schoolId };
+      }
+    } else {
+      throw new Error('School ID is missing. Please ensure you are logged in with a valid school.');
+    }
     return config;
   },
-  error => Promise.reject(error)
+  (error) => {
+    if (error.message.includes('School ID')) {
+      toast.error(error.message);
+    }
+    return Promise.reject(error);
+  }
 );
 
 const examService = {
   // Create exam
-  createExam: async (examData) => {
+  createExam: async (examData, schoolId) => {
     try {
-      const response = await api.post('/exams', examData);
+      console.log('Sending exam data:', examData, 'School ID:', schoolId); // Debug log
+      const response = await api.post('/exams', examData, { schoolId });
+      console.log('Response:', response.data); // Debug log
       toast.success('Exam created successfully!');
       return response.data.exam;
     } catch (error) {
-      const errorMsg = error.response?.data?.message || 'Failed to create exam';
+      console.error('Create exam error:', error.response?.data); // Debug log
+      const errorMsg = error.response?.data?.message || error.response?.data?.errors?.map(e => e.msg).join(', ') || 'Failed to create exam';
+      toast.error(errorMsg);
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+  // Get teacher's exams
+  getTeacherExams: async (schoolId) => {
+    try {
+      const response = await api.get('/exams/teacher', { schoolId });
+      return response.data.exams;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to fetch teacher exams';
       toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Get teacher's exams
-  getTeacherExams: async () => {
-    try {
-      const response = await api.get('/exams/teacher');
-      return response.data.exams;
-    } catch (error) {
-      throw error.response ? error.response.data : { message: 'Network error' };
-    }
-  },
-
   // Get exam by ID
-  getExamById: async (examId) => {
+  getExamById: async (examId, schoolId) => {
     try {
-      const response = await api.get(`/exams/${examId}`);
+      const response = await api.get(`/exams/${examId}`, { schoolId });
       return response.data.exam;
     } catch (error) {
-      console.error('Error fetching exam details:', error);
+      const errorMsg = error.response?.data?.message || 'Failed to load exam details';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Failed to load exam details. Please try again.' };
     }
   },
 
   // Update exam
-  updateExam: async (id, examData) => {
+  updateExam: async (id, examData, schoolId) => {
     try {
+      const allowedExamTypes = ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'];
       if (!examData.type) {
-        examData.type = 'midterm';
+        examData.type = 'quiz';
+      } else if (!allowedExamTypes.includes(examData.type)) {
+        throw new Error(`Invalid exam type. Must be one of: ${allowedExamTypes.join(', ')}`);
       }
       if (examData.questions && examData.questions.length > 0) {
         examData.questions = examData.questions.map(q => {
           const question = { ...q };
           if (!question.maxScore && question.points) {
             question.maxScore = parseInt(question.points);
+            delete question.points;
           }
           if (!question.text) {
             question.text = 'Untitled question';
           }
-          if (question.type === 'MCQ' && question.options) {
-            if (Array.isArray(question.options) &&
-              question.options[0] &&
-              typeof question.options[0] === 'object') {
+          if (question.type === 'MCQ') {
+            question.type = 'multiple-choice';
+          }
+          if (question.type === 'multiple-choice' && question.options) {
+            if (Array.isArray(question.options) && question.options.length > 0) {
               const correctOption = question.options.find(o => o.isCorrect);
               question.correctAnswer = correctOption ? correctOption.text : '';
-              question.options = question.options.map(o => o.text || '');
+              question.options = question.options.map(o => ({
+                text: o.text || '',
+                isCorrect: !!o.isCorrect
+              }));
+            } else {
+              question.options = [];
+              question.correctAnswer = '';
             }
           }
           return question;
         });
-      }      const response = await api.put(`/exams/${id}`, examData);
+      }
+      const response = await api.put(`/exams/${id}`, examData, { schoolId });
       toast.success('Exam updated successfully!');
       return response.data.exam;
     } catch (error) {
-      console.error('Error in updateExam:', error);
-      const errorMsg = error.response?.data?.message || 'Failed to update exam';
+      const errorMsg = error.response?.data?.message || error.message || 'Failed to update exam';
       toast.error(errorMsg);
-      throw error.response ? error.response.data : { message: 'Network error' };
+      throw error.response ? error.response.data : { message: error.message || 'Network error' };
     }
   },
+
   // Delete exam
-  deleteExam: async (id) => {
+  deleteExam: async (id, schoolId) => {
     try {
-      const response = await api.delete(`/exams/${id}`);
+      const response = await api.delete(`/exams/${id}`, { schoolId });
       toast.success('Exam deleted successfully!');
       return response.data;
     } catch (error) {
@@ -108,30 +140,33 @@ const examService = {
   },
 
   // Get upcoming exams for student
-  getUpcomingExamsForStudent: async () => {
+  getUpcomingExamsForStudent: async (schoolId) => {
     try {
-      const response = await api.get('/exams/student/upcoming');
+      const response = await api.get('/exams/student/upcoming', { schoolId });
       return response.data.exams;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to fetch upcoming exams';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
   // Get all exams for student's class
-  getStudentClassExams: async () => {
+  getStudentClassExams: async (schoolId) => {
     try {
-      const response = await api.get('/exams/student/class');
+      const response = await api.get('/exams/student/class', { schoolId });
       return response.data.exams;
     } catch (error) {
-      console.error('Error fetching class exams:', error);
+      const errorMsg = error.response?.data?.message || 'Failed to load class exams';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Failed to load class exams. Please try again.' };
     }
   },
 
   // Activate exam
-  activateExam: async (id) => {
+  activateExam: async (id, schoolId) => {
     try {
-      const response = await api.put(`/exams/${id}/activate`);
+      const response = await api.put(`/exams/${id}/activate`, {}, { schoolId });
       toast.success('Exam activated successfully!');
       return response.data.exam;
     } catch (error) {
@@ -140,10 +175,11 @@ const examService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
+
   // Complete exam
-  completeExam: async (id) => {
+  completeExam: async (id, schoolId) => {
     try {
-      const response = await api.put(`/exams/${id}/complete`);
+      const response = await api.put(`/exams/${id}/complete`, {}, { schoolId });
       toast.success('Exam completed successfully!');
       return response.data.exam;
     } catch (error) {
@@ -153,20 +189,59 @@ const examService = {
     }
   },
 
-  // Get exam submissions
-  getExamSubmissions: async (examId) => {
+  // Schedule an exam
+  scheduleExam: async (id, scheduleData, schoolId) => {
     try {
-      const response = await api.get(`/submissions/exam/${examId}`);
-      return response.data.submissions;
+      const response = await api.put(`/exams/${id}/schedule`, scheduleData, { schoolId });
+      toast.success('Exam scheduled successfully!');
+      return response.data.exam;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to schedule exam';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Get submission by ID
-  getSubmissionById: async (submissionId) => {
+  // Get teacher subjects
+  getTeacherSubjects: async (schoolId) => {
     try {
-      const response = await api.get(`/submissions/${submissionId}`);
+      const response = await api.get('/exams/subjects/teacher', { schoolId });
+      return response.data.subjects;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to fetch teacher subjects';
+      toast.error(errorMsg);
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
+  // Get classes for teacher
+  getClassesForTeacher: async (schoolId) => {
+    try {
+      const response = await api.get('/exams/classes', { schoolId });
+      return response.data.classes;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to fetch teacher classes';
+      toast.error(errorMsg);
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
+  // Get exam submissions (assumes submissions.js route)
+  getExamSubmissions: async (examId, schoolId) => {
+    try {
+      const response = await api.get(`/submissions/exam/${examId}`, { schoolId });
+      return response.data.submissions;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to fetch exam submissions';
+      toast.error(errorMsg);
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
+  // Get submission by ID (assumes submissions.js route)
+  getSubmissionById: async (submissionId, schoolId) => {
+    try {
+      const response = await api.get(`/submissions/${submissionId}`, { schoolId });
       const data = response.data;
       if (data.success && data.submission) {
         const submission = data.submission;
@@ -186,40 +261,21 @@ const examService = {
       }
       throw new Error('Invalid submission data received');
     } catch (error) {
-      console.error('Error fetching submission:', error);
-      throw error;
-    }
-  },
-
-  // Schedule an exam
-  scheduleExam: async (id, scheduleData) => {
-    try {
-      const response = await api.put(`/exams/${id}/schedule`, scheduleData);
-      return response.data.exam;
-    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to fetch submission';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Get teacher subjects
-  getTeacherSubjects: async () => {
-    const response = await api.get('/subjects/teacher');
-    return response.data.subjects;
-  },
-  getClassesForTeacher: async () => {
-    const response = await api.get('/exams/classes');
-    return response.data.classes;
-  },
-
-
-  // Get all teacher submissions
-  getTeacherSubmissions: async () => {
+  // Get all teacher submissions (assumes submissions.js route)
+  getTeacherSubmissions: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/teacher');
+      const response = await api.get('/submissions/teacher', { schoolId });
       return response.data.submissions;
     } catch (error) {
-      console.error('Error fetching teacher submissions:', error);
-      throw error.response ? error.response.data : { message: 'Failed to load submissions' };
+      const errorMsg = error.response?.data?.message || 'Failed to fetch teacher submissions';
+      toast.error(errorMsg);
+      throw error.response ? error.response.data : { message: 'Network error' };
     }
   }
 };

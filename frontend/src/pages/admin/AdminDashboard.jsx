@@ -9,16 +9,18 @@ import adminService from "../../services/adminService";
 import schoolService from "../../services/schoolService";
 
 const AdminDashboard = () => {
-    const { currentUser } = useAuth();
+    const { currentUser, loading } = useAuth();
     const navigate = useNavigate();
     const [stats, setStats] = useState({ classCount:0, teacherCount:0, studentCount:0, examCount:0 });
     const [topSchools, setTopSchools] = useState([]);
 
     useEffect(() => {
-        if (!currentUser || currentUser.role !== "admin") {
+        // Only redirect if we're not loading and user is not admin
+        if (!loading && (!currentUser || currentUser.role !== "admin")) {
             navigate("/login");
         }
-    }, [currentUser, navigate]);
+    }, [currentUser, loading, navigate]);
+
     useEffect(() => {
         const fetchDashboard = async () => {
             try {
@@ -58,13 +60,23 @@ const AdminDashboard = () => {
         fetchSchools();
     }, []);
 
-    if (!currentUser || currentUser.role !== "admin") {
+    // Show loading while authentication state is being determined
+    if (loading) {
         return (
-            <div className="flex justify-center items-center py-5">
-                Loading...
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">Loading...</p>
+                </div>
             </div>
         );
     }
+
+    // Don't render admin content if user is not admin
+    if (!currentUser || currentUser.role !== "admin") {
+        return null; // Will redirect in useEffect
+    }
+
     const payments = [
         {
             id: 1,

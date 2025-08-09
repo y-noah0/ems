@@ -38,7 +38,7 @@ const ClassSchema = new Schema({
   }
 }, { timestamps: true });
 
-ClassSchema.index({ level: 1, trade: 1, year: 1, school: 1 }, { unique: true });
+// ClassSchema.index({ level: 1, trade: 1, year: 1, school: 1 }, { unique: true });
 
 ClassSchema.virtual('className').get(function () {
   return `${this.level}${this.trade.code}`;

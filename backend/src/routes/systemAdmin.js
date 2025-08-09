@@ -5,7 +5,7 @@ const systemAdminController = require('../controllers/systemAdminController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 // All routes here require admin privileges
-router.use(authMiddleware.authenticate, authMiddleware.isAdmin);
+router.use(authMiddleware.authenticate, authMiddleware.isDean);
 
 // @route   GET api/system-admin/staff
 // @desc    Get all staff members (teachers, deans, admins)
@@ -26,7 +26,7 @@ router.post(
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password must be at least 6 characters').isLength({ min: 6 }),
     check('fullName', 'Full name is required').notEmpty(),
-    check('role', 'Role is required').isIn(['teacher', 'dean', 'admin'])
+    check('role', 'Role is required').isIn(['teacher', 'dean', 'admin', 'headmaster'])
   ],
   systemAdminController.createStaff
 );

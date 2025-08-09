@@ -59,13 +59,13 @@ const ExamCreator = () => {
               classId: classesData[0]._id
             }));
           } else {
-            setError(prevError => 
+            setError(prevError =>
               prevError ? `${prevError} No classes are available.` : 'No classes are available. Please contact your dean.'
             );
           }
         } catch (classError) {
           console.error('Error fetching classes:', classError);
-          setError(prevError => 
+          setError(prevError =>
             prevError ? `${prevError} Failed to load classes.` : 'Failed to load classes. Please try again later.'
           );
         }
@@ -144,5 +144,6 @@ const ExamCreator = () => {
       setLoading(false);
     }
   };
+}
 
   // Rest of your component...

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
 const bcrypt = require('bcryptjs');
+
+const Schema = mongoose.Schema;
 
 const UserSchema = new Schema({
   role: {
@@ -18,21 +19,16 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please Enter a valid email'],
-    required: function () { return this.role !== 'student'; },
-    sparse: true,
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
+    required: function () { return this.role !== 'student'; }, // Email optional for students
+    sparse: true, // Allows multiple null/undefined emails for students
     unique: true
   },
   registrationNumber: {
     type: String,
     unique: true,
-    sparse: true,
-    required: function () { return this.role === 'student'; },
-    trim: true,
-    validate: {
-      validator: function (v) { return this.role !== 'student' ? !v : true; },
-      message: 'Registration number is only allowed for students'
-    }
+    required: true,
+    trim: true
   },
   passwordHash: {
     type: String,
@@ -42,26 +38,28 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     match: [/^\+?\d{10,15}$/, 'Please enter a valid phone number'],
-    default: null
+    required: function () {
+      return ['admin', 'headmaster', 'teacher', 'dean'].includes(this.role);
+    }
   },
   school: {
     type: Schema.Types.ObjectId,
     ref: 'School',
     default: null,
     required: function () {
-      return ['student', 'teacher', 'dean'].includes(this.role);
+      return ['student', 'teacher', 'dean'].includes(this.role); // Required for student, teacher, dean
     }
   },
   profilePicture: {
     type: String,
     trim: true,
-    default: null,
+    default: null, // Explicitly optional for all users
+    required: false,
     validate: {
       validator: function (v) {
-        // Allow null or a valid image URL/local path
-        if (v === null) return true;
+        if (v === null) return true; // Null is valid for all roles
         return /^https?:\/\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v) ||
-          /^\/uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
+          /^\/Uploads\/.*\.(png|jpg|jpeg|svg|gif)$/i.test(v);
       },
       message: 'Please enter a valid image URL or local upload path'
     }
@@ -75,27 +73,6 @@ const UserSchema = new Schema({
       type: String,
       enum: ['light', 'dark'],
       default: 'light'
-    }
-  },
-  classId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Class',
-    required: function () {
-      return this.role === 'student';
-    },
-    validate: {
-      validator: function (v) {
-        return this.role === 'student' ? v != null : v == null;
-      },
-      message: 'Students must have a class, non-students must not have a class'
-    }
-  },
-  termId: {
-    type: Schema.Types.ObjectId,
-    ref: 'Term',
-    validate: {
-      validator: function (v) { return this.role === 'student' ? v != null : v == null; },
-      message: 'Term ID is required for students and not allowed for other roles'
     }
   },
   lastLogin: {
@@ -129,53 +106,59 @@ const UserSchema = new Schema({
     type: String,
     trim: true,
     default: null,
-    required: false,
+    required: false, // Optional for students
     validate: {
       validator: function (v) {
-        if (this.role === 'student' && v != null) return v.length > 0;
-        return true;
+        if (this.role !== 'student') return v === null; // Must be null for non-students
+        return v === null || v.length > 0; // Optional for students, non-empty if provided
       },
-      message: 'Parent full name must not be empty if provided'
+      message: 'Parent full name is only allowed for students and must not be empty if provided'
     }
   },
   parentNationalId: {
     type: String,
     trim: true,
     default: null,
-    required: false,
+    required: false, // Optional for students
     validate: {
       validator: function (v) {
-        if (this.role === 'student' && v != null) return v.length > 0;
-        return true;
+        if (this.role !== 'student') return v === null; // Must be null for non-students
+        return v === null || v.length > 0; // Optional for students, non-empty if provided
       },
-      message: 'Parent national ID must not be empty if provided'
+      message: 'Parent national ID is only allowed for students and must not be empty if provided'
     }
   },
   parentPhoneNumber: {
     type: String,
     trim: true,
     match: [/^\+?\d{10,15}$/, 'Please enter a valid phone number'],
-    default: null,
-    required: false
+    default: null, // Optional for students
+    required: false,
+    validate: {
+      validator: function (v) {
+        if (this.role !== 'student') return v === null; // Must be null for non-students
+        return true; // Optional for students, validated by match if provided
+      },
+      message: 'Parent phone number is only allowed for students'
+    }
   },
   graduated: {
     type: Boolean,
-    default: false,
-    required: false
+    default: false
   },
   graduationDate: {
     type: Date,
-    default: null,
-    required: false
+    default: null
   }
 }, { timestamps: true });
 
 // Indexes
-UserSchema.index({ email: 1 }, { unique: true, sparse: true });
-UserSchema.index({ role: 1, school: 1 });
+UserSchema.index({ email: 1 }, { unique: true, sparse: true }); // Sparse allows null emails for students
+UserSchema.index({ role: 1, school: 1 }); // For efficient queries by role and school
 
 // Pre-save validations
 UserSchema.pre('save', async function (next) {
+  // Hash password if modified
   if (this.isModified('passwordHash')) {
     try {
       const salt = await bcrypt.genSalt(10);
@@ -186,15 +169,24 @@ UserSchema.pre('save', async function (next) {
     }
   }
 
-  if (this.role === 'teacher') {
-    if (!this.school) return next(new Error('Teacher must be assigned to a school'));
+  // Ensure teacher has a school
+  if (this.role === 'teacher' && !this.school) {
+    return next(new Error('Teacher must be assigned to a school'));
   }
 
+  // Validate headmaster school assignment
   if (this.role === 'headmaster' && this.school) {
     const School = mongoose.model('School');
     const school = await School.findOne({ headmaster: this._id });
     if (school && school._id.toString() !== this.school.toString()) {
       return next(new Error('Headmaster is already assigned to another school'));
+    }
+  }
+
+  // Ensure admin and headmaster don’t have parent-related fields
+  if (['admin', 'headmaster', 'teacher', 'dean'].includes(this.role)) {
+    if (this.parentFullName || this.parentNationalId || this.parentPhoneNumber) {
+      return next(new Error('Parent-related fields are only allowed for students'));
     }
   }
 

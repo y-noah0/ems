@@ -11,126 +11,130 @@ const api = axios.create({
   }
 });
 
-// Add interceptor to include auth token in requests
+// Add interceptor to include auth token and schoolId in requests
 api.interceptors.request.use(
-  config => {
+  (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    // schoolId must be passed by the calling component
+    if (config.schoolId) {
+      if (['get', 'delete'].includes(config.method.toLowerCase())) {
+        config.params = { ...config.params, schoolId: config.schoolId };
+      } else if (['post', 'put'].includes(config.method.toLowerCase())) {
+        config.data = { ...config.data, schoolId: config.schoolId };
+      }
+    } else {
+      throw new Error('School ID is missing. Please ensure you are logged in with a valid school.');
+    }
     return config;
   },
-  error => Promise.reject(error)
+  (error) => {
+    if (error.message.includes('School ID')) {
+      toast.error(error.message);
+    }
+    return Promise.reject(error);
+  }
 );
 
-// Submission service
 const submissionService = {
-  // Start exam
-  startExam: async (examId) => {
+  startExam: async (examId, schoolId) => {
     try {
-      const response = await api.post('/submissions/start', { examId });
+      const response = await api.post('/submissions/start', { examId }, { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get Assessment 1 results
-  getAssessment1Results: async () => {
+
+  getAssessment1Results: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/results/assessment1');
+      const response = await api.get('/submissions/results/assessment1', { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get Assessment 2 results
-  getAssessment2Results: async () => {
+
+  getAssessment2Results: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/results/assessment2');
+      const response = await api.get('/submissions/results/assessment2', { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get Exam results
-  getExamResults: async () => {
+
+  getExamResults: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/results/exam');
+      const response = await api.get('/submissions/results/exam', { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get Homework results
-  getHomeworkResults: async () => {
+
+  getHomeworkResults: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/results/homework');
+      const response = await api.get('/submissions/results/homework', { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get Quiz results
-  getQuizResults: async () => {
+
+  getQuizResults: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/results/quiz');
+      const response = await api.get('/submissions/results/quiz', { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get Combined results (all assessment types)
-  getCombinedResults: async () => {
+
+  getCombinedResults: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/results/combined');
+      const response = await api.get('/submissions/results/combined', { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get Student performance by ID
-  getStudentMarks: async (studentId) => {
+
+  getStudentMarks: async (studentId, schoolId) => {
     try {
       const response = await api.get('/submissions/student/marks', {
-        params: { studentId }
+        params: { studentId },
+        schoolId
       });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
-  
-  // Get current student's performance
-  getMyMarks: async () => {
+
+  getMyMarks: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/my-marks');
+      const response = await api.get('/submissions/my-marks', { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Save answers (auto-save)
-  saveAnswers: async (submissionId, answers) => {
+  saveAnswers: async (submissionId, answers, schoolId) => {
     try {
-      const response = await api.post('/submissions/save', { submissionId, answers });
+      const response = await api.post('/submissions/save', { submissionId, answers }, { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Submit exam  
-  submitExam: async (submissionId, answers) => {
+  submitExam: async (submissionId, answers, schoolId) => {
     try {
-      const response = await api.post('/submissions/submit', { submissionId, answers });
+      const response = await api.post('/submissions/submit', { submissionId, answers }, { schoolId });
       toast.success('Exam submitted successfully!');
       return response.data;
     } catch (error) {
@@ -140,65 +144,62 @@ const submissionService = {
     }
   },
 
-  // Auto-submit exam
-  autoSubmitExam: async (submissionId, reason) => {
+  autoSubmitExam: async (submissionId, reason, schoolId) => {
     try {
-      const response = await api.post('/submissions/auto-submit', { submissionId, reason });
+      const response = await api.post('/submissions/auto-submit', { submissionId, reason }, { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Log violation
-  logViolation: async (submissionId, violationType, details) => {
+  logViolation: async (submissionId, violationType, details, schoolId) => {
     try {
       const response = await api.post('/submissions/log-violation', {
         submissionId,
         violationType,
         details
-      });
+      }, { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Get student submissions
-  getStudentSubmissions: async () => {
+  getStudentSubmissions: async (schoolId) => {
     try {
-      const response = await api.get('/submissions/student');
+      const response = await api.get('/submissions/student', { schoolId });
       return response.data.submissions;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Get exam submissions (for teacher)
-  getExamSubmissions: async (examId) => {
+  getExamSubmissions: async (examId, schoolId) => {
     try {
-      const response = await api.get(`/submissions/exam/${examId}`);
+      const response = await api.get(`/submissions/exam/${examId}`, { schoolId });
       return response.data.submissions;
     } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to fetch exam submissions';
+      toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Grade open questions
-  gradeOpenQuestions: async (submissionId, grades) => {
+  gradeOpenQuestions: async (submissionId, grades, schoolId) => {
     try {
-      const response = await api.post(`/submissions/${submissionId}/grade`, { grades });
+      const response = await api.post(`/submissions/${submissionId}/grade`, { grades }, { schoolId });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Get student results by term
-  getStudentResultsByTerm: async (year, term) => {
+  getStudentResultsByTerm: async (termId, schoolId) => {
     try {
       const response = await api.get('/submissions/student/results', {
-        params: { year, term }
+        params: { termId },
+        schoolId
       });
       return response.data.results;
     } catch (error) {
@@ -206,20 +207,71 @@ const submissionService = {
     }
   },
 
-  // Get submission details
-  getSubmissionDetails: async (submissionId) => {
+  getSubmissionDetails: async (submissionId, schoolId) => {
     try {
-      const response = await api.get(`/submissions/${submissionId}`);
+      const response = await api.get(`/submissions/${submissionId}`, { schoolId });
       return response.data.submission;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
 
-  // Update grades for a submission
-  updateSubmissionGrades: async (submissionId, grades) => {
+  updateSubmissionGrades: async (submissionId, grades, schoolId) => {
     try {
-      const response = await api.post(`/submissions/${submissionId}/update-grades`, { grades });
+      const response = await api.post(`/submissions/${submissionId}/update-grades`, { grades }, { schoolId });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
+  getTeacherSubmissions: async (schoolId) => {
+    try {
+      const response = await api.get('/submissions/teacher', { schoolId });
+      return response.data.submissions;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
+  monitorExam: async (examId, schoolId) => {
+    try {
+      const response = await api.get(`/submissions/monitor/${examId}`, { schoolId });
+      return response.data;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to fetch exam monitoring data';
+      toast.error(errorMsg);
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
+  getResultsByAssessmentType: async (type, schoolId) => {
+    try {
+      const response = await api.get('/submissions/results/by-type', {
+        params: { type },
+        schoolId
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
+  getCombinedDetailedResults: async (schoolId) => {
+    try {
+      const response = await api.get('/submissions/results/detailed', { schoolId });
+      return response.data;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
+  getStudentResultsByAssessmentType: async (studentId, type, schoolId) => {
+    try {
+      const response = await api.get('/submissions/student/assessment-results', {
+        params: { studentId, type },
+        schoolId
+      });
       return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };

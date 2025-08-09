@@ -259,6 +259,61 @@ const deleteSchool = async (req, res) => {
     }
 };
 
+// Add a trade to a school's offerings
+const addTradeToSchool = async (req, res) => {
+    try {
+        const { id: schoolId, tradeId } = req.params;
+        const school = await School.findById(schoolId);
+        if (!school || school.isDeleted) {
+            return res.status(404).json({ success: false, message: 'School not found' });
+        }
+        // headmaster may only modify own school
+        if (req.user.role === 'headmaster' && school.headmaster.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+        const Trade = require('../models/trade');
+        const trade = await Trade.findById(tradeId);
+        if (!trade || trade.isDeleted) {
+            return res.status(404).json({ success: false, message: 'Trade not found' });
+        }
+        if (trade.category !== school.category) {
+            return res.status(400).json({ success: false, message: 'Trade category does not match school category' });
+        }
+        if (school.tradesOffered.includes(tradeId)) {
+            return res.status(400).json({ success: false, message: 'Trade already offered by school' });
+        }
+        school.tradesOffered.push(tradeId);
+        await school.save();
+        res.json({ success: true, tradesOffered: school.tradesOffered });
+    } catch (error) {
+        logger.error('Error in addTradeToSchool', { error: error.message, ip: req.ip });
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
+// Remove a trade from a school's offerings
+const removeTradeFromSchool = async (req, res) => {
+    try {
+        const { id: schoolId, tradeId } = req.params;
+        const school = await School.findById(schoolId);
+        if (!school || school.isDeleted) {
+            return res.status(404).json({ success: false, message: 'School not found' });
+        }
+        if (req.user.role === 'headmaster' && school.headmaster.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ success: false, message: 'Access denied' });
+        }
+        if (!school.tradesOffered.includes(tradeId)) {
+            return res.status(400).json({ success: false, message: 'Trade not offered by school' });
+        }
+        school.tradesOffered = school.tradesOffered.filter(tId => tId.toString() !== tradeId);
+        await school.save();
+        res.json({ success: true, tradesOffered: school.tradesOffered });
+    } catch (error) {
+        logger.error('Error in removeTradeFromSchool', { error: error.message, ip: req.ip });
+        res.status(500).json({ success: false, message: 'Server Error' });
+    }
+};
+
 module.exports = {
     schoolValidation,
     createSchool,
@@ -266,5 +321,7 @@ module.exports = {
     getSchoolById,
     getTradesOfferedBySchool,
     updateSchool,
-    deleteSchool
+    deleteSchool,
+    addTradeToSchool,
+    removeTradeFromSchool
 };

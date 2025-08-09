@@ -142,7 +142,6 @@ ExamSchema.statics.recalculateTotalPoints = async function (examId) {
 
 // Add indexes for performance
 ExamSchema.index({ teacher: 1 });
-ExamSchema.index({ classes: 1 });
 ExamSchema.index({ subject: 1 });
 ExamSchema.index({ status: 1 });
 

@@ -5,8 +5,12 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Card from "../../components/ui/Card";
 import systemAdminService from "../../services/systemAdminService";
+import teacherService from "../../services/teacherService";
+import { useAuth } from "../../context/AuthContext";
 
 export default function UserManagement() {
+    const currentUser = useAuth();
+    const currentSchool = currentUser.currentUser.school;
     const [staff, setStaff] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -36,7 +40,7 @@ export default function UserManagement() {
         const fetchStaff = async () => {
             setLoading(true);
             try {
-                const data = await systemAdminService.getAllStaff();
+                const data = await teacherService.fetchTeachers(currentSchool);
                 const staffData = data.staff;
 
                 setStaff(staffData);
@@ -56,7 +60,7 @@ export default function UserManagement() {
 
     const handleUpdate = (user) => {
         setEditUser(user);
-        setFormData({ fullName: user.fullName, email: user.email, password: '', role: user.role });
+        setFormData({ fullName: user.fullName, email: user.email, password: '', role: user.role, school: currentSchool });
         setShowForm(true);
     };
 
@@ -75,8 +79,7 @@ export default function UserManagement() {
                 await systemAdminService.createStaff(formData);
             }
              // Refresh
-             const staffData = await systemAdminService.getAllStaff();
-             setStaff(staffData.staff);
+             window.location.reload();
              setShowForm(false);
              setFormData({
                  fullName: "",
@@ -219,7 +222,7 @@ export default function UserManagement() {
                                                 <option value="teacher">Teacher</option>
                                                 <option
                                                     value='dean'
-                                                    disabled={staff.some(u => u.role === 'dean') && (!editUser || editUser.role !== 'dean')}
+                                                    disabled={staff && staff.some(u => u.role === 'dean') && (!editUser || editUser.role !== 'dean')}
                                                 >Dean</option>
                                             </select>
                                         </div>

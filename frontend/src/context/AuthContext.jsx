@@ -13,15 +13,53 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check if user is already logged in
     const loadUser = async () => {
-      setLoading(true);
       try {
         if (authService.isAuthenticated()) {
-          const user = await authService.getCurrentUser();
-          setCurrentUser(user);
+          // First, try to get user from localStorage immediately
+          const storedUser = authService.getStoredUser();
+          if (storedUser) {
+            setCurrentUser(storedUser);
+            setLoading(false); // Set loading to false early for better UX
+            
+            // Then, optionally refresh user data in background if needed
+            // Only do this if the stored data is older than 30 minutes
+            const lastLogin = storedUser.lastLogin ? new Date(storedUser.lastLogin) : null;
+            const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+            
+            if (!lastLogin || lastLogin < thirtyMinutesAgo) {
+              try {
+                console.log('Refreshing user data in background...');
+                const freshUser = await authService.getCurrentUser();
+                if (JSON.stringify(freshUser) !== JSON.stringify(storedUser)) {
+                  setCurrentUser(freshUser);
+                  console.log('User data updated from server');
+                }
+              } catch (error) {
+                console.warn('Failed to refresh user data, using cached data:', error);
+                // Keep using stored user data if server fails - don't logout
+              }
+            }
+          } else {
+            // No stored user, must fetch from server
+            try {
+              const user = await authService.getCurrentUser();
+              setCurrentUser(user);
+            } catch (error) {
+              console.error('Failed to get user from server:', error);
+              // If we can't get user data and there's no stored data, logout
+              authService.logout();
+            }
+          }
+        } else {
+          // No token, user is not authenticated
+          setCurrentUser(null);
         }
       } catch (error) {
         console.error('Error loading user:', error);
-        authService.logout(); // Logout if token is invalid
+        // Only logout if there's a critical error, not network issues
+        if (error.message && error.message.includes('token')) {
+          authService.logout();
+        }
       } finally {
         setLoading(false);
       }
@@ -93,7 +131,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     changePassword,
-    isAuthenticated: authService.isAuthenticated()
+    isAuthenticated: !!currentUser
   };
 
   return (

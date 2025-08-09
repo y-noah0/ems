@@ -24,11 +24,10 @@ const userService = {
   // Get all headmasters
   getHeadmasters: async () => {
     try {
-      const response = await api.get('/auth');
-      // Filter for headmasters only
-      const headmasters = response.data.staff.filter(user => user.role === 'headmaster');
-      return headmasters;
+      const response = await api.get('/headmasters');
+      return response.data.headmasters || [];
     } catch (error) {
+      console.error('Error fetching headmasters:', error);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
