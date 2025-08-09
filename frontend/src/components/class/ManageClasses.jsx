@@ -30,6 +30,29 @@ const ManageClasses = () => {
   const [studentsError, setStudentsError] = useState('');
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
+  // Helper function to get trade display information
+  const getTradeDisplayInfo = (classObj, trades) => {
+    if (classObj?.trade && typeof classObj.trade === 'object') {
+      return {
+        name: classObj.trade.name,
+        code: classObj.trade.code
+      };
+    }
+    
+    if (classObj?.trade && Array.isArray(trades)) {
+      const foundTrade = trades.find(t => t._id === classObj.trade);
+      return {
+        name: foundTrade?.name || 'Unknown Trade',
+        code: foundTrade?.code || ''
+      };
+    }
+    
+    return {
+      name: 'Unknown Trade',
+      code: ''
+    };
+  };
+
   useEffect(() => {
     if (currentUser?.school) {
       fetchAll();
@@ -149,7 +172,7 @@ const ManageClasses = () => {
             <p className="text-gray-500 mt-1">
               {!selectedClass 
                 ? "View and manage all classes" 
-                : `Managing ${selectedClass.level} ${tradeOptions.find((t) => t._id === selectedClass.trade)?.name || ''}`}
+                : `Managing ${selectedClass.level} ${getTradeDisplayInfo(selectedClass, tradeOptions).name}`}
             </p>
           </div>
           <div>
@@ -205,51 +228,52 @@ const ManageClasses = () => {
                 </button>
               </div>
             ) : (
-              classesData.classes.map((cls) => (
-                <div
-                  key={cls._id}
-                  className="relative bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden group cursor-pointer"
-                  onClick={() => handleViewClass(cls)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && handleViewClass(cls)}
-                >
-                  <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-blue-300"></div>
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-800">
-                          {cls.level} - {typeof cls.trade === 'object' 
-                            ? cls.trade.name 
-                            : tradeOptions.find((t) => t._id === cls.trade)?.name || 'Unknown'}
-                        </h3>
-                        <p className="text-gray-500 text-sm mt-1">
-                          {cls.year} • Capacity: {cls.capacity}
-                        </p>
+              classesData.classes?.map((cls) => {
+                const tradeInfo = getTradeDisplayInfo(cls, tradeOptions);
+                return (
+                  <div
+                    key={cls._id}
+                    className="relative bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 overflow-hidden group cursor-pointer"
+                    onClick={() => handleViewClass(cls)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handleViewClass(cls)}
+                  >
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-blue-300"></div>
+                    <div className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-800">
+                            {cls.level} - {tradeInfo.name}
+                          </h3>
+                          <p className="text-gray-500 text-sm mt-1">
+                            {cls.year} • Capacity: {cls.capacity}
+                          </p>
+                        </div>
+                        <div className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                          {cls.subjects?.length || 0} subjects
+                        </div>
                       </div>
-                      <div className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                        {cls.subjects?.length || 0} subjects
+                      
+                      <div className="flex items-center justify-between mt-6">
+                        <div className="flex items-center text-gray-500 text-sm">
+                          <FiUsers className="mr-1.5" />
+                          <span>{cls.studentCount || 0} students</span>
+                        </div>
+                        <button
+                          className="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 text-sm font-medium"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewClass(cls);
+                          }}
+                        >
+                          View details <FiChevronRight size={16} />
+                        </button>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between mt-6">
-                      <div className="flex items-center text-gray-500 text-sm">
-                        <FiUsers className="mr-1.5" />
-                        <span>{cls.studentCount || 0} students</span>
-                      </div>
-                      <button
-                        className="text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 text-sm font-medium"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewClass(cls);
-                        }}
-                      >
-                        View details <FiChevronRight size={16} />
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         ) : (
@@ -263,7 +287,12 @@ const ManageClasses = () => {
                       {selectedClass.level}
                     </span>
                     <span>
-                      {tradeOptions.find((t) => t._id === selectedClass.trade)?.name || 'Unknown Trade'}
+                      {getTradeDisplayInfo(selectedClass, tradeOptions).name}
+                      {getTradeDisplayInfo(selectedClass, tradeOptions).code && (
+                        <span className="text-gray-500 ml-1">
+                          ({getTradeDisplayInfo(selectedClass, tradeOptions).code})
+                        </span>
+                      )}
                     </span>
                   </h2>
                   <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
