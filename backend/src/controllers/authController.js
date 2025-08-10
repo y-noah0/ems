@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const express = require('express');
+const mongoose = require('mongoose');
 const speakeasy = require('speakeasy');
 const { validationResult } = require('express-validator');
 const mongoSanitize = require('express-mongo-sanitize');

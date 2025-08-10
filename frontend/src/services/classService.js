@@ -37,12 +37,26 @@ export const getClasses = async (schoolId) => {
 
 export const createClass = async (classData) => {
   try {
-    const res = await api.post('/class', classData);
-    return res.data;
+    // Ensure we're using the user's school from their token
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Authentication required');
+
+    const response = await api.post('/class', {
+      ...classData,
+      // Force using the school from user's auth context
+      schoolId: classData.schoolId 
+    }, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
   } catch (error) {
-    const message = error.response?.data?.errors?.[0]?.msg ||
-                    error.response?.data?.message ||
-                    'Failed to create class';
-    throw new Error(message);
+    const serverMessage = error.response?.data?.message;
+    if (error.response?.status === 403) {
+      throw new Error(serverMessage || 'You lack permission for this school');
+    }
+    throw new Error(serverMessage || 'Failed to create class');
   }
 };

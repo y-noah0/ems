@@ -33,16 +33,17 @@ router.get(
 
 // Only dean and admin can create
 router.post(
-    '/',
-    // authenticate,
-    // deanOrAdmin,
-    [
-        check('level').isIn(['L3', 'L4', 'L5']).withMessage('Invalid class level'),
-        check('trade').isMongoId().withMessage('Valid trade ID is required'),
-        check('year').isInt({ min: 2000 }).withMessage('Valid year is required'),
-        check('schoolId').isMongoId().withMessage('Valid school ID is required'),
-    ],
-    createClass
+  '/',
+  authenticate, 
+   deanOrAdmin, 
+  [
+    check('level').isIn(['L3', 'L4', 'L5']).withMessage('Invalid class level'),
+    check('trade').isMongoId().withMessage('Valid trade ID is required'),
+    check('year').isInt({ min: 2000 }).withMessage('Valid year is required'),
+    check('schoolId').isMongoId().withMessage('Valid school ID is required'),
+  ],
+  
+  createClass
 );
 
 // Only dean and admin can update

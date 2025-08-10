@@ -4,9 +4,10 @@ import { getClasses, createClass } from '../../services/classService';
 import tradeService from '../../services/tradeService';
 import { useAuth } from '../../context/AuthContext';
 import subjectService from '../../services/subjectService';
+import enrollmentService from '../../services/enrollmentService';
 import Layout from '../layout/Layout';
 import AddStudentModal from './AddStudentModal';
-import adminService from '../../services/adminService';
+import { toast } from 'react-toastify';
 
 const ManageClasses = () => {
   const { currentUser } = useAuth();
@@ -30,7 +31,6 @@ const ManageClasses = () => {
   const [studentsError, setStudentsError] = useState('');
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
 
-  // Helper function to get trade display information
   const getTradeDisplayInfo = (classObj, trades) => {
     if (classObj?.trade && typeof classObj.trade === 'object') {
       return {
@@ -104,55 +104,92 @@ const ManageClasses = () => {
       }));
     }
   };
+const handleAddSubmit = async (e) => {
+  e.preventDefault();
 
-  const handleAddSubmit = async (e) => {
-    e.preventDefault();
+  // Validate all required fields exist
+  const requiredFields = ['level', 'trade', 'year', 'schoolId'];
+  const missingFields = requiredFields.filter(field => !newClass[field]);
+  
+  if (missingFields.length > 0) {
+    toast.error(`Missing fields: ${missingFields.join(', ')}`);
+    return;
+  }
 
-    if (!['L3', 'L4', 'L5'].includes(newClass.level)) {
-      alert('Please select a valid class level.');
-      return;
-    }
-    if (!newClass.trade || newClass.trade.length !== 24) {
-      alert('Please select a valid trade.');
-      return;
-    }
-    if (!newClass.schoolId || newClass.schoolId.length !== 24) {
-      alert('Invalid school ID.');
-      return;
-    }
-    if (!newClass.year || newClass.year < 2000) {
-      alert('Please enter a valid year.');
-      return;
+  try {
+    // Create a clean payload
+    const payload = {
+      level: newClass.level,
+      trade: newClass.trade,
+      year: Number(newClass.year),
+      schoolId: currentUser.school, // Force use of auth context school
+      capacity: Number(newClass.capacity) || 30,
+      subjects: Array.isArray(newClass.subjects) ? 
+        newClass.subjects : 
+        [newClass.subjects].filter(Boolean)
+    };
+
+    console.log('Final Payload:', payload);
+    await createClass(payload);
+    toast.success('Class created successfully!');
+    setShowAddModal(false);
+    fetchAll();
+  } catch (error) {
+    console.error('Full error details:', {
+      message: error.message,
+      response: error.response?.data,
+      config: error.config
+    });
+    toast.error(`Creation failed: ${error.message}`);
+  }
+};
+const handleViewClass = async (cls) => {
+  setSelectedClass(cls);
+  setStudents([]);
+  setStudentsLoading(true);
+  setStudentsError('');
+
+  try {
+    // 1. Verify currentUser and schoolId exist
+    if (!currentUser?.school) {
+      throw new Error('Your account is not assigned to any school');
     }
 
-    try {
-      await createClass(newClass);
-      setShowAddModal(false);
-      fetchAll();
-    } catch (error) {
-      console.error('Error creating class:', error);
-      alert(error.message);
+    // 2. Simple ID format check (basic string length check)
+    if (typeof currentUser.school !== 'string' || currentUser.school.length !== 24) {
+      throw new Error('Invalid school ID format');
     }
-  };
 
-  const handleViewClass = (cls) => {
-    setSelectedClass(cls);
-    setStudents([]);
-    setStudentsLoading(true);
-    setStudentsError('');
-    adminService
-      .getStudentsByClass(cls._id)
-      .then((students) => {
-        setStudents(students);
-        setStudentsLoading(false);
-      })
-      .catch((error) => {
-        setStudents([]);
-        setStudentsError(error.message || 'Failed to fetch students');
-        setStudentsLoading(false);
-        console.error('Error fetching students:', error);
-      });
-  };
+    // 3. Debug log before making the request
+    console.log('Fetching students for class:', {
+      classId: cls._id,
+      schoolId: currentUser.school
+    });
+
+    // 4. Make the API request
+    const enrolledStudents = await enrollmentService.getStudentsByClass(
+      cls._id,
+      currentUser.school
+    );
+    
+    setStudents(enrolledStudents);
+    
+  } catch (error) {
+    console.error('Error fetching students:', {
+      error: error.message,
+      response: error.response?.data
+    });
+
+    const errorMessage = error.response?.data?.message || 
+                       error.message || 
+                       'Failed to fetch students';
+    
+    setStudentsError(errorMessage);
+    toast.error(errorMessage);
+  } finally {
+    setStudentsLoading(false);
+  }
+};
 
   const handleBack = () => {
     setSelectedClass(null);
@@ -160,6 +197,24 @@ const ManageClasses = () => {
 
   const handleAddStudent = () => {
     setShowAddStudentModal(true);
+  };
+
+  const handleRemoveStudent = async (studentId) => {
+    if (window.confirm('Are you sure you want to remove this student from the class?')) {
+      try {
+        // Remove the enrollment for this student in this class
+        await enrollmentService.deleteEnrollmentByStudentAndClass(
+          studentId,
+          selectedClass._id,
+          currentUser.school
+        );
+        toast.success('Student removed from class');
+        // Refresh the student list
+        handleViewClass(selectedClass);
+      } catch (error) {
+        toast.error(error.message || 'Failed to remove student');
+      }
+    }
   };
 
   return (
@@ -300,7 +355,7 @@ const ManageClasses = () => {
                       <FiCalendar size={14} /> {selectedClass.year}
                     </span>
                     <span className="flex items-center gap-1">
-                      <FiUsers size={14} /> {students.length} students
+                      <FiUsers size={14} /> {students.length} enrolled students
                     </span>
                   </div>
                 </div>
@@ -392,7 +447,10 @@ const ManageClasses = () => {
                               <button className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 px-3 py-1 rounded-md text-sm transition-colors">
                                 Edit
                               </button>
-                              <button className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-md text-sm transition-colors">
+                              <button 
+                                className="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-md text-sm transition-colors"
+                                onClick={() => handleRemoveStudent(student._id)}
+                              >
                                 Remove
                               </button>
                             </div>
@@ -544,20 +602,11 @@ const ManageClasses = () => {
           <AddStudentModal
             onClose={() => setShowAddStudentModal(false)}
             selectedClass={selectedClass}
-            currentUser={currentUser}
             onRegistered={async () => {
               setShowAddStudentModal(false);
               if (selectedClass) {
-                setStudentsLoading(true);
-                setStudentsError('');
-                try {
-                  const students = await adminService.getStudentsByClass(selectedClass._id);
-                  setStudents(students);
-                } catch (error) {
-                  setStudents([]);
-                  setStudentsError(error.message || 'Failed to fetch students');
-                }
-                setStudentsLoading(false);
+                // Refresh the student list after adding
+                handleViewClass(selectedClass);
               }
             }}
           />

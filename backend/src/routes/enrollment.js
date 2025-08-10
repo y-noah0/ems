@@ -1,5 +1,5 @@
 const express = require('express');
-const { body, param } = require('express-validator');
+const { body, param,query } = require('express-validator');
 const router = express.Router();
 
 const {
@@ -40,8 +40,26 @@ router.post(
     createEnrollment
 );
 
-// Get all enrollments
-router.get('/', getEnrollments);
+// Get all enrollments (with query parameters)
+// Get all enrollments with filters
+router.get('/',
+    query('school').optional().isMongoId().withMessage('Valid school ID required'),
+    query('schoolId').optional().isMongoId().withMessage('Valid school ID required'),
+    query('class').optional().isMongoId().withMessage('Valid class ID required'),
+    query('isActive').optional().isBoolean().withMessage('isActive must be boolean'),
+    query('populate').optional().isString().withMessage('Populate must be a string'),
+    (req, res, next) => {
+        // Ensure at least one school identifier is provided
+        if (!req.query.school && !req.query.schoolId) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Either school or schoolId parameter is required' 
+            });
+        }
+        next();
+    },
+    getEnrollments
+);
 
 // Get enrollment by ID
 router.get(

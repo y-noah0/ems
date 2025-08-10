@@ -53,17 +53,49 @@ const createEnrollment = async (req, res) => {
 // Get all enrollments for a school
 const getEnrollments = async (req, res) => {
     try {
-        const { schoolId } = req.query;
-
-        if (!mongoose.Types.ObjectId.isValid(schoolId)) {
-            return res.status(400).json({ success: false, message: 'Invalid schoolId' });
+        // Destructure with both possible parameter names
+        const { school, schoolId, class: classId, isActive, populate } = req.query;
+        
+        // Use whichever parameter was provided
+        const effectiveSchoolId = schoolId || school;
+        
+        if (!mongoose.Types.ObjectId.isValid(effectiveSchoolId)) {
+            return res.status(400).json({ success: false, message: 'Invalid school ID' });
         }
 
-        const enrollments = await Enrollment.find({ isDeleted: false, school: schoolId })
-            .populate('student', 'fullName registrationNumber')
-            .populate('class', 'level trade year')
-            .populate('term', 'name year')
-            .populate('school', 'name');
+        // Build query object
+        const query = { 
+            isDeleted: false, 
+            school: effectiveSchoolId 
+        };
+
+        // Add class filter if provided
+        if (classId) {
+            if (!mongoose.Types.ObjectId.isValid(classId)) {
+                return res.status(400).json({ success: false, message: 'Invalid class ID' });
+            }
+            query.class = classId;
+        }
+
+        // Add active status filter
+        if (isActive !== undefined) {
+            query.isActive = isActive === 'true';
+        }
+
+        // Build populate options
+        const populateOptions = [];
+        if (populate) {
+            populate.split(',').forEach(field => {
+                populateOptions.push(field.trim());
+            });
+        }
+
+        // Default population if none specified
+        const defaultPopulate = ['student', 'class', 'term'];
+        const finalPopulate = populateOptions.length > 0 ? populateOptions : defaultPopulate;
+
+        const enrollments = await Enrollment.find(query)
+            .populate(finalPopulate.join(' '));
 
         res.json({ success: true, enrollments });
     } catch (error) {
@@ -71,7 +103,6 @@ const getEnrollments = async (req, res) => {
         res.status(500).json({ success: false, message: 'Server Error' });
     }
 };
-
 // Get enrollment by ID with school isolation
 const getEnrollmentById = async (req, res) => {
     try {
