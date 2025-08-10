@@ -12,7 +12,7 @@ const { toUTC } = require('../utils/dateUtils');
 const { logAudit } = require('../utils/auditLogger');
 const notificationService = require('../utils/notificationService');
 const { sendSMS } = require('../services/twilioService');
-// SendGrid email service removed.
+const { sendEmail } = require('../services/emailService');
 const schedule = require('node-schedule');
 const mongoSanitize = require('express-mongo-sanitize');
 
@@ -248,7 +248,17 @@ exports.createExam = async (req, res) => {
             console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
           }
 
-          // TODO: Add new email notification method here (previous SendGrid exam notification removed).
+          try {
+            if (student.email) {
+              await sendEmail(
+                student.email,
+                'New Exam Scheduled',
+                `Dear ${student.fullName},\n\nA new exam "${exam.title}" has been scheduled. Please check your dashboard for details.`
+              );
+            }
+          } catch (emailErr) {
+            console.error(`Failed to send email to ${student.email}:`, emailErr.message);
+          }
         }
       } catch (notifyErr) {
         console.error('Error notifying students:', notifyErr.message);
