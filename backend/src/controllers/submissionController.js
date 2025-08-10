@@ -9,7 +9,7 @@ const { logAudit } = require('../utils/auditLogger');
 const { toUTC } = require('../utils/dateUtils');
 const notificationService = require('../utils/notificationService');
 const { sendSMS } = require('../services/twilioService');
-const { sendEmail } = require('../services/emailService');
+// SendGrid email service removed.
 
 // Logger setup
 const logger = winston.createLogger({
@@ -410,17 +410,7 @@ submissionController.submitExam = async (req, res) => {
         console.error(`Failed to send SMS to ${exam.teacher.phone}:`, smsErr.message);
       }
 
-      try {
-        if (exam.teacher.email) {
-          await sendEmail(
-            exam.teacher.email,
-            'Exam Submission Notification',
-            `Dear ${exam.teacher.fullName},\n\nStudent ${student.fullName} has submitted the exam "${exam.title}".`
-          );
-        }
-      } catch (emailErr) {
-        console.error(`Failed to send email to ${exam.teacher.email}:`, emailErr.message);
-      }
+  // TODO: Add new email notification method here (teacher submission email removed).
 
       if (submission.status === 'graded') {
         try {
@@ -434,17 +424,7 @@ submissionController.submitExam = async (req, res) => {
           console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
         }
 
-        try {
-          if (student.email) {
-            await sendEmail(
-              student.email,
-              'Exam Graded Notification',
-              `Dear ${student.fullName},\n\nYour exam "${exam.title}" has been graded. Please check your dashboard for your results.`
-            );
-          }
-        } catch (emailErr) {
-          console.error(`Failed to send email to ${student.email}:`, emailErr.message);
-        }
+  // TODO: Add new email notification method here (student graded notification email removed).
       }
     } catch (notifyErr) {
       console.error('Error sending notifications:', notifyErr.message);
@@ -838,17 +818,7 @@ submissionController.gradeOpenQuestions = async (req, res) => {
           console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
         }
 
-        try {
-          if (student.email) {
-            await sendEmail(
-              student.email,
-              'Exam Graded Notification',
-              `Dear ${student.fullName},\n\nYour exam "${exam.title}" has been graded. Please check your dashboard for your results.`
-            );
-          }
-        } catch (emailErr) {
-          console.error(`Failed to send email to ${student.email}:`, emailErr.message);
-        }
+  // TODO: Add new email notification method here (student graded notification email removed).
       } catch (notifyErr) {
         console.error('Error notifying student:', notifyErr.message);
       }

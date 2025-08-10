@@ -11,7 +11,7 @@ const School = require('../models/school');
 const Enrollment = require('../models/enrollment');
 const Class = require('../models/Class');
 const Term = require('../models/term');
-const { sendEmail } = require('../services/emailService');
+// SendGrid email service removed.
 const { sendSMS } = require('../services/twilioService');
 const fs = require('fs');
 const path = require('path');
@@ -137,17 +137,7 @@ const sendNotification = async (user, message, subject, req) => {
     logger.error('Error sending socket notification', { userId: user._id, error: error.message, ip: req.ip });
   }
 
-  // Email notification
-  if (email && user.email) {
-    try {
-      const htmlContent = emailTemplate(user.fullName, message, subject);
-      await sendEmail(user.email, subject, plainTextMessage, htmlContent);
-      results.email = true;
-      logger.info('Email notification sent', { userId: user._id, email: user.email, subject, ip: req.ip });
-    } catch (error) {
-      logger.error('Error sending email notification', { userId: user._id, email: user.email, error: error.message, ip: req.ip });
-    }
-  }
+  // TODO: Add new email notification method here (email block removed with SendGrid).
 
   // SMS notification (fallback if email fails or not enabled)
   if (sms && user.phoneNumber && (!email || !results.email)) {
