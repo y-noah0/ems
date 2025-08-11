@@ -107,8 +107,11 @@ const SubmissionSchema = new Schema({
   }
 }, { timestamps: true });
 
-// Enforce uniqueness at DB level
-SubmissionSchema.index({ exam: 1, student: 1, isDeleted: false }, { unique: true });
+// Enforce uniqueness for non-deleted submissions only
+SubmissionSchema.index(
+  { exam: 1, student: 1 },
+  { unique: true, partialFilterExpression: { isDeleted: { $eq: false } } }
+);
 
 // Keep existing indexes
 SubmissionSchema.index({ status: 1 });
@@ -145,7 +148,7 @@ SubmissionSchema.pre('save', async function (next) {
     return next(new Error('Exam not found'));
   }
 
-  // Validate school consistency (derived from exam and enrollment)
+  // Validate school consistency
   if (exam.school.toString() !== enrollment.school.toString() || student.school.toString() !== enrollment.school.toString()) {
     return next(new Error('School mismatch between exam, student, and enrollment'));
   }

@@ -5,136 +5,133 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import examService from '../services/examService';
+import { useAuth } from '../context/AuthContext';
 
 const ExamSchedule = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const schoolId = currentUser?.school;
+
   const [exam, setExam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Schedule form state
+
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [duration, setDuration] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [scheduleError, setScheduleError] = useState(null);
-  
+
   useEffect(() => {
-    const fetchExamData = async () => {
+    if (!schoolId) {
+      setError('School ID missing. Please log in.');
+      setLoading(false);
+      return;
+    }
+
+    const fetchExam = async () => {
       try {
         setLoading(true);
-        const examData = await examService.getExamById(examId);
+        const examData = await examService.getExamById(examId, schoolId);
         setExam(examData);
-        
-        // Set default duration if available
-        if (examData?.duration) {
-          setDuration(examData.duration);
-        }
-        
+        if (examData?.duration) setDuration(examData.duration);
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching exam:', err);
         setError('Failed to load exam data. Please try again.');
         setLoading(false);
       }
     };
 
-    fetchExamData();
-  }, [examId]);
-  
+    fetchExam();
+  }, [examId, schoolId]);
+
   const handleScheduleExam = async (e) => {
     e.preventDefault();
-    
+
     if (!startDate || !startTime || !duration) {
       setScheduleError('Please fill all required fields');
       return;
     }
-    
+
+    if (!schoolId) {
+      setScheduleError('School ID missing. Please log in.');
+      return;
+    }
+
     try {
       setSubmitting(true);
       setScheduleError(null);
-      
-      // Combine date and time for API
+
       const startDateTime = new Date(`${startDate}T${startTime}`);
-      
-      await examService.scheduleExam(examId, {
-        start: startDateTime.toISOString(),
-        duration: parseInt(duration)
-      });
-      
-      // Redirect to exam details
+
+      await examService.scheduleExam(
+        examId,
+        {
+          start: startDateTime.toISOString(),
+          duration: parseInt(duration, 10),
+        },
+        schoolId
+      );
+
       navigate(`/teacher/exams/${examId}`);
     } catch (err) {
-      console.error('Error scheduling exam:', err);
       setScheduleError('Failed to schedule exam. Please try again.');
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex justify-center items-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-        </div>
-      </Layout>
-    );
-  }
+  if (loading) return (
+    <Layout>
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    </Layout>
+  );
 
-  if (error) {
-    return (
-      <Layout>
-        <Card className="mx-auto my-8 max-w-2xl">
-          <div className="p-6 text-center">
-            <div className="text-red-500 text-xl mb-4">{error}</div>
-            <Button onClick={() => navigate('/teacher/dashboard')}>
-              Return to Dashboard
-            </Button>
-          </div>
-        </Card>
-      </Layout>
-    );
-  }
+  if (error) return (
+    <Layout>
+      <Card className="mx-auto my-8 max-w-2xl">
+        <div className="p-6 text-center">
+          <div className="text-red-500 text-xl mb-4">{error}</div>
+          <Button onClick={() => navigate('/teacher/dashboard')}>Return to Dashboard</Button>
+        </div>
+      </Card>
+    </Layout>
+  );
 
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Schedule Exam</h1>
-          <Button onClick={() => navigate('/teacher/dashboard')}>
-            Back to Dashboard
-          </Button>
+          <Button onClick={() => navigate('/teacher/dashboard')}>Back to Dashboard</Button>
         </div>
-        
+
         <Card className="mb-6">
           <div className="p-4">
             <h2 className="text-xl font-semibold mb-2">Exam Information</h2>
-            <div className="mb-4">
-              <p><span className="font-medium">Title:</span> {exam?.title}</p>
-              <p><span className="font-medium">Subject:</span> {exam?.subject?.name}</p>
-              <p><span className="font-medium">Class:</span> {exam?.class?.name || `${exam?.class?.level}${exam?.class?.trade}`}</p>
-              <p><span className="font-medium">Questions:</span> {exam?.questions?.length || 0}</p>
-              <p><span className="font-medium">Total Points:</span> {exam?.totalPoints || 'N/A'}</p>
-            </div>
+            <p><strong>Title:</strong> {exam?.title}</p>
+            <p><strong>Subject:</strong> {exam?.subject?.name}</p>
+            <p><strong>Class:</strong> {exam?.class?.name || `${exam?.class?.level}${exam?.class?.trade}`}</p>
+            <p><strong>Questions:</strong> {exam?.questions?.length || 0}</p>
+            <p><strong>Total Points:</strong> {exam?.totalPoints || 'N/A'}</p>
           </div>
         </Card>
 
         <Card>
           <form onSubmit={handleScheduleExam} className="p-4">
             <h2 className="text-xl font-semibold mb-4">Schedule Details</h2>
-            
+
             {scheduleError && (
               <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
                 {scheduleError}
               </div>
             )}
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date*
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date*</label>
                 <Input
                   type="date"
                   value={startDate}
@@ -144,9 +141,7 @@ const ExamSchedule = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Time*
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Time*</label>
                 <Input
                   type="time"
                   value={startTime}
@@ -155,11 +150,9 @@ const ExamSchedule = () => {
                 />
               </div>
             </div>
-            
+
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Duration (minutes)*
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)*</label>
               <Input
                 type="number"
                 value={duration}
@@ -168,17 +161,11 @@ const ExamSchedule = () => {
                 min="1"
                 max="240"
               />
-              <div className="text-xs text-gray-500 mt-1">
-                Recommended duration: 1-2 minutes per question
-              </div>
+              <small className="text-xs text-gray-500 mt-1">Recommended duration: 1-2 minutes per question</small>
             </div>
-            
+
             <div className="flex justify-end mt-6">
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
+              <Button type="submit" disabled={submitting} className="bg-blue-600 hover:bg-blue-700 text-white">
                 {submitting ? 'Scheduling...' : 'Schedule Exam'}
               </Button>
             </div>

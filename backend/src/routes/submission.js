@@ -13,7 +13,10 @@ router.use(authMiddleware.authenticate);
 router.post(
   '/start',
   authMiddleware.isStudent,
-  [check('examId', 'Please provide a valid exam ID').isMongoId()],
+  [
+    check('schoolId', 'Please provide a valid school ID').isMongoId(),
+    check('examId', 'Please provide a valid exam ID').isMongoId()
+  ],
   submissionController.startExam
 );
 
@@ -24,6 +27,7 @@ router.post(
   '/save',
   authMiddleware.isStudent,
   [
+    check('schoolId', 'Please provide a valid school ID').isMongoId(),
     check('submissionId', 'Please provide a valid submission ID').isMongoId(),
     check('answers', 'Answers must be an array').isArray({ min: 0 }),
     check('answers.*.questionId', 'Each answer must have a valid question ID').optional().isMongoId(),
@@ -40,6 +44,7 @@ router.post(
   '/submit',
   authMiddleware.isStudent,
   [
+    check('schoolId', 'Please provide a valid school ID').isMongoId(),
     check('submissionId', 'Please provide a valid submission ID').isMongoId(),
     check('answers', 'Answers must be an array').optional().isArray({ min: 0 }),
     check('answers.*.questionId', 'Each answer must have a valid question ID').optional().isMongoId(),
@@ -56,6 +61,7 @@ router.post(
   '/auto-submit',
   authMiddleware.isStudent,
   [
+    check('schoolId', 'Please provide a valid school ID').isMongoId(),
     check('submissionId', 'Please provide a valid submission ID').isMongoId(),
     check('reason', 'Reason must be an object').optional().isObject(),
     check('reason.answers', 'Answers must be an array').optional().isArray({ min: 0 }),
@@ -75,6 +81,7 @@ router.post(
   '/log-violation',
   authMiddleware.isStudent,
   [
+    check('schoolId', 'Please provide a valid school ID').isMongoId(),
     check('submissionId', 'Please provide a valid submission ID').isMongoId(),
     check('violationType', 'Please specify the type of violation').notEmpty().isString(),
     check('details', 'Violation details must be a string').optional().isString(),
@@ -85,12 +92,16 @@ router.post(
 // @route   GET api/submissions/student
 // @desc    Get all submissions for the logged-in student
 // @access  Students
-router.get('/student', authMiddleware.isStudent, submissionController.getStudentSubmissions);
+router.get('/student', authMiddleware.isStudent, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getStudentSubmissions);
 
 // @route   GET api/submissions/teacher
 // @desc    Get all submissions for exams created by the teacher
 // @access  Teachers
-router.get('/teacher', authMiddleware.isTeacher, submissionController.getTeacherSubmissions);
+router.get('/teacher', authMiddleware.isTeacher, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getTeacherSubmissions);
 
 // @route   GET api/submissions/exam/:examId
 // @desc    Get submissions for a specific exam (teacher view)
@@ -98,7 +109,10 @@ router.get('/teacher', authMiddleware.isTeacher, submissionController.getTeacher
 router.get(
   '/exam/:examId',
   authMiddleware.isTeacher,
-  [check('examId', 'Please provide a valid exam ID').isMongoId()],
+  [
+    query('schoolId', 'Please provide a valid school ID').optional().isMongoId(),
+    check('examId', 'Please provide a valid exam ID').isMongoId()
+  ],
   submissionController.getExamSubmissions
 );
 
@@ -108,7 +122,10 @@ router.get(
 router.get(
   '/monitor/:examId',
   authMiddleware.isTeacherOrDeanOrHeadmaster,
-  [check('examId', 'Please provide a valid exam ID').isMongoId()],
+  [
+    query('schoolId', 'Please provide a valid school ID').optional().isMongoId(),
+    check('examId', 'Please provide a valid exam ID').isMongoId()
+  ],
   submissionController.monitorExam
 );
 
@@ -119,6 +136,7 @@ router.post(
   '/:submissionId/grade',
   authMiddleware.isTeacher,
   [
+    check('schoolId', 'Please provide a valid school ID').isMongoId(),
     check('submissionId', 'Please provide a valid submission ID').isMongoId(),
     check('grades', 'Grades must be an array').isArray({ min: 1 }),
     check('grades.*.questionId', 'Each grade must have a valid question ID').isMongoId(),
@@ -133,7 +151,10 @@ router.post(
 router.get(
   '/student/results',
   authMiddleware.isStudent,
-  [query('termId', 'Please provide a valid term ID').optional().isMongoId()],
+  [
+    query('schoolId', 'Please provide a valid school ID').optional().isMongoId(),
+    query('termId', 'Please provide a valid term ID').optional().isMongoId()
+  ],
   submissionController.getStudentResultsByTerm
 );
 
@@ -142,19 +163,26 @@ router.get(
 // @access  Students, Teachers, Deans, Headmasters
 router.get(
   '/:id',
-  [check('id', 'Please provide a valid submission ID').isMongoId()],
+  [
+    query('schoolId', 'Please provide a valid school ID').optional().isMongoId(),
+    check('id', 'Please provide a valid submission ID').isMongoId()
+  ],
   submissionController.getSubmissionDetails
 );
 
 // @route   GET api/submissions/results/homework
 // @desc    Get homework results
 // @access  Students, Teachers
-router.get('/results/homework', authMiddleware.isStudentOrTeacher, submissionController.getHomeworkResults);
+router.get('/results/homework', authMiddleware.isStudentOrTeacher, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getHomeworkResults);
 
 // @route   GET api/submissions/results/quiz
 // @desc    Get quiz results
 // @access  Students, Teachers
-router.get('/results/quiz', authMiddleware.isStudentOrTeacher, submissionController.getQuizResults);
+router.get('/results/quiz', authMiddleware.isStudentOrTeacher, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getQuizResults);
 
 // @route   GET api/submissions/results/by-type
 // @desc    Get results by assessment type
@@ -163,6 +191,7 @@ router.get(
   '/results/by-type',
   authMiddleware.isStudentOrTeacher,
   [
+    query('schoolId', 'Please provide a valid school ID').optional().isMongoId(),
     query('type', 'Please specify a valid assessment type').isIn([
       'assessment1',
       'assessment2',
@@ -177,27 +206,37 @@ router.get(
 // @route   GET api/submissions/results/detailed
 // @desc    Get detailed performance report
 // @access  Students, Teachers
-router.get('/results/detailed', authMiddleware.isStudentOrTeacher, submissionController.getCombinedDetailedResults);
+router.get('/results/detailed', authMiddleware.isStudentOrTeacher, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getCombinedDetailedResults);
 
 // @route   GET api/submissions/results/assessment1
 // @desc    Get Assessment 1 results
 // @access  Students, Teachers
-router.get('/results/assessment1', authMiddleware.isStudentOrTeacher, submissionController.getAssessment1Results);
+router.get('/results/assessment1', authMiddleware.isStudentOrTeacher, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getAssessment1Results);
 
 // @route   GET api/submissions/results/assessment2
 // @desc    Get Assessment 2 results
 // @access  Students, Teachers
-router.get('/results/assessment2', authMiddleware.isStudentOrTeacher, submissionController.getAssessment2Results);
+router.get('/results/assessment2', authMiddleware.isStudentOrTeacher, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getAssessment2Results);
 
 // @route   GET api/submissions/results/exam
 // @desc    Get exam results
 // @access  Students, Teachers
-router.get('/results/exam', authMiddleware.isStudentOrTeacher, submissionController.getExamResults);
+router.get('/results/exam', authMiddleware.isStudentOrTeacher, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getExamResults);
 
 // @route   GET api/submissions/results/combined
 // @desc    Get combined results report
 // @access  Students, Teachers
-router.get('/results/combined', authMiddleware.isStudentOrTeacher, submissionController.getCombinedResults);
+router.get('/results/combined', authMiddleware.isStudentOrTeacher, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getCombinedResults);
 
 // @route   GET api/submissions/student/assessment-results
 // @desc    Get a specific student's results by assessment type
@@ -206,6 +245,7 @@ router.get(
   '/student/assessment-results',
   authMiddleware.isTeacher,
   [
+    query('schoolId', 'Please provide a valid school ID').optional().isMongoId(),
     query('studentId', 'Please provide a valid student ID').isMongoId(),
     query('type', 'Please specify a valid assessment type').isIn([
       'assessment1',
@@ -224,7 +264,10 @@ router.get(
 router.get(
   '/student/marks',
   authMiddleware.isTeacherOrDeanOrAdmin,
-  [query('studentId', 'Please provide a valid student ID').isMongoId()],
+  [
+    query('schoolId', 'Please provide a valid school ID').optional().isMongoId(),
+    query('studentId', 'Please provide a valid student ID').isMongoId()
+  ],
   submissionController.getStudentMarksByID
 );
 
@@ -235,6 +278,7 @@ router.post(
   '/:submissionId/update-grades',
   authMiddleware.isTeacherOrDeanOrAdmin,
   [
+    check('schoolId', 'Please provide a valid school ID').isMongoId(),
     check('submissionId', 'Please provide a valid submission ID').isMongoId(),
     check('grades', 'Grades must be an array').isArray({ min: 1 }),
     check('grades.*.questionId', 'Each grade must have a valid question ID').isMongoId(),
@@ -246,6 +290,8 @@ router.post(
 // @route   GET api/submissions/my-marks
 // @desc    Get marks for the logged-in student
 // @access  Students
-router.get('/my-marks', authMiddleware.isStudent, submissionController.getMyMarks);
+router.get('/my-marks', authMiddleware.isStudent, [
+  query('schoolId', 'Please provide a valid school ID').optional().isMongoId()
+], submissionController.getMyMarks);
 
 module.exports = router;

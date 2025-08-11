@@ -144,8 +144,6 @@ function calculateGradeLetter(percentage) {
   if (percentage >= 50) return 'D';
   return 'F';
 }
-
-// Start exam (create submission)
 submissionController.startExam = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -165,7 +163,14 @@ submissionController.startExam = async (req, res) => {
       });
     }
 
+    // Fetch and validate exam
     const exam = await validateEntity(Exam, examId, 'Exam', schoolId);
+    if (!exam) {
+      logger.warn('Exam not found or invalid', { examId, schoolId, userId: req.user.id });
+      return res.status(404).json({ success: false, message: 'Exam not found' });
+    }
+
+    // Update exam status if scheduled and start time has passed
     if (exam.status === 'scheduled' && exam.schedule && new Date(exam.schedule.start) <= new Date()) {
       exam.status = 'active';
       await exam.save();
@@ -196,9 +201,11 @@ submissionController.startExam = async (req, res) => {
     }
 
     if (exam.status !== 'active') {
+      logger.warn('Exam not active', { examId, status: exam.status, userId: req.user.id });
       return res.status(400).json({ success: false, message: 'Exam is not active' });
     }
 
+    // Check enrollment
     const enrollment = await Enrollment.findOne({
       student: req.user.id,
       school: schoolId,
@@ -207,32 +214,68 @@ submissionController.startExam = async (req, res) => {
     });
 
     if (!enrollment) {
+      logger.warn('No active enrollment found', { userId: req.user.id, schoolId });
       return res.status(403).json({ success: false, message: 'No active enrollment found for this school' });
     }
 
     if (!exam.classes.map(id => id.toString()).includes(enrollment.class.toString())) {
+      logger.warn('Student not enrolled in exam class', { userId: req.user.id, examId, classId: enrollment.class });
       return res.status(403).json({ success: false, message: 'You are not enrolled in this exam\'s class' });
     }
 
+    // Check for existing submission (including soft-deleted)
     const existing = await Submission.findOne({
       exam: examId,
       student: req.user.id,
       school: schoolId,
-      isDeleted: false,
     });
 
     if (existing) {
-      if (existing.status === 'in-progress') {
+      if (existing.isDeleted) {
+        logger.info('Found soft-deleted submission, restoring', { submissionId: existing._id, userId: req.user.id });
+        existing.isDeleted = false;
+        existing.status = 'in-progress';
+        existing.startedAt = new Date();
+        existing.answers = exam.questions.map(q => ({
+          questionId: q._id,
+          answer: '',
+          score: 0,
+          timeSpent: 0,
+        }));
+        existing.violations = 0;
+        existing.totalScore = 0;
+        existing.percentage = 0;
+        existing.timeSpent = 0;
+        existing.submittedAt = null;
+        existing.gradedBy = null;
+        existing.gradedAt = null;
+        await existing.save();
+
+        const timeRemaining = calculateTimeRemaining(existing, exam);
+        logger.info('Restored soft-deleted submission', { submissionId: existing._id, userId: req.user.id });
         return res.json({
           success: true,
           submission: existing,
-          timeRemaining: calculateTimeRemaining(existing, exam),
+          timeRemaining,
+          message: 'Exam restarted successfully',
+        });
+      }
+
+      if (existing.status === 'in-progress') {
+        const timeRemaining = calculateTimeRemaining(existing, exam);
+        logger.info('Returning existing in-progress submission', { submissionId: existing._id, userId: req.user.id });
+        return res.json({
+          success: true,
+          submission: existing,
+          timeRemaining,
           message: 'Exam already in progress',
         });
       }
+      logger.warn('Exam already submitted', { submissionId: existing._id, userId: req.user.id });
       return res.status(400).json({ success: false, message: 'You have already submitted this exam' });
     }
 
+    // Create new submission
     const answers = exam.questions.map(q => ({
       questionId: q._id,
       answer: '',
@@ -255,7 +298,9 @@ submissionController.startExam = async (req, res) => {
     });
 
     await submission.save();
+    logger.info('New submission created', { submissionId: submission._id, examId, userId: req.user.id });
 
+    // Notify via socket
     const student = await User.findById(req.user.id).select('fullName');
     req.io.to(`exam:${examId}`).emit('submission-started', {
       examId,
@@ -271,18 +316,82 @@ submissionController.startExam = async (req, res) => {
       studentName: student.fullName,
     });
 
+    const timeRemaining = calculateTimeRemaining(submission, exam);
     res.status(201).json({
       success: true,
       submission,
-      timeRemaining: exam.schedule.duration * 60 * 1000,
+      timeRemaining,
       message: 'Exam started successfully',
     });
   } catch (error) {
+    if (error.code === 11000 || (error.name === 'MongoError' && error.code === 11000)) {
+      logger.info('Caught duplicate key error, checking for existing submission', { examId: req.body.examId, userId: req.user.id });
+      const { schoolId, examId } = req.body;
+      const exam = await validateEntity(Exam, examId, 'Exam', schoolId);
+      if (!exam) {
+        logger.warn('Exam not found during duplicate key handling', { examId, schoolId, userId: req.user.id });
+        return res.status(404).json({ success: false, message: 'Exam not found' });
+      }
+
+      const existing = await Submission.findOne({
+        exam: examId,
+        student: req.user.id,
+        school: schoolId,
+      });
+
+      if (existing) {
+        if (existing.isDeleted) {
+          logger.info('Found soft-deleted submission, restoring', { submissionId: existing._id, userId: req.user.id });
+          existing.isDeleted = false;
+          existing.status = 'in-progress';
+          existing.startedAt = new Date();
+          existing.answers = exam.questions.map(q => ({
+            questionId: q._id,
+            answer: '',
+            score: 0,
+            timeSpent: 0,
+          }));
+          existing.violations = 0;
+          existing.totalScore = 0;
+          existing.percentage = 0;
+          existing.timeSpent = 0;
+          existing.submittedAt = null;
+          existing.gradedBy = null;
+          existing.gradedAt = null;
+          await existing.save();
+
+          const timeRemaining = calculateTimeRemaining(existing, exam);
+          logger.info('Restored soft-deleted submission', { submissionId: existing._id, userId: req.user.id });
+          return res.json({
+            success: true,
+            submission: existing,
+            timeRemaining,
+            message: 'Exam restarted successfully',
+          });
+        }
+
+        if (existing.status === 'in-progress') {
+          const timeRemaining = calculateTimeRemaining(existing, exam);
+          logger.info('Returning existing in-progress submission after duplicate key', { submissionId: existing._id, userId: req.user.id });
+          return res.json({
+            success: true,
+            submission: existing,
+            timeRemaining,
+            message: 'Exam already in progress',
+          });
+        }
+        logger.warn('Exam already submitted after duplicate key', { submissionId: existing._id, userId: req.user.id });
+        return res.status(400).json({ success: false, message: 'You have already submitted this exam' });
+      }
+
+      logger.error('No submission found after duplicate key error', { examId, schoolId, userId: req.user.id });
+      return res.status(500).json({ success: false, message: 'Server error occurred while starting exam' });
+    }
+
     logger.error('startExam error', { error: error.message, stack: error.stack, userId: req.user?.id });
     res.status(500).json({ success: false, message: 'Server error occurred while starting exam' });
   }
 };
-
 // Save answers (auto-save)
 submissionController.saveAnswers = async (req, res) => {
   try {

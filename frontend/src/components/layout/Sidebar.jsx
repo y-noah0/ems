@@ -207,7 +207,7 @@ const Sidebar = ({ userRole = "student" }) => {
       roles: ["headmaster"],
     },
     {
-      title: "Exams Management",
+      title: "Exams",
       icon: FaFileAlt,
       path: "/student/exams",
       active: location.pathname.includes("/student/exams"),
@@ -221,7 +221,7 @@ const Sidebar = ({ userRole = "student" }) => {
       roles: ["student"],
     },
     {
-      title: "Recent Exams",
+      title: "Recent Papers",
       icon: FaClock,
       path: "/student/submissions",
       active: location.pathname.includes("/student/recent-exams") || location.pathname.includes("/student/submissions"),

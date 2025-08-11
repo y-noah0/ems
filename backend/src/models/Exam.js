@@ -5,7 +5,7 @@ const Schema = mongoose.Schema;
 const QuestionSchema = new Schema({
   type: {
     type: String,
-    enum: ['multiple-choice', 'true-false', 'short-answer', 'essay'],
+    enum: ['multiple-choice', 'true-false', 'true-false-labeled', 'true-false-statements', 'short-answer', 'essay'],
     required: true,
   },
   text: {
@@ -26,9 +26,21 @@ const QuestionSchema = new Schema({
     },
   },
   correctAnswer: {
-    type: String,
+    type: [String], // now stores an array of strings
     required: function () {
       return this.type === 'multiple-choice' || this.type === 'true-false';
+    },
+    validate: {
+      validator: function (v) {
+        if (this.type === 'multiple-choice') {
+          return Array.isArray(v) && v.length > 0;
+        }
+        if (this.type === 'true-false') {
+          return v.length === 1 && (v[0] === 'true' || v[0] === 'false');
+        }
+        return true; // For other types, no validation needed
+      },
+      message: 'Correct answer must be valid for the question type',
     },
   },
   maxScore: {
@@ -62,50 +74,66 @@ const ExamSchema = new Schema(
       ref: 'User',
       required: true,
     },
+    term: {
+      type: Schema.Types.ObjectId,
+      ref: 'Term',
+      required: true,
+    },
     type: {
       type: String,
       enum: ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'],
       required: true,
-      default: 'quiz'
+      default: 'quiz',
     },
     schedule: {
       start: {
         type: Date,
         required: function () {
           return this.status !== 'draft';
-        }
+        },
       },
       duration: {
         type: Number, // in minutes
         required: function () {
           return this.status !== 'draft';
         },
-        min: 5
-      }
+        min: 5,
+      },
     },
     questions: [QuestionSchema],
     totalScore: {
       type: Number,
       default: function () {
         return this.questions.reduce((sum, q) => sum + q.maxScore, 0);
-      }
+      },
     },
     totalPoints: {
       type: Number,
-      default: 0
+      default: 0,
     },
     status: {
       type: String,
-      enum: ['draft', 'scheduled', 'active', 'completed'],
-      default: 'draft'
+      enum: ['draft', 'scheduled', 'active', 'completed', 'past'],
+      default: 'draft',
     },
     instructions: {
       type: String,
-      default: 'Read all questions carefully before answering.'
-    }
-  }, {
-  timestamps: true
-});
+      default: 'Read all questions carefully before answering.',
+    },
+    school: {
+      type: Schema.Types.ObjectId,
+      ref: 'School',
+      required: true,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
 // Calculate total score when questions array changes
 ExamSchema.pre('save', function (next) {
@@ -114,8 +142,8 @@ ExamSchema.pre('save', function (next) {
   }
 });
 
-// Pre-save hook to calculate totalPoints
-ExamSchema.pre('save', function (next) {
+// // Pre-save hook to calculate totalPoints and validate term
+ExamSchema.pre('save', async function (next) {
   if (this.isModified('questions')) {
     this.totalPoints = this.questions.reduce((sum, question) => sum + (parseInt(question.maxScore) || 0), 0);
   }
@@ -123,7 +151,6 @@ ExamSchema.pre('save', function (next) {
   if (!this.classes || this.classes.length === 0) {
     return next(new Error('At least one class must be associated with the exam'));
   }
-  next();
 });
 
 // Static method to recalculate totalPoints
@@ -140,9 +167,37 @@ ExamSchema.statics.recalculateTotalPoints = async function (examId) {
   }
 };
 
+// Static method to mark exams as past for ended terms
+ExamSchema.statics.markExamsAsPast = async function () {
+  try {
+    const now = new Date();
+    const terms = await mongoose.model('Term').find({
+      endDate: { $lt: now },
+      isDeleted: false,
+    });
+    const termIds = terms.map((term) => term._id);
+    const result = await this.updateMany(
+      {
+        term: { $in: termIds },
+        status: { $in: ['draft', 'scheduled', 'active', 'completed'] },
+        isDeleted: false,
+      },
+      { $set: { status: 'past' } }
+    );
+    console.log(`Marked ${result.modifiedCount} exams as past`);
+    return result;
+  } catch (error) {
+    console.error('Error marking exams as past:', error);
+    return null;
+  }
+};
+
 // Add indexes for performance
 ExamSchema.index({ teacher: 1 });
 ExamSchema.index({ subject: 1 });
+ExamSchema.index({ term: 1 });
 ExamSchema.index({ status: 1 });
+ExamSchema.index({ school: 1 });
+ExamSchema.index({ isDeleted: 1 });
 
 module.exports = mongoose.model('Exam', ExamSchema);
