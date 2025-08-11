@@ -16,12 +16,12 @@ const enrollmentRoutes = require('./enrollment');
 const classes = require('./class');
 const headmasterRoutes = require('./headmaster');
 
-// Mount 
+// Mount routes
 router.use('/headmasters', headmasterRoutes);
 router.use('/class', classes);
 router.use('/schools', require('./school'));
-router.use('/teachers', teacher)
-router.use('/students', student)
+router.use('/teachers', teacher);
+router.use('/students', student);
 router.use('/reports', reportRoutes);
 router.use('/promotions', promotionRoutes);
 router.use('/enrollments', enrollmentRoutes);
@@ -31,8 +31,6 @@ router.use('/exams', examRoutes);
 router.use('/submissions', submissionRoutes);
 router.use('/system-admin', systemAdminRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/trade', tradeRoutes);
-router.use('/subjects', subjectRoutes);
 router.use('/trade', tradeRoutes);
 router.use('/subjects', subjectRoutes);
 

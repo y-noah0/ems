@@ -38,7 +38,7 @@ const TopHeader = () => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-indigo-50 to-white border-b border-indigo-200 p-1 sm:p-3 md:p-4 shadow-sm">
+    <div className="bg-white border-b border-blue-200 p-1 sm:p-3 md:p-4 shadow-sm">
       <div className="max-w-7xl mx-auto w-full">
         {/* Flex wrapper that holds search and icons in one line even on small screens */}
         <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
@@ -47,7 +47,7 @@ const TopHeader = () => {
             className="flex-1 w-full max-w-2xl"
             onSubmit={handleSearch}
           >
-            <div className="flex items-center border border-indigo-300 rounded-lg bg-indigo-50 shadow-sm">
+            <div className="flex items-center border border-blue-300 rounded-lg bg-white shadow-sm">
               <input
                 type="text"
                 placeholder="Search"
@@ -58,7 +58,7 @@ const TopHeader = () => {
               />
               <button
                 type="submit"
-                className="p-2 text-indigo-600 hover:bg-indigo-100 transition"
+                className="p-2 text-blue-600 hover:bg-blue-100 transition"
                 aria-label="Submit search"
               >
                 <FaSearch className="h-4 w-4" />
@@ -71,7 +71,7 @@ const TopHeader = () => {
             {/* Notification */}
             <div className="relative">
               <button
-                className="p-2 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 focus:ring-2 focus:ring-indigo-400 transition"
+                className="p-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-600 focus:ring-2 focus:ring-blue-400 transition"
                 aria-label="Notifications"
               >
                 <FaBell className="h-5 w-5" />
@@ -86,7 +86,7 @@ const TopHeader = () => {
             {/* User Info */}
             <div className="relative" ref={menuRef}>
               <button
-                className="flex items-center px-2 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg shadow-sm space-x-2 hover:bg-indigo-100 transition"
+                className="flex items-center px-2 py-1.5 bg-blue-50 border border-blue-200 rounded-lg shadow-sm space-x-2 hover:bg-blue-100 transition"
                 onClick={() => setShowMenu((v) => !v)}
                 aria-label="User menu"
               >
@@ -96,28 +96,28 @@ const TopHeader = () => {
                   className="w-7 h-7 rounded-full object-cover"
                 />
                 <div className="hidden sm:block text-left">
-                  <div className="text-sm font-medium text-indigo-600 truncate max-w-[100px]">
+                  <div className="text-sm font-medium text-blue-600 truncate max-w-[100px]">
                     {currentUser?.fullName || 'Robert Allen'}
                   </div>
-                  <div className="text-xs text-indigo-500 truncate">
+                  <div className="text-xs text-blue-500 truncate">
                     {currentUser?.role || 'Admin'}
                   </div>
                 </div>
-                <FaChevronDown className="h-4 w-4 text-indigo-600" />
+                <FaChevronDown className="h-4 w-4 text-blue-600" />
               </button>
 
               {/* Dropdown */}
               {showMenu && (
-                <div className="absolute right-0 mt-2 w-36 p-4 bg-white border border-indigo-100 rounded-lg shadow-lg z-10">
+                <div className="absolute right-0 mt-2 w-36 p-4 bg-white border border-blue-100 rounded-lg shadow-lg z-10">
                   <Button
-                    className="block w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-500"
+                    className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-500"
                   >
                     Profile
                   </Button>
                   <br />
                   <Button
                     onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-500"
+                    className="block w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-500"
                   >
                     Logout
                   </Button>
