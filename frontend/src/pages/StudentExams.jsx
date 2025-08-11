@@ -44,7 +44,17 @@ const StudentExams = () => {
         }
         return exam;
       });
-      setExams(updatedExams);
+      // Filter for scheduled or active exams only
+      const filteredExams = updatedExams.filter((exam) => {
+        const now = new Date();
+        const start = new Date(exam.schedule?.start);
+        const end = new Date(exam.schedule?.end);
+        return (
+          exam.status === "scheduled" ||
+          (exam.status === "active" && start <= now && end >= now)
+        );
+      });
+      setExams(filteredExams);
     } catch (error) {
       setError(error.message || "Failed to load exams. Please try again.");
     } finally {
@@ -69,23 +79,14 @@ const StudentExams = () => {
           const start = new Date(exam.schedule?.start);
           return exam.status === "scheduled" && start > now;
         });
-      case "past":
-        return exams.filter((exam) => {
-          const end = new Date(exam.schedule?.end);
-          return exam.status === "completed" || end < now;
-        });
       case "current":
         return exams.filter((exam) => {
           const start = new Date(exam.schedule?.start);
           const end = new Date(exam.schedule?.end);
-          return (
-            (exam.status === "active" ||
-              (start <= now && end >= now)) &&
-            exam.status !== "completed"
-          );
+          return exam.status === "active" && start <= now && end >= now;
         });
       default:
-        return exams;
+        return exams; // Only scheduled or active exams are already in the exams state
     }
   };
 
@@ -104,10 +105,6 @@ const StudentExams = () => {
         return { label: "Scheduled", color: "blue" };
       case "active":
         return { label: "Active", color: "green" };
-      case "completed":
-        return { label: "Completed", color: "purple" };
-      case "draft":
-        return { label: "Draft", color: "gray" };
       default:
         return { label: "Unknown", color: "gray" };
     }
@@ -136,7 +133,7 @@ const StudentExams = () => {
             </div>
           ) : filteredExams().length === 0 ? (
             <div className="bg-white rounded-lg shadow p-10 text-center text-gray-500 font-semibold tracking-wide">
-              No exams found.
+              No scheduled or active exams found.
             </div>
           ) : (
             filteredExams().map((exam, i) => {
@@ -239,17 +236,15 @@ const StudentExams = () => {
             </h3>
             {[
               { key: "all", label: "All", icon: <FaFilter /> },
-              { key: "draft", label: "Draft", icon: <FaFileAlt /> },
               { key: "upcoming", label: "Scheduled", icon: <FaCalendarAlt /> },
               { key: "current", label: "Active", icon: <FaPlay /> },
-              { key: "past", label: "Completed", icon: <FaCheckCircle /> },
             ].map((f) => (
               <button
                 key={f.key}
                 onClick={() => setFilter(f.key)}
                 className={`flex items-center gap-3 w-full px-4 py-3 rounded-lg text-left text-lg font-medium transition ${filter === f.key
-                    ? "bg-blue-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-blue-600 text-white shadow-lg"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
               >
                 {f.icon}
