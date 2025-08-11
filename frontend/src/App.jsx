@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ToastProvider } from "./context/ToastContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
 // Pages imports
 import LoginPage from "./pages/LoginPage";
@@ -120,8 +121,9 @@ function App() {
     return (
         <Router>
             <AuthProvider>
-                <ToastProvider>
-                    <GlobalExamProtection>
+                <NotificationProvider>
+                    <ToastProvider>
+                        <GlobalExamProtection>
                         <Routes>
                             {/* Public Routes */}
                             <Route path="/login" element={<LoginPage />} />
@@ -586,7 +588,8 @@ function App() {
                             <Route path="*" element={<h1>Page not found</h1>} />
                         </Routes>
                     </GlobalExamProtection>
-                </ToastProvider>
+                    </ToastProvider>
+                </NotificationProvider>
             </AuthProvider>
         </Router>
     );

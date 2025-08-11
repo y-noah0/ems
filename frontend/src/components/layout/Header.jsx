@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import NotificationList from '../NotificationList';
 
 const Header = () => {
   const { currentUser, logout, isAuthenticated } = useAuth();
@@ -73,6 +74,10 @@ const Header = () => {
           <div className="flex items-center">
             {isAuthenticated ? (
               <div className="ml-3 relative flex items-center">
+                {/* Notification List */}
+                <div className="mr-4">
+                  <NotificationList />
+                </div>
                 <span className="mr-4 text-sm font-medium text-gray-700">
                   {currentUser?.fullName} ({currentUser?.role})
                 </span>

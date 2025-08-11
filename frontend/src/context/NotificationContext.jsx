@@ -1,0 +1,304 @@
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { ToastContext } from './ToastContext';
+import socketService from '../services/socketService';
+import { useAuth } from './AuthContext';
+
+const NotificationContext = createContext();
+
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotifications must be used within a NotificationProvider');
+  }
+  return context;
+};
+
+export const NotificationProvider = ({ children }) => {
+  const [notifications, setNotifications] = useState([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
+  const { currentUser, isAuthenticated } = useAuth();
+  const toastCtx = useContext(ToastContext); // optional toast integration
+
+  // Mark notification as read
+  const markAsRead = useCallback((notificationId) => {
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === notificationId
+          ? { ...notification, read: true }
+          : notification
+      )
+    );
+  }, []);
+
+  // Handle notification click
+  const handleNotificationClick = useCallback((notification) => {
+    // Mark as read
+    markAsRead(notification.id);
+
+    // Add navigation logic based on notification type
+    switch (notification.type) {
+      case 'exam_scheduled':
+      case 'exam_updated':
+        if (notification.examId) {
+          window.location.href = `/exams/${notification.examId}`;
+        }
+        break;
+      case 'submission_graded':
+        if (notification.submissionId) {
+          window.location.href = `/results/${notification.submissionId}`;
+        }
+        break;
+      case 'class_created':
+      case 'class_updated':
+        if (notification.classId) {
+          window.location.href = `/classes/${notification.classId}`;
+        }
+        break;
+      case 'enrollment_confirmed':
+        window.location.href = '/dashboard';
+        break;
+      default:
+        console.log('No specific action for notification type:', notification.type);
+        break;
+    }
+  }, [markAsRead]);
+
+  // Show browser notification
+  const showBrowserNotification = useCallback((notification) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        const browserNotification = new Notification(notification.title, {
+          body: notification.message,
+          icon: '/favicon.ico',
+          tag: notification.type,
+          silent: notification.priority === 'low'
+        });
+
+        // Close notification after 5 seconds
+        setTimeout(() => {
+          browserNotification.close();
+        }, 5000);
+
+        // Handle click on notification
+        browserNotification.onclick = () => {
+          window.focus();
+          browserNotification.close();
+          handleNotificationClick(notification);
+        };
+      } catch (error) {
+        console.error('Failed to show browser notification:', error);
+      }
+    }
+  }, [handleNotificationClick]);
+
+  // Initialize socket connection when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && currentUser) {
+      const token = localStorage.getItem('token');
+      const userId = currentUser.id || currentUser._id; // support both id formats
+      if (token && userId) {
+        console.log('🔌 Initializing socket connection for user:', userId);
+        socketService.connect(userId, token);
+      } else {
+        console.warn('⚠️ Missing token or user id for socket connection', { tokenExists: !!token, userId });
+      }
+    } else {
+      socketService.disconnect();
+      setNotifications([]);
+      setIsConnected(false);
+      setConnectionError(null);
+    }
+
+    return () => {
+      socketService.disconnect();
+    };
+  }, [isAuthenticated, currentUser]);
+
+  // Socket event listeners
+  useEffect(() => {
+    const handleSocketConnected = () => {
+      setIsConnected(true);
+      setConnectionError(null);
+      console.log('✅ Socket connected in context');
+    };
+
+    const handleSocketDisconnected = (data) => {
+      setIsConnected(false);
+      console.log('🔌 Socket disconnected in context:', data.reason);
+    };
+
+    const handleSocketError = (data) => {
+      setConnectionError(data.error);
+      setIsConnected(false);
+      console.error('❌ Socket error in context:', data.error);
+    };
+
+    const handleSocketAuthenticated = (data) => {
+      console.log('🔐 Socket authenticated in context:', data);
+    };
+
+    const handleSocketAuthError = (error) => {
+      setConnectionError(error.message || 'Authentication failed');
+      console.error('🔐 Socket auth error in context:', error);
+    };
+
+    const handleNotificationReceived = (notification) => {
+      console.log('📧 Processing notification in context:', notification);
+      
+      const processedNotification = {
+        id: Date.now() + Math.random(),
+        timestamp: new Date().toISOString(),
+        read: false,
+        type: notification.type || 'general',
+        title: notification.title || 'Notification',
+        message: notification.message || '',
+        icon: notification.icon || '📢',
+        priority: notification.priority || 'medium',
+        ...notification
+      };
+
+      setNotifications(prev => {
+        const exists = prev.some(n => 
+          n.type === processedNotification.type && 
+          n.message === processedNotification.message &&
+          (Date.now() - new Date(n.timestamp).getTime()) < 5000
+        );
+        
+        if (exists) {
+          console.log('🔄 Duplicate notification ignored');
+          return prev;
+        }
+
+        const newNotifications = [processedNotification, ...prev].slice(0, 100);
+        showBrowserNotification(processedNotification);
+        if (toastCtx?.showToast) {
+          try {
+            const toastMsg = processedNotification.title + (processedNotification.message ? ' - ' + processedNotification.message : '');
+            // Map priority to toast type
+            const typeMap = { high: 'error', medium: 'info', low: 'success' };
+            toastCtx.showToast(toastMsg, typeMap[processedNotification.priority] || 'info');
+          } catch (e) {
+            console.warn('Toast display failed', e);
+          }
+        }
+        // Expose last notification for quick debugging
+        window.__lastNotification = processedNotification;
+        // Trigger a custom event for any external listeners (e.g., toast system)
+        window.dispatchEvent(new CustomEvent('app:new-notification', { detail: processedNotification }));
+        return newNotifications;
+      });
+    };
+
+    socketService.on('socket_connected', handleSocketConnected);
+    socketService.on('socket_disconnected', handleSocketDisconnected);
+    socketService.on('socket_error', handleSocketError);
+    socketService.on('socket_authenticated', handleSocketAuthenticated);
+    socketService.on('socket_auth_error', handleSocketAuthError);
+    socketService.on('notification_received', handleNotificationReceived);
+
+    return () => {
+      socketService.off('socket_connected', handleSocketConnected);
+      socketService.off('socket_disconnected', handleSocketDisconnected);
+      socketService.off('socket_error', handleSocketError);
+      socketService.off('socket_authenticated', handleSocketAuthenticated);
+      socketService.off('socket_auth_error', handleSocketAuthError);
+      socketService.off('notification_received', handleNotificationReceived);
+    };
+  }, [showBrowserNotification, toastCtx]);
+
+  // Request browser notification permission
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('🔔 Notification permission:', permission);
+      });
+    }
+  }, []);
+
+  // Additional functions
+  const markAllAsRead = useCallback(() => {
+    setNotifications(prev =>
+      prev.map(notification => ({ ...notification, read: true }))
+    );
+  }, []);
+
+  const removeNotification = useCallback((notificationId) => {
+    setNotifications(prev =>
+      prev.filter(notification => notification.id !== notificationId)
+    );
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
+  const addNotification = useCallback((notification) => {
+    const processedNotification = {
+      id: Date.now() + Math.random(),
+      timestamp: new Date().toISOString(),
+      read: false,
+      type: 'manual',
+      title: 'Manual Notification',
+      message: '',
+      icon: '📢',
+      priority: 'medium',
+      ...notification
+    };
+
+    setNotifications(prev => [processedNotification, ...prev]);
+    showBrowserNotification(processedNotification);
+  }, [showBrowserNotification]);
+
+  const joinRoom = useCallback((room) => {
+    socketService.joinRoom(room);
+  }, []);
+
+  const leaveRoom = useCallback((room) => {
+    socketService.leaveRoom(room);
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const getNotificationsByType = useCallback((type) => {
+    return notifications.filter(n => n.type === type);
+  }, [notifications]);
+
+  const getNotificationsByPriority = useCallback((priority) => {
+    return notifications.filter(n => n.priority === priority);
+  }, [notifications]);
+
+  const value = {
+    notifications,
+    isConnected,
+    connectionError,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    removeNotification,
+    clearAllNotifications,
+    addNotification,
+    joinRoom,
+    leaveRoom,
+    handleNotificationClick,
+    getNotificationsByType,
+    getNotificationsByPriority,
+    socketService
+  };
+
+  // Debug helper (only in development)
+  if (typeof window !== 'undefined' && !window.__notificationDebug) {
+    window.__notificationDebug = {
+      dump: () => console.table(notifications.map(n => ({ id: n.id, title: n.title, read: n.read, time: n.timestamp }))),
+      addTest: (overrides = {}) => addNotification({ title: 'Test Notification', message: 'This is a test', ...overrides }),
+      markAll: () => markAllAsRead(),
+      clear: () => clearAllNotifications()
+    };
+  }
+
+  return (
+    <NotificationContext.Provider value={value}>
+      {children}
+    </NotificationContext.Provider>
+  );
+};

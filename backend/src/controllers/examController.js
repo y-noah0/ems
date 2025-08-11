@@ -377,8 +377,6 @@ exports.createExam = async (req, res) => {
         schoolId
       });
 
-      res.status(201).json({ success: true, exam });
-
       // Real-time notification for exam scheduled
       try {
         SocketNotificationService.notifyExamScheduled(exam, exam.classes);
@@ -424,12 +422,6 @@ exports.createExam = async (req, res) => {
       } catch (notifyErr) {
         console.error('Error notifying students:', notifyErr.message);
       }
-    } catch (validationError) {
-      return res.status(validationError.statusCode || 400).json({
-        success: false,
-        message: validationError.message
-      });
-    }
     // Log audit
     await logAudit('exam_created', req.user.id, exam._id, 'Exam', {
       title: sanitizedData.title,
@@ -484,11 +476,12 @@ exports.createExam = async (req, res) => {
 
     logger.info('Exam created successfully', { examId: exam._id, userId: req.user.id });
     res.status(201).json({ success: true, exam, message: 'Exam created successfully' });
+
   } catch (error) {
     logger.error('Error creating exam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
   }
-;
+};
 
 // Get exam by ID
 exports.getExamById = async (req, res) => {
@@ -666,7 +659,6 @@ exports.updateExam = async (req, res) => {
           return sanitizedQuestion;
         });
       }
-    }
 
     exam.updatedAt = new Date();
     await exam.save();
@@ -683,11 +675,12 @@ exports.updateExam = async (req, res) => {
     }
 
     logger.info('Exam updated successfully', { examId, teacherId: req.user.id, schoolId });
-  res.status(200).json({ success: true, exam: exam.toObject(), message: 'Exam updated successfully' });
-} catch (error) {
-  logger.error('Error updating exam', { error: error.message, stack: error.stack, userId: req.user.id });
-  res.status(500).json({ success: false, message: 'Server Error' });
-}
+    res.status(200).json({ success: true, exam: exam.toObject(), message: 'Exam updated successfully' });
+  } catch (error) {
+    logger.error('Error updating exam', { error: error.message, stack: error.stack, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
+};
 
 // Delete exam (soft delete)
 exports.deleteExam = async (req, res) => {
