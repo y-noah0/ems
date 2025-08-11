@@ -92,6 +92,16 @@ router.get(
   examController.getStudentClassExams
 );
 
+// @route   GET /api/exams/student/past
+// @desc    Get past exams for student (for revision)
+// @access  Students
+router.get(
+  '/student/past',
+  authMiddleware.isStudent,
+  examController.validateGetPastExams,
+  examController.getPastExamsForStudent
+);
+
 // @route   PUT /api/exams/:examId/activate
 // @desc    Activate exam (make it active)
 // @access  Teachers

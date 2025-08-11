@@ -25,7 +25,7 @@ const EnrollmentSchema = new Schema({
     },
     promotionStatus: {
         type: String,
-        enum: ['eligible', 'repeat', 'expelled', 'onLeave', 'withdrawn'],
+        enum: ['eligible', 'repeat', 'expelled', 'onLeave', 'withdrawn', 'transferred'],  // Added 'transferred'
         default: 'eligible'
     },
     isActive: {
@@ -36,8 +36,12 @@ const EnrollmentSchema = new Schema({
         type: Boolean,
         default: false
     },
-    // New field for transfer tracking
     transferredFromSchool: {
+        type: Schema.Types.ObjectId,
+        ref: 'School',
+        default: null
+    },
+    transferredToSchool: {  // New field for release target
         type: Schema.Types.ObjectId,
         ref: 'School',
         default: null
@@ -51,6 +55,7 @@ EnrollmentSchema.pre('save', async function (next) {
     const User = mongoose.model('User');
     const Class = mongoose.model('Class');
     const Term = mongoose.model('Term');
+    const Enrollment = mongoose.model('Enrollment');
 
     const student = await User.findById(this.student);
     if (!student || student.role !== 'student') {
@@ -71,18 +76,41 @@ EnrollmentSchema.pre('save', async function (next) {
         return next(new Error('School must match the student’s school or specify transferredFromSchool'));
     }
 
-    // Check class capacity
-    const enrollmentCount = await mongoose.model('Enrollment').countDocuments({
-        class: this.class,
-        term: this.term,
-        isActive: true,
-        isDeleted: false
-    });
-    if (enrollmentCount >= classDoc.capacity) {
-        return next(new Error('Class capacity limit reached'));
+    // Security check for transfers: if transferredFromSchool set, verify previous release to this school
+    if (this.transferredFromSchool) {
+        const previous = await Enrollment.findOne({
+            student: this.student,
+            isActive: false,
+            isDeleted: false,
+            transferredToSchool: this.school
+        }).sort({ updatedAt: -1 });
+        if (!previous) {
+            return next(new Error('No valid transfer release found for this school'));
+        }
+    }
+
+    // Check class capacity only for new enrollments or when class is changing
+    if (this.isNew || this.isModified('class')) {
+        const enrollmentCount = await Enrollment.countDocuments({
+            class: this.class,
+            term: this.term,
+            isActive: true,
+            isDeleted: false
+        });
+        if (enrollmentCount >= classDoc.capacity) {
+            return next(new Error('Class capacity limit reached'));
+        }
     }
 
     next();
+});
+
+// Post-save hook to update student's school on transfer
+EnrollmentSchema.post('save', async function (doc) {
+    if (doc.transferredFromSchool) {
+        const User = mongoose.model('User');
+        await User.findByIdAndUpdate(doc.student, { school: doc.school });
+    }
 });
 
 module.exports = mongoose.model('Enrollment', EnrollmentSchema);

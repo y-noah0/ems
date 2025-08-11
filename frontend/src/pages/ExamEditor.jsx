@@ -5,10 +5,14 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import examService from '../services/examService';
+import { useAuth } from '../context/AuthContext';
 
 const ExamEditor = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const schoolId = currentUser?.school;
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -27,92 +31,61 @@ const ExamEditor = () => {
     passingPercentage: 50,
     questions: [],
     status: 'draft',
-    classes: [], // <-- change from 'class' to 'classes' (array)
-    type: 'midterm',
+    classes: [],
+    type: 'quiz',
+    instructions: '',
   });
 
-  const isValidObjectId = (id) => {
-    const objectIdRegex = /^[0-9a-fA-F]{24}$/;
-    return id && typeof id === 'string' && objectIdRegex.test(id);
-  };
+  const isValidObjectId = (id) => /^[0-9a-fA-F]{24}$/.test(id);
 
   useEffect(() => {
     const fetchExamData = async () => {
-      console.log('Exam ID from URL:', examId);
       if (!examId || !isValidObjectId(examId)) {
-        console.error('Invalid examId:', examId);
         setError('Invalid exam ID. Please check the URL or try again.');
         setLoading(false);
         return;
       }
-
+      if (!schoolId) {
+        setError('No school selected. Please log in again.');
+        setLoading(false);
+        return;
+      }
       try {
         // Fetch exam data
-        const examData = await examService.getExamById(examId);
-        console.log('Raw exam data from API:', examData);
+        const examData = await examService.getExamById(examId, schoolId);
 
         // Fetch subjects
         let subjectsData = [];
         try {
-          subjectsData = await examService.getTeacherSubjects();
-          console.log('Subjects data:', subjectsData);
-          if (!Array.isArray(subjectsData)) {
-            console.warn('Subjects data is not an array:', subjectsData);
-            subjectsData = [];
-          }
+          subjectsData = await examService.getTeacherSubjects(schoolId);
         } catch (err) {
-          console.error('Failed to fetch subjects:', err);
           setError('Failed to load subjects. Please check if subjects are assigned.');
         }
-        setSubjects(subjectsData);
+        setSubjects(Array.isArray(subjectsData) ? subjectsData : []);
 
-        // Fetch classes (optional)
+        // Fetch classes
         let classesData = [];
         try {
-          classesData = await examService.getClassesForTeacher(); // <-- FIXED: use correct service method
-          console.log('Classes data:', classesData);
-          if (!Array.isArray(classesData)) {
-            console.warn('Classes data is not an array:', classesData);
-            classesData = [];
-          }
-        } catch (err) {
-          console.warn('Failed to fetch classes:', err);
-          // Continue without classes
-        }
-        setClasses(classesData);
+          classesData = await examService.getClassesForTeacher(schoolId);
+        } catch (err) { }
+        setClasses(Array.isArray(classesData) ? classesData : []);
 
-        const examType = examData.type || 'midterm';
-        console.log('Exam type detected:', examType);
-
-        let classId;
-        if (Array.isArray(examData.class)) {
-          console.warn('Class is an array:', examData.class);
-          classId = examData.class[0]?._id || examData.class[0];
-        } else {
-          classId = examData.class?._id || examData.class;
-        }
-        if (classId && !isValidObjectId(classId)) {
-          console.error('Invalid classId:', classId);
-          classId = '';
-        }
-        console.log('Class ID detected:', classId);
-
+        // Prepare form data
         const processedQuestions = (examData.questions || []).map((q) => {
           const questionId = Date.now() + Math.floor(Math.random() * 1000);
           const processedQuestion = {
             id: questionId,
             text: q.text || '',
-            type: q.type || 'MCQ',
+            type: q.type === 'multiple-choice' ? 'MCQ' : (q.type === 'short-answer' ? 'open' : q.type),
             points: q.maxScore || 10,
             maxScore: q.maxScore || 10,
           };
-
-          if (q.type === 'MCQ') {
+          if (processedQuestion.type === 'MCQ') {
             processedQuestion.options = Array.isArray(q.options)
               ? q.options.map((optText, index) => ({
                 id: questionId + index + 1,
-                text: optText,
-                isCorrect: optText === q.correctAnswer,
+                text: typeof optText === 'string' ? optText : optText.text,
+                isCorrect: (typeof optText === 'string' ? optText : optText.text) === q.correctAnswer,
               }))
               : [
                 { id: questionId + 1, text: '', isCorrect: false },
@@ -120,20 +93,17 @@ const ExamEditor = () => {
                 { id: questionId + 3, text: '', isCorrect: false },
                 { id: questionId + 4, text: '', isCorrect: false },
               ];
-          } else if (q.type === 'open') {
+          } else if (processedQuestion.type === 'open') {
             processedQuestion.correctAnswer = q.correctAnswer || '';
           }
-
           return processedQuestion;
         });
 
-        console.log('Processed questions for frontend:', processedQuestions);
-
-        const formDataToSet = {
+        setFormData({
           title: examData.title || '',
           description: examData.description || '',
           subjectId: examData.subject?._id || examData.subject || '',
-          type: examType,
+          type: examData.type || 'quiz',
           duration: examData.duration || examData.schedule?.duration || 60,
           startTime:
             examData.startTime ||
@@ -151,22 +121,16 @@ const ExamEditor = () => {
               ? [examData.class._id || examData.class]
               : [],
           instructions: examData.instructions || '',
-        };
-
-        console.log('Setting form data:', formDataToSet);
-        setFormData(formDataToSet);
+        });
       } catch (error) {
-        console.error('Error fetching exam data:', error);
-        setError(
-          error.response?.data?.message || 'Failed to load exam data. Please try again.'
-        );
+        setError(error.response?.data?.message || 'Failed to load exam data. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchExamData();
-  }, [examId]);
+  }, [examId, schoolId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -184,7 +148,6 @@ const ExamEditor = () => {
       points: 10,
       maxScore: 10,
     };
-
     if (type === 'MCQ') {
       newQuestion.options = [
         { id: Date.now() + 1, text: '', isCorrect: false },
@@ -195,7 +158,6 @@ const ExamEditor = () => {
     } else if (type === 'open') {
       newQuestion.correctAnswer = '';
     }
-
     setFormData((prev) => ({
       ...prev,
       questions: [...prev.questions, newQuestion],
@@ -208,7 +170,6 @@ const ExamEditor = () => {
       questions: prev.questions.map((q) => {
         if (q.id === questionId) {
           const updatedQuestion = { ...q, [field]: value };
-
           if (field === 'type') {
             if (value === 'MCQ' && !updatedQuestion.options) {
               updatedQuestion.options = [
@@ -223,7 +184,6 @@ const ExamEditor = () => {
               delete updatedQuestion.options;
             }
           }
-
           return updatedQuestion;
         }
         return q;
@@ -254,11 +214,9 @@ const ExamEditor = () => {
         throw new Error(`Question ${index + 1} text is required`);
       }
       let correctAnswer = '';
-      // Map frontend type to backend type
       let backendType = 'multiple-choice';
       if (question.type === 'MCQ') backendType = 'multiple-choice';
       else if (question.type === 'open') backendType = 'short-answer';
-      // Add mapping for true/false if you use it
 
       if (backendType === 'multiple-choice' && question.options) {
         const correctOption = question.options.find((opt) => opt.isCorrect);
@@ -297,26 +255,23 @@ const ExamEditor = () => {
       setError('Invalid exam ID. Cannot save exam.');
       return;
     }
-
+    if (!schoolId) {
+      setError('No school selected. Please log in again.');
+      return;
+    }
     const validationError = validateFormData();
     if (validationError) {
       setError(validationError);
       return;
     }
-
     setSaving(true);
     setError('');
     setSuccess('');
-
     try {
       if (!formData.type) {
         throw new Error('Exam type is required');
       }
-
-      console.log('Current form data before submission:', formData);
       const formattedQuestions = formatQuestionsForSubmission(formData.questions);
-      console.log('Formatted questions:', formattedQuestions);
-
       const examDataToSubmit = {
         title: formData.title,
         type: formData.type,
@@ -331,18 +286,12 @@ const ExamEditor = () => {
             },
           }
           : {}),
-        classIds: formData.classes, // <-- use the array
-        subjectId: formData.subjectId, // <-- use subjectId
+        classIds: formData.classes,
+        subjectId: formData.subjectId,
       };
-
-      console.log('Submitting exam data:', examDataToSubmit);
-
-      const updatedExam = await examService.updateExam(examId, examDataToSubmit);
-      console.log('Exam updated successfully:', updatedExam);
-
+      await examService.updateExam(examId, examDataToSubmit, schoolId);
       setSuccess('Exam saved successfully!');
     } catch (error) {
-      console.error('Error saving exam:', error);
       const errorMessage =
         error.response?.data?.errors?.map((e) => e.msg).join('; ') ||
         error.response?.data?.message ||
@@ -359,42 +308,36 @@ const ExamEditor = () => {
       setError('Invalid exam ID. Cannot publish exam.');
       return;
     }
-
+    if (!schoolId) {
+      setError('No school selected. Please log in again.');
+      return;
+    }
     const validationError = validateFormData();
     if (validationError) {
       setError(validationError);
       return;
     }
-
     if (formData.questions.length === 0) {
       setError('Cannot publish exam with no questions');
       return;
     }
-
     if (!formData.startTime) {
       setError('Start time is required to publish an exam');
       return;
     }
-
     if (!formData.duration || formData.duration < 5) {
       setError('Duration must be at least 5 minutes');
       return;
     }
-
     if (!formData.type) {
       setError('Exam type is required');
       return;
     }
-
     setSaving(true);
     setError('');
     setSuccess('');
-
     try {
-      console.log('Current form data before publishing:', formData);
       const formattedQuestions = formatQuestionsForSubmission(formData.questions);
-      console.log('Formatted questions for publishing:', formattedQuestions);
-
       const examDataToSubmit = {
         title: formData.title,
         type: formData.type,
@@ -405,21 +348,15 @@ const ExamEditor = () => {
         questions: formattedQuestions,
         instructions: formData.instructions || '',
         status: 'scheduled',
-        classes: formData.classes ? [formData.classes] : [],
-        subject: formData.subjectId,
+        classIds: formData.classes,
+        subjectId: formData.subjectId,
       };
-
-      console.log('Publishing exam with data:', examDataToSubmit);
-
-      const updatedExam = await examService.updateExam(examId, examDataToSubmit);
-      console.log('Exam updated successfully:', updatedExam);
-
+      await examService.updateExam(examId, examDataToSubmit, schoolId);
       setSuccess('Exam published successfully!');
       setTimeout(() => {
         navigate('/teacher/dashboard');
       }, 2000);
     } catch (error) {
-      console.error('Error publishing exam:', error);
       const errorMessage =
         error.response?.data?.errors?.map((e) => e.msg).join('; ') ||
         error.response?.data?.message ||
@@ -476,10 +413,10 @@ const ExamEditor = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                instructions
+                Instructions
               </label>
               <textarea
-                name="description"
+                name="instructions"
                 value={formData.instructions}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
@@ -528,7 +465,7 @@ const ExamEditor = () => {
                   </option>
                   {classes.map(cls => (
                     <option key={cls._id} value={cls._id}>
-                      {cls.level} {cls.trade}
+                      {String(cls.level)} {String(cls.trade)}
                     </option>
                   ))}
                 </select>
