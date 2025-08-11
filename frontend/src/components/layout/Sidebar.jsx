@@ -72,13 +72,13 @@ const Sidebar = ({ userRole = "student" }) => {
       active: location.pathname.includes("/dean/teachers"),
       roles: ["dean"],
     },
-    // {
-    //   title: "Student Management",
-    //   icon: FaGraduationCap,
-    //   path: "/dean/students",
-    //   active: location.pathname.includes("/dean/students"),
-    //   roles: ["dean"],
-    // },
+    {
+      title: "Academic Management",
+      icon: FaClock,
+      path: "/dean/academics",
+      active: location.pathname.includes("/dean/academics"),
+      roles: ["dean"],
+    },
     // {
     //   title: "Term Summary",
     //   icon: FaFileAlt,

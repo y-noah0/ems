@@ -39,6 +39,7 @@ import ClassesPage from "./components/class/ClassPage";
 import PerformancePage from "./components/class/PerfomancePage";
 import TeacherPage from "./components/class/TeacherPage";
 import StudentPage from "./components/class/StudentPage";
+import AcademicManagement from "./components/class/AcademicManagement";
 
 import ExamDetails from "./pages/ExamDetails";
 import DeanExamDetails from "./pages/Dean/ExamDetails";
@@ -58,7 +59,6 @@ import HeadmasterManagement from "./pages/admin/HeadmasterManagement";
 import ExamManagement from "./pages/ExamManagement";
 import SubscriptionManagement from "./pages/admin/SubscriptionManagement";
 import HeadmasterDashboard from "./pages/Headmaster/HeadmasterDashboard";
-import ClassesManagement from "./pages/ClassesManagement";
 import UserManagement from "./pages/Headmaster/UserManagement";
 import TradesOffered from "./pages/Headmaster/TradesOffered";
 import HeadmasterSubjectCatalog from "./pages/Headmaster/SubjectCatalog";
@@ -226,16 +226,7 @@ function App() {
                                     </ProtectedRoute>
                                 }
                             />
-                            <Route
-                                path="/headmaster/classes"
-                                element={
-                                    <ProtectedRoute
-                                        allowedRoles={["headmaster"]}
-                                    >
-                                        <ClassesManagement />
-                                    </ProtectedRoute>
-                                }
-                            />
+                          
                             <Route
                                 path="/headmaster/trades-offered"
                                 element={
@@ -267,16 +258,7 @@ function App() {
                                 }
                             />
 
-                            <Route
-                                path="/headmaster/classes/performance"
-                                element={
-                                    <ProtectedRoute
-                                        allowedRoles={["headmaster"]}
-                                    >
-                                        <ClassesManagement />
-                                    </ProtectedRoute>
-                                }
-                            />
+                            
                             <Route
                                 path="/headmaster/subjects"
                                 element={
@@ -742,10 +724,10 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/dean/students"
+                                path="/dean/academics"
                                 element={
                                     <ProtectedRoute allowedRoles={["dean"]}>
-                                        <StudentPage />
+                                        <AcademicManagement />
                                     </ProtectedRoute>
                                 }
                             />
