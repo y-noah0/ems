@@ -13,6 +13,7 @@ const Class = require('../models/Class');
 const Term = require('../models/term');
 const { sendEmail } = require('../services/emailService');
 const { sendSMS } = require('../services/twilioService');
+const SocketNotificationService = require('../utils/socketNotificationService');
 const fs = require('fs');
 const path = require('path');
 
@@ -323,6 +324,17 @@ const register = async (req, res) => {
     await user.save();
     logger.info('User registered', { userId: user._id, role, ip: req.ip });
 
+    // Real-time notification for new user registration
+    try {
+      SocketNotificationService.notifyUserRegistered(user);
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for user registration', {
+        userId: user._id,
+        error: socketError.message,
+        ip: req.ip
+      });
+    }
+
     if (role === 'student') {
       if (!classId || !termId) {
         logger.warn('Missing classId or termId for student enrollment', { userId: user._id, ip: req.ip });
@@ -456,6 +468,26 @@ const login = async (req, res) => {
       await sendNotification(user, `You logged in at ${new Date().toISOString()}`, 'EMS Login Notification', req);
     } catch (notifyErr) {
       console.warn('Notification error during login:', notifyErr.message);
+    }
+
+    // Real-time notification for new login session (notify other user sessions)
+    try {
+      SocketNotificationService.emitToUser(user._id, 'auth:login', {
+        type: 'new_login_session',
+        message: `New login detected from ${req.ip}`,
+        title: 'New Login Session',
+        data: {
+          loginTime: new Date(),
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        }
+      });
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for login', {
+        userId: user._id,
+        error: socketError.message,
+        ip: req.ip
+      });
     }
 
     return res.json({

@@ -2,6 +2,9 @@ const Enrollment = require('../models/enrollment');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
 const mongoose = require('mongoose');
+const SocketNotificationService = require('../utils/socketNotificationService');
+const User = require('../models/User');
+const Class = require('../models/Class');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -41,6 +44,21 @@ const createEnrollment = async (req, res) => {
         });
 
         await enrollment.save();
+
+        // Real-time notification for student enrollment
+        try {
+          const student = await User.findById(enrollment.student);
+          const classData = await Class.findById(enrollment.class);
+          
+          if (student && classData) {
+            SocketNotificationService.notifyStudentEnrolled(enrollment, student, classData);
+          }
+        } catch (socketError) {
+          logger.error('Failed to send socket notification for enrollment', {
+            enrollmentId: enrollment._id,
+            error: socketError.message
+          });
+        }
 
         logger.info('Enrollment created', { enrollmentId: enrollment._id });
         res.status(201).json({ success: true, enrollment });

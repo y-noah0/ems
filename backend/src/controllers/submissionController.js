@@ -10,6 +10,7 @@ const { toUTC } = require('../utils/dateUtils');
 const notificationService = require('../utils/notificationService');
 const { sendSMS } = require('../services/twilioService');
 const { sendEmail } = require('../services/emailService');
+const SocketNotificationService = require('../utils/socketNotificationService');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -393,6 +394,25 @@ submissionController.submitExam = async (req, res) => {
 
     if (submission.status === 'graded') {
       await notificationService.sendGradeNotification(req.io, submission.student, submission);
+    }
+
+    // Real-time notification for submission received
+    try {
+      const exam = await Exam.findById(submission.exam).populate('teacher', 'fullName email phone');
+      const student = await User.findById(submission.student);
+
+      // Notify teacher about submission via Socket.IO
+      SocketNotificationService.notifySubmissionReceived(submission, student, exam);
+      
+      // If submission was auto-graded, notify student immediately
+      if (submission.status === 'graded') {
+        SocketNotificationService.notifySubmissionGraded(submission, exam);
+      }
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for submission', {
+        submissionId: submission._id,
+        error: socketError.message
+      });
     }
 
     try {
@@ -824,6 +844,16 @@ submissionController.gradeOpenQuestions = async (req, res) => {
 
     if (submission.status === 'graded') {
       await notificationService.sendGradeNotification(req.io, submission.student, submission);
+
+      // Real-time notification for submission graded
+      try {
+        SocketNotificationService.notifySubmissionGraded(submission, exam);
+      } catch (socketError) {
+        logger.error('Failed to send socket notification for graded submission', {
+          submissionId: submission._id,
+          error: socketError.message
+        });
+      }
 
       try {
         const student = await User.findById(submission.student);

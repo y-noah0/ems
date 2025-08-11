@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
+const SocketNotificationService = require('../utils/socketNotificationService');
 
 const systemAdminController = {};
 
@@ -99,6 +100,42 @@ systemAdminController.createStaff = async (req, res) => {
 
     await newUser.save();
 
+    // Send real-time notifications for staff creation
+    try {
+      await SocketNotificationService.emitToRole('admin', 'global', {
+        type: 'staff_created',
+        title: 'New Staff Member Added',
+        message: `New ${role} ${fullName} has been added to the system`,
+        data: {
+          userId: newUser._id,
+          fullName,
+          email,
+          role,
+          school,
+          timestamp: new Date()
+        },
+        priority: 'medium'
+      });
+
+      if (school) {
+        await SocketNotificationService.emitToRole('headmaster', `school_${school}`, {
+          type: 'staff_assigned',
+          title: 'New Staff Assigned',
+          message: `${fullName} has been assigned as ${role} to your school`,
+          data: {
+            userId: newUser._id,
+            fullName,
+            email,
+            role,
+            timestamp: new Date()
+          },
+          priority: 'medium'
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error sending staff creation notifications:', notificationError);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Staff member created successfully',
@@ -162,6 +199,37 @@ systemAdminController.updateUser = async (req, res) => {
 
     await user.save();
 
+    // Send real-time notifications for user update
+    try {
+      await SocketNotificationService.emitToUser(userId, {
+        type: 'profile_updated',
+        title: 'Profile Updated',
+        message: 'Your profile information has been updated by system administration',
+        data: {
+          userId,
+          updatedFields: { fullName, email, role },
+          timestamp: new Date()
+        },
+        priority: 'medium'
+      });
+
+      await SocketNotificationService.emitToRole('admin', 'global', {
+        type: 'user_updated',
+        title: 'User Profile Updated',
+        message: `User ${user.fullName} profile has been updated`,
+        data: {
+          userId,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          timestamp: new Date()
+        },
+        priority: 'low'
+      });
+    } catch (notificationError) {
+      console.error('Error sending user update notifications:', notificationError);
+    }
+
     res.json({
       success: true,
       message: 'User updated successfully',
@@ -206,6 +274,40 @@ systemAdminController.deleteUser = async (req, res) => {
 
     await user.remove();
 
+    // Send real-time notifications for user deletion
+    try {
+      await SocketNotificationService.emitToRole('admin', 'global', {
+        type: 'user_deleted',
+        title: 'User Account Deleted',
+        message: `User ${user.fullName} (${user.role}) has been removed from the system`,
+        data: {
+          userId: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          timestamp: new Date()
+        },
+        priority: 'high'
+      });
+
+      if (user.school) {
+        await SocketNotificationService.emitToRole('headmaster', `school_${user.school}`, {
+          type: 'staff_removed',
+          title: 'Staff Member Removed',
+          message: `${user.fullName} (${user.role}) has been removed from your school`,
+          data: {
+            userId: user._id,
+            fullName: user.fullName,
+            role: user.role,
+            timestamp: new Date()
+          },
+          priority: 'high'
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error sending user deletion notifications:', notificationError);
+    }
+
     res.json({
       success: true,
       message: 'User deleted successfully'
@@ -245,6 +347,35 @@ systemAdminController.resetPassword = async (req, res) => {
     // Update password
     user.passwordHash = newPassword; // Will be hashed in pre-save hook
     await user.save();
+
+    // Send real-time notifications for password reset
+    try {
+      await SocketNotificationService.emitToUser(userId, {
+        type: 'password_reset',
+        title: 'Password Reset',
+        message: 'Your password has been reset by system administration. Please log in with your new password.',
+        data: {
+          userId,
+          timestamp: new Date()
+        },
+        priority: 'high'
+      });
+
+      await SocketNotificationService.emitToRole('admin', 'global', {
+        type: 'password_reset_completed',
+        title: 'Password Reset Completed',
+        message: `Password reset completed for user ${user.fullName}`,
+        data: {
+          userId,
+          fullName: user.fullName,
+          email: user.email,
+          timestamp: new Date()
+        },
+        priority: 'low'
+      });
+    } catch (notificationError) {
+      console.error('Error sending password reset notifications:', notificationError);
+    }
 
     res.json({
       success: true,

@@ -13,6 +13,7 @@ const { logAudit } = require('../utils/auditLogger');
 const notificationService = require('../utils/notificationService');
 const { sendSMS } = require('../services/twilioService');
 const { sendEmail } = require('../services/emailService');
+const SocketNotificationService = require('../utils/socketNotificationService');
 const schedule = require('node-schedule');
 const mongoSanitize = require('express-mongo-sanitize');
 
@@ -227,6 +228,16 @@ exports.createExam = async (req, res) => {
       });
 
       res.status(201).json({ success: true, exam });
+
+      // Real-time notification for exam scheduled
+      try {
+        SocketNotificationService.notifyExamScheduled(exam, exam.classes);
+      } catch (socketError) {
+        logger.error('Failed to send socket notification for exam scheduled', {
+          examId: exam._id,
+          error: socketError.message
+        });
+      }
 
       // Notify students about the new exam
       try {
@@ -469,6 +480,17 @@ exports.updateExam = async (req, res) => {
     exam.updatedAt = new Date();
     await exam.save();
 
+    // Real-time notification for exam updated
+    try {
+      const changes = Object.keys(req.body).filter(key => key !== 'schoolId');
+      SocketNotificationService.notifyExamUpdated(exam, changes);
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for exam updated', {
+        examId: exam._id,
+        error: socketError.message
+      });
+    }
+
     logger.info('Exam updated successfully', { examId, teacherId: req.user.id, schoolId });
     res.status(200).json({ success: true, exam: exam.toObject(), message: 'Exam updated successfully' });
   } catch (error) {
@@ -520,6 +542,16 @@ exports.deleteExam = async (req, res) => {
     exam.isDeleted = true;
     exam.updatedAt = new Date();
     await exam.save();
+
+    // Real-time notification for exam cancelled/deleted
+    try {
+      SocketNotificationService.notifyExamCancelled(exam, 'Exam was deleted by instructor');
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for exam deleted', {
+        examId: exam._id,
+        error: socketError.message
+      });
+    }
 
     logger.info('Exam deleted successfully', { examId, teacherId: req.user.id, schoolId });
     res.status(200).json({ success: true, message: 'Exam deleted successfully' });
