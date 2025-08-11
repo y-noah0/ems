@@ -56,7 +56,7 @@ const teacherService = {
     fetchTeachers: async (schoolId) => {
         try {
             const response = await api.post('/teachers', { schoolId: schoolId });
-            console.log('Fetch teachers response:', response.data.teachers);
+            
             return response.data.teachers;
         } catch (error) {
             console.error('Fetch teachers error:', error.response?.data || error.message);

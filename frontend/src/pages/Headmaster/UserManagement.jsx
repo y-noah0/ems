@@ -18,7 +18,7 @@ export default function UserManagement() {
     const [formData, setFormData] = useState({
         fullName: "",
         email: "",
-        password: "",
+        phoneNumber: "",
         role: "teacher",
     });
     const [formError, setFormError] = useState("");
@@ -41,7 +41,7 @@ export default function UserManagement() {
             setLoading(true);
             try {
                 const data = await teacherService.fetchTeachers(currentSchool);
-                const staffData = data.staff;
+                const staffData = data;
 
                 setStaff(staffData);
             } catch (err) {
@@ -51,7 +51,7 @@ export default function UserManagement() {
             }
         };
         fetchStaff();
-    }, []);
+    }, [currentSchool]);
 
     const handleFormChange = (e) => {
         const { name, value } = e.target;
@@ -60,7 +60,7 @@ export default function UserManagement() {
 
     const handleUpdate = (user) => {
         setEditUser(user);
-        setFormData({ fullName: user.fullName, email: user.email, password: '', role: user.role, school: currentSchool });
+        setFormData({ fullName: user.fullName, email: user.email, phoneNumber: user.phoneNumber || "", role: user.role });
         setShowForm(true);
     };
 
@@ -68,15 +68,16 @@ export default function UserManagement() {
         e.preventDefault();
         setFormError("");
         try {
+            // Build payload: only include fullName, email, role, school
+            const payload = { fullName: formData.fullName, email: formData.email, phoneNumber: formData.phoneNumber, role: formData.role, school: currentSchool };
             if (editUser) {
-                // Update existing user
-                await systemAdminService.updateUser(editUser._id, formData);
+                await systemAdminService.updateUser(editUser._id, payload);
             } else {
                 // Only one dean allowed on create
                 if (formData.role === 'dean' && staff.some(u => u.role === 'dean')) {
                     throw new Error('A dean already exists');
                 }
-                await systemAdminService.createStaff(formData);
+                await systemAdminService.createStaff(payload);
             }
              // Refresh
              window.location.reload();
@@ -84,7 +85,7 @@ export default function UserManagement() {
              setFormData({
                  fullName: "",
                  email: "",
-                 password: "",
+                 phoneNumber: "",
                  role: "teacher",
              });
             setEditUser(null);
@@ -108,21 +109,10 @@ export default function UserManagement() {
     const columns = [
         { key: "fullName", title: "Name" },
         { key: "email", title: "Email" },
-        {key: "subjects", title: "Subjects", render: (subjects)=> subjects.length || '--'},
-        { 
-            key: "role", 
-            title: "Role",
-            render: (role) => {
-                const baseClasses = 'inline-block px-2 py-0.5 rounded-lg text-xs font-medium';
-                if (role === 'dean') {
-                    return <span className={`${baseClasses} text-main-green bg-main-green/10`}>Dean</span>;
-                } else if (role === 'teacher') {
-                    return <span className={`${baseClasses} text-main-blue bg-main-blue/10`}>Teacher</span>;
-                }
-                return <span className={baseClasses}>{role}</span>;
-            }
-        }
-    ];
+        { key: "phoneNumber", title: "Phone", render: (val)=> val || '--' },
+        { key: "subjects", title: "Subjects", render: (subjects)=> (Array.isArray(subjects) ? subjects.length : 0) || '--'},
+         
+     ];
 
     return (
         <Layout>
@@ -194,13 +184,14 @@ export default function UserManagement() {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Password
+                                                Phone Number
                                             </label>
                                             <Input
-                                                type="password"
-                                                name="password"
-                                                value={formData.password}
+                                                type="tel"
+                                                name="phoneNumber"
+                                                value={formData.phoneNumber}
                                                 onChange={handleFormChange}
+                                                placeholder="+2677xxxxxxx"
                                                 required
                                             />
                                         </div>
@@ -266,7 +257,7 @@ export default function UserManagement() {
                                     className="text-main-red cursor-pointer text-xs"
                                     onClick={() => handleDelete(user)}
                                 >
-                                    Delete
+                                    Expell
                                 </p>
                             </div>
                         )}
