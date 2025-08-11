@@ -692,10 +692,29 @@ exports.getStudentClassExams = async (req, res) => {
     const classId = enrollmentDoc.class;
     const termId = enrollmentDoc.term;
 
+    const now = new Date();
+
     const exams = await Exam.find({
       classes: classId,
       term: termId,
-      isDeleted: false
+      isDeleted: false,
+      $or: [
+        { 'schedule.start': { $gt: now } }, // scheduled
+        {
+          'schedule.start': { $lte: now },
+          $expr: {
+            $lt: [
+              now,
+              {
+                $add: [
+                  '$schedule.start',
+                  { $multiply: ['$schedule.duration', 60000] } // duration in minutes to milliseconds
+                ]
+              }
+            ]
+          }
+        } // active
+      ]
     })
       .populate('teacher', 'fullName email phoneNumber')
       .populate('subject', 'name')

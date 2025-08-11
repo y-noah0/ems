@@ -7,7 +7,6 @@ import Button from '../components/ui/Button';
 import DynamicTable from '../components/class/DynamicTable';
 import examService from '../services/examService';
 import submissionService from '../services/submissionService';
-import ExamCard from '../components/ui/ExamCard';
 
 // Notification component for user feedback with fade-in animation
 const Notification = ({ message, type = 'success', onClose }) => {
@@ -378,29 +377,6 @@ const SubmissionView = () => {
             type={notification.type}
             onClose={() => setNotification({ message: null, type: notification.type })}
           />
-        )}
-
-        {/* Exam Card with fade-in */}
-        {exam && (
-          <div className="mb-6 animate-fade-in">
-            <ExamCard
-              title={exam.title}
-              subject={exam.subject?.name || "N/A"}
-              classCode={
-                Array.isArray(exam.classes) && exam.classes.length > 0
-                  ? exam.classes.map(cls => `${cls.level}${cls.trade}`).join(', ')
-                  : 'No class assigned'
-              }
-              description={exam.description || `An exam on ${exam.title.toLowerCase()}`}
-              status={exam.status}
-              startTime={exam.schedule?.start ? new Date(exam.schedule.start).toLocaleString() : "Not scheduled"}
-              endTime={exam.schedule?.start && exam.schedule?.duration ?
-                new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000).toLocaleString() : "Not scheduled"}
-              questions={exam.questions?.length || 0}
-              totalPoints={exam.totalPoints || 0}
-              progress={Math.round((submission.score || 0) / (submission.totalPoints || exam.totalPoints || 1) * 100)}
-            />
-          </div>
         )}
 
         {/* Tabs Navigation with hover effects */}
