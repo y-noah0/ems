@@ -1,7 +1,7 @@
 const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
-
+const notificationCron = require('./jobs/notificationCron');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -75,6 +75,8 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam
     // Start scheduled jobs (e.g., promotion scheduler)
     try {
       require('./jobs/promotionScheduler').startCronJobs();
+      notificationCron.startNotificationCron();
+      logger.info('✅ Scheduled jobs started');
     } catch (error) {
       logger.error('Error loading promotion scheduler:', error.message, error.stack);
     }
