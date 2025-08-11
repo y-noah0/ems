@@ -261,16 +261,16 @@ const ExamManagement = () => {
           variants={cardVariants}
         >
           <div className="flex items-center gap-3 sm:gap-4">
-            <FaBook className="h-6 sm:h-8 w-6 sm:w-8 text-indigo-600" aria-hidden="true" />
+            <FaBook className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600" aria-hidden="true" />
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Exam Management</h1>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 sm:h-5 w-4 sm:w-5 text-indigo-400" />
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 sm:h-5 w-4 sm:w-5 text-blue-400" />
               <input
                 type="text"
                 placeholder="Search exams..."
-                className="pl-10 pr-4 py-2 w-full bg-white border border-indigo-200 rounded-full text-sm sm:text-base text-gray-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-300 shadow-sm"
+                className="pl-10 pr-4 py-2 w-full bg-white border border-blue-200 rounded-full text-sm sm:text-base text-gray-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-300 shadow-sm"
                 onChange={(e) => debouncedSetSearchTerm(e.target.value)}
                 aria-label="Search exams"
               />
@@ -278,50 +278,50 @@ const ExamManagement = () => {
             <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
               <div ref={subjectDropdownRef} className="relative w-full sm:w-auto">
                 <motion.button
-                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-white border border-indigo-200 rounded-lg text-sm sm:text-base text-gray-800 w-full sm:min-w-[140px] hover:bg-indigo-50 transition duration-300 shadow-sm"
+                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-white border border-blue-200 rounded-lg text-sm sm:text-base text-gray-800 w-full sm:min-w-[140px] hover:bg-blue-50 transition duration-300 shadow-sm"
                   onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
                   aria-label="Select subject filter"
                   aria-expanded={showSubjectDropdown}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                  <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                   {selectedSubject?.label || "Subject"}
                   <FaChevronDown
-                    className={`h - 4 sm: h - 5 w - 4 sm: w - 5 text - indigo - 600 transition - transform ${ showSubjectDropdown ? "rotate-180" : "" } `}
+                    className={`h - 4 sm: h - 5 w - 4 sm: w - 5 text - blue - 600 transition - transform ${ showSubjectDropdown ? "rotate-180" : "" } `}
                   />
                 </motion.button>
                 <AnimatePresence>
                   {showSubjectDropdown && (
                     <motion.div
-                      className="absolute top-full left-0 mt-2 w-full bg-white border border-indigo-200 rounded-lg shadow-lg z-20 overflow-hidden"
+                      className="absolute top-full left-0 mt-2 w-full bg-white border border-blue-200 rounded-lg shadow-lg z-20 overflow-hidden"
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
                     >
                       <motion.button
-                        className={`block w - full text - left px - 3 sm: px - 4 py - 2 text - sm sm: text - base flex items - center gap - 2 ${ !selectedSubject ? "bg-indigo-50 text-indigo-600 font-medium" : "hover:bg-indigo-50" } `}
+                        className={`block w - full text - left px - 3 sm: px - 4 py - 2 text - sm sm: text - base flex items - center gap - 2 ${ !selectedSubject ? "bg-blue-50 text-blue-600 font-medium" : "hover:bg-blue-50" } `}
                         onClick={() => {
                           setSelectedSubject(null);
                           setShowSubjectDropdown(false);
                         }}
                         whileHover={{ backgroundColor: "#EEF2FF" }}
                       >
-                        <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                        <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                         All Subjects
                       </motion.button>
                       {subjectOptionsList.map((opt) => (
                         <motion.button
                           key={opt.value}
-                          className={`block w - full text - left px - 3 sm: px - 4 py - 2 text - sm sm: text - base flex items - center gap - 2 ${ selectedSubject?.value === opt.value ? "bg-indigo-50 text-indigo-600 font-medium" : "hover:bg-indigo-50" } `}
+                          className={`block w - full text - left px - 3 sm: px - 4 py - 2 text - sm sm: text - base flex items - center gap - 2 ${ selectedSubject?.value === opt.value ? "bg-blue-50 text-blue-600 font-medium" : "hover:bg-blue-50" } `}
                           onClick={() => {
                             setSelectedSubject(opt);
                             setShowSubjectDropdown(false);
                           }}
                           whileHover={{ backgroundColor: "#EEF2FF" }}
                         >
-                          <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                          <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                           {opt.label}
                         </motion.button>
                       ))}
@@ -331,50 +331,50 @@ const ExamManagement = () => {
               </div>
               <div ref={classDropdownRef} className="relative w-full sm:w-auto">
                 <motion.button
-                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-white border border-indigo-200 rounded-lg text-sm sm:text-base text-gray-800 w-full sm:min-w-[140px] hover:bg-indigo-50 transition duration-300 shadow-sm"
+                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-white border border-blue-200 rounded-lg text-sm sm:text-base text-gray-800 w-full sm:min-w-[140px] hover:bg-blue-50 transition duration-300 shadow-sm"
                   onClick={() => setShowClassDropdown(!showClassDropdown)}
                   aria-label="Select class filter"
                   aria-expanded={showClassDropdown}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                  <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                   {selectedClass?.label || "Class"}
                   <FaChevronDown
-                    className={`h - 4 sm: h - 5 w - 4 sm: w - 5 text - indigo - 600 transition - transform ${ showClassDropdown ? "rotate-180" : "" } `}
+                    className={`h - 4 sm: h - 5 w - 4 sm: w - 5 text - blue - 600 transition - transform ${ showClassDropdown ? "rotate-180" : "" } `}
                   />
                 </motion.button>
                 <AnimatePresence>
                   {showClassDropdown && (
                     <motion.div
-                      className="absolute top-full left-0 mt-2 w-full bg-white border border-indigo-200 rounded-lg shadow-lg z-20 overflow-hidden"
+                      className="absolute top-full left-0 mt-2 w-full bg-white border border-blue-200 rounded-lg shadow-lg z-20 overflow-hidden"
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
                     >
                       <motion.button
-                        className={`block w - full text - left px - 3 sm: px - 4 py - 2 text - sm sm: text - base flex items - center gap - 2 ${ !selectedClass ? "bg-indigo-50 text-indigo-600 font-medium" : "hover:bg-indigo-50" } `}
+                        className={`block w - full text - left px - 3 sm: px - 4 py - 2 text - sm sm: text - base flex items - center gap - 2 ${ !selectedClass ? "bg-blue-50 text-blue-600 font-medium" : "hover:bg-blue-50" } `}
                         onClick={() => {
                           setSelectedClass(null);
                           setShowClassDropdown(false);
                         }}
                         whileHover={{ backgroundColor: "#EEF2FF" }}
                       >
-                        <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                        <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                         All Classes
                       </motion.button>
                       {classOptionsList.map((opt) => (
                         <motion.button
                           key={opt.value}
-                          className={`block w - full text - left px - 3 sm: px - 4 py - 2 text - sm sm: text - base flex items - center gap - 2 ${ selectedClass?.value === opt.value ? "bg-indigo-50 text-indigo-600 font-medium" : "hover:bg-indigo-50" } `}
+                          className={`block w - full text - left px - 3 sm: px - 4 py - 2 text - sm sm: text - base flex items - center gap - 2 ${ selectedClass?.value === opt.value ? "bg-blue-50 text-blue-600 font-medium" : "hover:bg-blue-50" } `}
                           onClick={() => {
                             setSelectedClass(opt);
                             setShowClassDropdown(false);
                           }}
                           whileHover={{ backgroundColor: "#EEF2FF" }}
                         >
-                          <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                          <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                           {opt.label}
                         </motion.button>
                       ))}
@@ -387,7 +387,7 @@ const ExamManagement = () => {
                   <Button
                     as={Link}
                     to="/teacher/exams/create"
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base font-medium shadow-md transition duration-300 w-full sm:w-auto"
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base font-medium shadow-md transition duration-300 w-full sm:w-auto"
                     aria-label="Create new exam"
                   >
                     <FaPlus className="h-4 sm:h-5 w-4 sm:w-5" />
@@ -403,7 +403,7 @@ const ExamManagement = () => {
           <div className="sm:hidden mb-4">
             <div ref={filterMenuRef} className="relative">
               <motion.button
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 w-full shadow-sm transition duration-300"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 w-full shadow-sm transition duration-300"
                 onClick={() => setShowFilterMenu(!showFilterMenu)}
                 aria-label="Toggle filter menu"
                 aria-expanded={showFilterMenu}
@@ -416,7 +416,7 @@ const ExamManagement = () => {
               <AnimatePresence>
                 {showFilterMenu && (
                   <motion.div
-                    className="absolute top-full left-0 mt-2 w-full bg-white border border-indigo-200 rounded-lg shadow-lg z-20 overflow-hidden"
+                    className="absolute top-full left-0 mt-2 w-full bg-white border border-blue-200 rounded-lg shadow-lg z-20 overflow-hidden"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
@@ -431,7 +431,7 @@ const ExamManagement = () => {
                     ].map(({ status, label, icon: Icon }) => (
                       <motion.button
                         key={status}
-                        className={`flex items - center gap - 2 w - full justify - start px - 3 sm: px - 4 py - 2 text - sm sm: text - base ${ filterStatus === status ? "bg-indigo-600 text-white hover:bg-indigo-700" : "text-indigo-600 hover:bg-indigo-50" } rounded - none`}
+                        className={`flex items - center gap - 2 w - full justify - start px - 3 sm: px - 4 py - 2 text - sm sm: text - base ${ filterStatus === status ? "bg-blue-600 text-white hover:bg-blue-700" : "text-blue-600 hover:bg-blue-50" } rounded - none`}
                         onClick={() => {
                           setFilterStatus(status);
                           setShowFilterMenu(false);
@@ -458,15 +458,15 @@ const ExamManagement = () => {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 >
-                  <FaSpinner className="h-10 sm:h-12 w-10 sm:w-12 text-indigo-600" aria-hidden="true" />
+                  <FaSpinner className="h-10 sm:h-12 w-10 sm:w-12 text-blue-600" aria-hidden="true" />
                 </motion.div>
               </motion.div>
             ) : sortedExams.length === 0 ? (
               <motion.div variants={cardVariants}>
-                <Card className="bg-white border border-indigo-200 w-full max-w-3xl mx-auto shadow-md rounded-lg">
+                <Card className="bg-white border border-blue-200 w-full max-w-3xl mx-auto shadow-md rounded-lg">
                   <div className="p-6 sm:p-8 text-center">
                     <motion.div
-                      className="text-4xl sm:text-5xl mb-4 text-indigo-600"
+                      className="text-4xl sm:text-5xl mb-4 text-blue-600"
                       animate={{ scale: [1, 1.1, 1] }}
                       transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
                     >
@@ -483,7 +483,7 @@ const ExamManagement = () => {
                         <Button
                           as={Link}
                           to="/teacher/exams/create"
-                          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base font-medium shadow-md transition duration-300 w-full sm:w-auto mx-auto"
+                          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base font-medium shadow-md transition duration-300 w-full sm:w-auto mx-auto"
                           aria-label="Create new exam"
                         >
                           <FaPlus className="h-4 sm:h-5 w-4 sm:w-5" />
@@ -502,7 +502,7 @@ const ExamManagement = () => {
                 {sortedExams.slice(0, visibleExams).map((exam) => (
                   <motion.div
                     key={exam._id}
-                    className="bg-white border border-indigo-200 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
+                    className="bg-white border border-blue-200 rounded-lg shadow-md hover:shadow-lg transition-all duration-300"
                     variants={cardVariants}
                     whileHover={{ scale: 1.02 }}
                   >
@@ -570,14 +570,14 @@ const ExamManagement = () => {
                                 onClick: () => handleScheduleExam(exam._id),
                                 icon: <FaCalendar className="h-4 w-4" />,
                                 className:
-                                  "flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 text-sm px-3 py-1.5 rounded-md",
+                                  "flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-600 text-sm px-3 py-1.5 rounded-md",
                               },
                               {
                                 label: "Edit",
                                 onClick: () => navigate(`/ teacher / exams / ${ exam._id }/edit`),
 icon: <FaEdit className="h-4 w-4" />,
     className:
-"flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 text-sm px-3 py-1.5 rounded-md",
+"flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-600 text-sm px-3 py-1.5 rounded-md",
                               },
                             ]
                           : []),
@@ -595,7 +595,7 @@ icon: <FaEdit className="h-4 w-4" />,
             onClick: () => navigate(`/teacher/exams/${exam._id}/edit`),
             icon: <FaEdit className="h-4 w-4" />,
             className:
-                "flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 text-sm px-3 py-1.5 rounded-md",
+                "flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-600 text-sm px-3 py-1.5 rounded-md",
         },
     ]
     : []),
@@ -613,7 +613,7 @@ icon: <FaEdit className="h-4 w-4" />,
             onClick: () => navigate(`/teacher/exams/${exam._id}/submissions`),
             icon: <FaEye className="h-4 w-4" />,
             className:
-                "flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 text-sm px-3 py-1.5 rounded-md",
+                "flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-600 text-sm px-3 py-1.5 rounded-md",
         },
     ]
     : []),
@@ -624,7 +624,7 @@ icon: <FaEdit className="h-4 w-4" />,
             onClick: () => navigate(`/teacher/exams/${exam._id}/submissions`),
             icon: <FaEye className="h-4 w-4" />,
             className:
-                "flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 text-sm px-3 py-1.5 rounded-md",
+                "flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-600 text-sm px-3 py-1.5 rounded-md",
         },
     ]
     : []),
@@ -645,7 +645,7 @@ className = "p-4 sm:p-5"
         <motion.div className="col-span-full text-center mt-6" variants={cardVariants}>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Button
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-2 text-sm sm:text-base font-medium shadow-md transition duration-300"
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-6 py-2 text-sm sm:text-base font-medium shadow-md transition duration-300"
                     onClick={() => setVisibleExams((prev) => prev + 10)}
                     aria-label="Show more exams"
                 >
@@ -661,8 +661,8 @@ className = "p-4 sm:p-5"
     <motion.div className="hidden sm:block w-full sm:w-60" variants={cardVariants}>
         <div className="sticky top-6">
             <div className="flex items-center gap-2 mb-4">
-                <FaFilter className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-lg font-semibold text-indigo-600">Filters</h3>
+                <FaFilter className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-blue-600">Filters</h3>
             </div>
             <div className="flex flex-col gap-2">
                 {[
@@ -676,8 +676,8 @@ className = "p-4 sm:p-5"
                         <Button
                             variant={filterStatus === status ? "primary" : "outline"}
                             className={`flex items-center gap-2 w-full justify-start px-4 py-2 text-sm sm:text-base ${filterStatus === status
-                                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                    : "border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                                    : "border-blue-200 text-blue-600 hover:bg-blue-50"
                                 } rounded-lg shadow-sm transition duration-300`}
                             onClick={() => setFilterStatus(status)}
                             aria-label={`Filter by ${label}`}

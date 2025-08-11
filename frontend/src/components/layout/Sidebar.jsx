@@ -247,7 +247,7 @@ const Sidebar = ({ userRole = "student" }) => {
       case "admin":
         return "bg-red-600";
       case "student":
-        return "bg-indigo-600";
+        return "bg-blue-600";
       case "headmaster":
         return "bg-blue-600";
       default:
@@ -276,17 +276,17 @@ const Sidebar = ({ userRole = "student" }) => {
     <>
       {/* Mobile sidebar toggle button */}
       <button
-        className="md:hidden fixed top-12 left-4 z-50 bg-indigo-50 border border-indigo-200 rounded-lg p-2 shadow-md hover:bg-indigo-100 transition-all duration-300 focus:ring-2 focus:ring-indigo-500"
+        className="md:hidden fixed top-12 left-4 z-50 bg-blue-50 border border-blue-200 rounded-lg p-2 shadow-md hover:bg-blue-100 transition-all duration-300 focus:ring-2 focus:ring-blue-500"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Toggle sidebar"
       >
-        <FaBars className="h-5 w-5 text-indigo-600" />
+        <FaBars className="h-5 w-5 text-blue-600" />
       </button>
 
       {/* Sidebar */}
       <div
         className={`
-          fixed top-0 left-0 z-40 h-full w-64 bg-gradient-to-b from-indigo-50 to-white border-r border-indigo-200 transition-transform duration-300 shadow-md
+          fixed top-0 left-0 z-40 h-full w-64 bg-white border-r border-blue-200 transition-transform duration-300 shadow-md
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0 md:static md:min-h-screen md:shadow-none
         `}
@@ -296,9 +296,9 @@ const Sidebar = ({ userRole = "student" }) => {
           userRole === "teacher" ||
           userRole === "headmaster" ||
           userRole === "admin") && (
-            <div className="p-4 sm:p-6 border-b border-indigo-100">
+            <div className="p-4 sm:p-6 border-b border-blue-100">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-800 flex items-center justify-center shadow-md">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center shadow-md">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="18"
@@ -314,7 +314,7 @@ const Sidebar = ({ userRole = "student" }) => {
                     />
                   </svg>
                 </div>
-                <span className="text-base sm:text-lg font-bold text-indigo-600">EMS Sys</span>
+                <span className="text-base sm:text-lg font-bold text-blue-600">EMS Sys</span>
               </div>
             </div>
           )}
@@ -328,7 +328,7 @@ const Sidebar = ({ userRole = "student" }) => {
                   <button
                     className={`
                       w-full flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base font-medium rounded-lg transition-all duration-300
-                      ${item.active ? "bg-indigo-100 text-indigo-700 font-bold border-l-4 border-indigo-600 shadow-inner" : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-[1.02]"}
+                      ${item.active ? "bg-blue-100 text-blue-700 font-bold border-l-4 border-blue-600 shadow-inner" : "text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:scale-[1.02]"}
                     `}
                     onClick={() => setIsClassManagementOpen(!isClassManagementOpen)}
                     aria-label={item.title}
@@ -336,25 +336,25 @@ const Sidebar = ({ userRole = "student" }) => {
                   >
                     <div className="flex items-center">
                       <item.icon
-                        className={`h-5 sm:h-6 w-5 sm:w-6 mr-3 flex-shrink-0 transition-colors duration-300 ${item.active ? "text-indigo-600" : "text-gray-500 hover:text-indigo-600"}`}
+                        className={`h-5 sm:h-6 w-5 sm:w-6 mr-3 flex-shrink-0 transition-colors duration-300 ${item.active ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}
                       />
                       <span className="truncate">{item.title}</span>
                     </div>
                     {isClassManagementOpen ? (
-                      <FaChevronDown className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                      <FaChevronDown className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                     ) : (
-                      <FaChevronRight className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                      <FaChevronRight className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                     )}
                   </button>
                   {isClassManagementOpen && (
-                    <div className="mt-1 pl-4 sm:pl-6 ml-4 sm:ml-6 space-y-1 border-l-2 border-indigo-200">
+                    <div className="mt-1 pl-4 sm:pl-6 ml-4 sm:ml-6 space-y-1 border-l-2 border-blue-200">
                       {item.children?.map((child, childIndex) => (
                         <Link
                           key={childIndex}
                           to={child.path}
                           className={`
                             flex items-center px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-lg transition-all duration-300
-                            ${child.active ? "bg-indigo-100 text-indigo-700 font-bold border-l-4 border-indigo-600 shadow-inner" : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-[1.02]"}
+                            ${child.active ? "bg-blue-100 text-blue-700 font-bold border-l-4 border-blue-600 shadow-inner" : "text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:scale-[1.02]"}
                           `}
                           onClick={handleMenuClick}
                           aria-label={child.title}
@@ -370,13 +370,13 @@ const Sidebar = ({ userRole = "student" }) => {
                   to={item.path}
                   className={`
                     flex items-center px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base font-medium rounded-lg transition-all duration-300
-                    ${item.active ? "bg-indigo-100 text-indigo-700 font-bold border-l-4 border-indigo-600 shadow-inner" : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 hover:scale-[1.02]"}
+                    ${item.active ? "bg-blue-100 text-blue-700 font-bold border-l-4 border-blue-600 shadow-inner" : "text-gray-700 hover:bg-blue-50 hover:text-blue-600 hover:scale-[1.02]"}
                   `}
                   onClick={handleMenuClick}
                   aria-label={item.title}
                 >
                   <item.icon
-                    className={`h-5 sm:h-6 w-5 sm:w-6 mr-3 flex-shrink-0 transition-colors duration-300 ${item.active ? "text-indigo-600" : "text-gray-500 hover:text-indigo-600"}`}
+                    className={`h-5 sm:h-6 w-5 sm:w-6 mr-3 flex-shrink-0 transition-colors duration-300 ${item.active ? "text-blue-600" : "text-gray-500 hover:text-blue-600"}`}
                   />
                   <span className="truncate">{item.title}</span>
                 </Link>
@@ -387,10 +387,10 @@ const Sidebar = ({ userRole = "student" }) => {
 
         {/* User Role Indicator */}
         <div className="absolute bottom-4 left-4 sm:left-6 right-4 sm:right-6">
-          <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200 shadow-sm">
+          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 shadow-sm">
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${getRoleColor()}`} />
-              <span className="text-xs sm:text-sm font-medium text-indigo-600">{getRoleDisplayName()}</span>
+              <span className="text-xs sm:text-sm font-medium text-blue-600">{getRoleDisplayName()}</span>
             </div>
           </div>
         </div>

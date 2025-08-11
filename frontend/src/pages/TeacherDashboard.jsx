@@ -87,7 +87,7 @@ const TeacherDashboard = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
-            <FaBook className="h-6 sm:h-8 w-6 sm:w-8 text-indigo-600" aria-hidden="true" />
+            <FaBook className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600" aria-hidden="true" />
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Teacher Dashboard</h1>
               <p className="mt-1 text-sm sm:text-base text-gray-600">
@@ -98,7 +98,7 @@ const TeacherDashboard = () => {
           <Button
             as={Link}
             to="/teacher/exams/create"
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-4 sm:px-6 py-2 shadow-md focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-6 py-2 shadow-md focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
             aria-label="Create new exam"
           >
             <FaPlus className="h-4 w-4" />
@@ -112,7 +112,7 @@ const TeacherDashboard = () => {
           <input
             type="text"
             placeholder="Search exams..."
-            className="pl-10 pr-4 py-2 w-full sm:max-w-md bg-gray-50 border border-indigo-300 rounded-full text-sm sm:text-base text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+            className="pl-10 pr-4 py-2 w-full sm:max-w-md bg-gray-50 border border-blue-300 rounded-full text-sm sm:text-base text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             aria-label="Search exams"
@@ -126,10 +126,10 @@ const TeacherDashboard = () => {
         {/* Loading and No Data States */}
         {loading ? (
           <div className="flex justify-center items-center py-12 sm:py-16 min-h-[40vh]">
-            <FaSpinner className="h-10 sm:h-12 w-10 sm:w-12 text-indigo-600 animate-spin" aria-hidden="true" />
+            <FaSpinner className="h-10 sm:h-12 w-10 sm:w-12 text-blue-600 animate-spin" aria-hidden="true" />
           </div>
         ) : filteredExams.length === 0 ? (
-          <Card className="bg-gray-50 border-indigo-200 w-full max-w-3xl mx-auto">
+          <Card className="bg-gray-50 border-blue-200 w-full max-w-3xl mx-auto">
             <div className="p-6 sm:p-8 text-center">
               <div className="text-4xl sm:text-5xl mb-4">📚</div>
               <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">No Exams Found</h3>
@@ -139,7 +139,7 @@ const TeacherDashboard = () => {
               <Button
                 as={Link}
                 to="/teacher/exams/create"
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-4 sm:px-6 py-2 shadow-md focus:ring-2 focus:ring-indigo-500 w-full sm:w-auto mx-auto"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 sm:px-6 py-2 shadow-md focus:ring-2 focus:ring-blue-500 w-full sm:w-auto mx-auto"
                 aria-label="Create new exam"
               >
                 <FaPlus className="h-4 w-4" />
@@ -155,7 +155,7 @@ const TeacherDashboard = () => {
               { key: 'active', title: 'Active Exams', icon: FaPlayCircle, status: 'active' },
               { key: 'completed', title: 'Completed Exams', icon: FaCheckCircle, status: 'completed' },
             ].map(({ key, title, icon: Icon, status }) => (
-              <Card key={key} className="bg-gray-50 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200 w-full">
+              <Card key={key} className="bg-gray-50 border-blue-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 w-full">
                 <div className="p-4 sm:p-6">
                   <button
                     className="flex justify-between items-center w-full text-left"
@@ -164,13 +164,13 @@ const TeacherDashboard = () => {
                     aria-controls={`${key}-exams`}
                   >
                     <div className="flex items-center gap-2">
-                      <Icon className="h-5 sm:h-6 w-5 sm:w-6 text-indigo-600" />
-                      <h2 className="text-base sm:text-lg font-semibold text-indigo-600">
+                      <Icon className="h-5 sm:h-6 w-5 sm:w-6 text-blue-600" />
+                      <h2 className="text-base sm:text-lg font-semibold text-blue-600">
                         {title} <span className="sm:inline hidden">({groupedExams[key].length})</span>
                       </h2>
                     </div>
                     <FaChevronDown
-                      className={`h-4 sm:h-5 w-4 sm:w-5 text-indigo-600 transition-transform ${sectionVisibility[key] ? 'rotate-180' : ''}`}
+                      className={`h-4 sm:h-5 w-4 sm:w-5 text-blue-600 transition-transform ${sectionVisibility[key] ? 'rotate-180' : ''}`}
                     />
                   </button>
 
@@ -194,7 +194,7 @@ const TeacherDashboard = () => {
                               aria-pressed="false"
                             >
                               <div className="flex-grow min-w-0">
-                                <p className="text-indigo-700 font-semibold truncate">{exam.title}</p>
+                                <p className="text-blue-700 font-semibold truncate">{exam.title}</p>
                                 <p className="text-gray-500 text-sm truncate">
                                   Classes:{' '}
                                   {Array.isArray(exam.classes) && exam.classes.length > 0
@@ -239,7 +239,7 @@ const TeacherDashboard = () => {
                         <Button
                           as={Link}
                           to={`/teacher/exams?status=${status}`}
-                          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-3 sm:px-4 py-1 text-xs sm:text-sm shadow-md focus:ring-2 focus:ring-indigo-500"
+                          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md px-3 sm:px-4 py-1 text-xs sm:text-sm shadow-md focus:ring-2 focus:ring-blue-500"
                           aria-label={`View details for ${status} exams`}
                         >
                           View Details

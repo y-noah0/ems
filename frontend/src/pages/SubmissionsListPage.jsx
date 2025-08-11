@@ -31,7 +31,7 @@ const SubmissionsListPage = () => {
   const [visibleSubmissions, setVisibleSubmissions] = useState(10);
   const examDropdownRef = useRef(null);
   const subjectDropdownRef = useRef(null);
-  const classDropdownRef = useRef(null); // Fixed: Properly declare with const
+  const classDropdownRef = useRef(null);
   const filterMenuRef = useRef(null);
 
   // Custom debounce function
@@ -100,7 +100,7 @@ const SubmissionsListPage = () => {
       );
     } catch (error) {
       console.error('Error fetching data:', error);
-      const errorMsg = error.response?.data?.message || 'Failed to load data';
+      const errorMsg = error.message || 'Failed to load data';
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -161,7 +161,7 @@ const SubmissionsListPage = () => {
       <div className="p-4 sm:p-6 w-full max-w-7xl mx-auto font-roboto">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8 gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
-            <FaFileAlt className="h-6 sm:h-8 w-6 sm:w-8 text-indigo-600" aria-hidden="true" />
+            <FaFileAlt className="h-6 sm:h-8 w-6 sm:w-8 text-blue-600 animate-pulse" aria-hidden="true" />
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Student Submissions</h1>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">
@@ -170,7 +170,7 @@ const SubmissionsListPage = () => {
               <input
                 type="text"
                 placeholder="Search submissions..."
-                className="pl-10 pr-4 py-2 w-full bg-gray-50 border border-indigo-300 rounded-full text-sm sm:text-base text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
+                className="pl-10 pr-4 py-2 w-full bg-gray-50 border border-blue-300 rounded-full text-sm sm:text-base text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-300 hover:shadow-md"
                 onChange={(e) => debouncedSetSearchTerm(e.target.value)}
                 aria-label="Search submissions"
               />
@@ -178,39 +178,39 @@ const SubmissionsListPage = () => {
             <div className="flex gap-3 sm:gap-4 w-full sm:w-auto">
               <div ref={examDropdownRef} className="relative w-full sm:w-auto">
                 <button
-                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gray-50 border border-indigo-300 rounded-md text-sm sm:text-base text-gray-700 w-full sm:min-w-[140px] hover:bg-indigo-50 transition duration-200"
+                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gray-50 border border-blue-300 rounded-md text-sm sm:text-base text-gray-700 w-full sm:min-w-[140px] hover:bg-blue-50 transition duration-300 hover:shadow-md"
                   onClick={() => setShowExamDropdown(!showExamDropdown)}
                   aria-label="Select exam filter"
                   aria-expanded={showExamDropdown}
                 >
-                  <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                  <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                   {selectedExam?.label || 'Exam'}
                   <FaChevronDown
-                    className={`h-4 sm:h-5 w-4 sm:w-5 text-indigo-600 transition-transform ${showExamDropdown ? 'rotate-180' : ''}`}
+                    className={`h-4 sm:h-5 w-4 sm:w-5 text-blue-600 transition-transform duration-200 ${showExamDropdown ? 'rotate-180' : ''}`}
                   />
                 </button>
                 {showExamDropdown && (
-                  <div className="absolute top-full left-0 mt-2 w-full bg-white border border-indigo-200 rounded-lg shadow-xl z-20 overflow-hidden transition-all duration-200">
+                  <div className="absolute top-full left-0 mt-2 w-full bg-white border border-blue-200 rounded-lg shadow-xl z-20 overflow-hidden animate-slide-down">
                     <button
-                      className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${!selectedExam ? 'bg-indigo-50 text-indigo-600 font-medium' : 'hover:bg-indigo-50'}`}
+                      className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${!selectedExam ? 'bg-blue-50 text-blue-600 font-medium' : 'hover:bg-blue-50'}`}
                       onClick={() => {
                         setSelectedExam(null);
                         setShowExamDropdown(false);
                       }}
                     >
-                      <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                      <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                       All Exams
                     </button>
                     {exams.map((exam) => (
                       <button
                         key={exam._id}
-                        className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${selectedExam?.value === exam._id ? 'bg-indigo-50 text-indigo-600 font-medium' : 'hover:bg-indigo-50'}`}
+                        className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${selectedExam?.value === exam._id ? 'bg-blue-50 text-blue-600 font-medium' : 'hover:bg-blue-50'}`}
                         onClick={() => {
                           setSelectedExam({ value: exam._id, label: exam.title });
                           setShowExamDropdown(false);
                         }}
                       >
-                        <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                        <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                         {exam.title}
                       </button>
                     ))}
@@ -219,39 +219,39 @@ const SubmissionsListPage = () => {
               </div>
               <div ref={subjectDropdownRef} className="relative w-full sm:w-auto">
                 <button
-                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gray-50 border border-indigo-300 rounded-md text-sm sm:text-base text-gray-700 w-full sm:min-w-[140px] hover:bg-indigo-50 transition duration-200"
+                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gray-50 border border-blue-300 rounded-md text-sm sm:text-base text-gray-700 w-full sm:min-w-[140px] hover:bg-blue-50 transition duration-300 hover:shadow-md"
                   onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
                   aria-label="Select subject filter"
                   aria-expanded={showSubjectDropdown}
                 >
-                  <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                  <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                   {selectedSubject?.label || 'Subject'}
                   <FaChevronDown
-                    className={`h-4 sm:h-5 w-4 sm:w-5 text-indigo-600 transition-transform ${showSubjectDropdown ? 'rotate-180' : ''}`}
+                    className={`h-4 sm:h-5 w-4 sm:w-5 text-blue-600 transition-transform duration-200 ${showSubjectDropdown ? 'rotate-180' : ''}`}
                   />
                 </button>
                 {showSubjectDropdown && (
-                  <div className="absolute top-full left-0 mt-2 w-full bg-white border border-indigo-200 rounded-lg shadow-xl z-20 overflow-hidden transition-all duration-200">
+                  <div className="absolute top-full left-0 mt-2 w-full bg-white border border-blue-200 rounded-lg shadow-xl z-20 overflow-hidden animate-slide-down">
                     <button
-                      className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${!selectedSubject ? 'bg-indigo-50 text-indigo-600 font-medium' : 'hover:bg-indigo-50'}`}
+                      className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${!selectedSubject ? 'bg-blue-50 text-blue-600 font-medium' : 'hover:bg-blue-50'}`}
                       onClick={() => {
                         setSelectedSubject(null);
                         setShowSubjectDropdown(false);
                       }}
                     >
-                      <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                      <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                       All Subjects
                     </button>
                     {subjectOptionsList.map((opt) => (
                       <button
                         key={opt.value}
-                        className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${selectedSubject?.value === opt.value ? 'bg-indigo-50 text-indigo-600 font-medium' : 'hover:bg-indigo-50'}`}
+                        className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${selectedSubject?.value === opt.value ? 'bg-blue-50 text-blue-600 font-medium' : 'hover:bg-blue-50'}`}
                         onClick={() => {
                           setSelectedSubject(opt);
                           setShowSubjectDropdown(false);
                         }}
                       >
-                        <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                        <FaBook className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                         {opt.label}
                       </button>
                     ))}
@@ -260,39 +260,39 @@ const SubmissionsListPage = () => {
               </div>
               <div ref={classDropdownRef} className="relative w-full sm:w-auto">
                 <button
-                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gray-50 border border-indigo-300 rounded-md text-sm sm:text-base text-gray-700 w-full sm:min-w-[140px] hover:bg-indigo-50 transition duration-200"
+                  className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-gray-50 border border-blue-300 rounded-md text-sm sm:text-base text-gray-700 w-full sm:min-w-[140px] hover:bg-blue-50 transition duration-300 hover:shadow-md"
                   onClick={() => setShowClassDropdown(!showClassDropdown)}
                   aria-label="Select class filter"
                   aria-expanded={showClassDropdown}
                 >
-                  <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                  <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                   {selectedClass?.label || 'Class'}
                   <FaChevronDown
-                    className={`h-4 sm:h-5 w-4 sm:w-5 text-indigo-600 transition-transform ${showClassDropdown ? 'rotate-180' : ''}`}
+                    className={`h-4 sm:h-5 w-4 sm:w-5 text-blue-600 transition-transform duration-200 ${showClassDropdown ? 'rotate-180' : ''}`}
                   />
                 </button>
                 {showClassDropdown && (
-                  <div className="absolute top-full left-0 mt-2 w-full bg-white border border-indigo-200 rounded-lg shadow-xl z-20 overflow-hidden transition-all duration-200">
+                  <div className="absolute top-full left-0 mt-2 w-full bg-white border border-blue-200 rounded-lg shadow-xl z-20 overflow-hidden animate-slide-down">
                     <button
-                      className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${!selectedClass ? 'bg-indigo-50 text-indigo-600 font-medium' : 'hover:bg-indigo-50'}`}
+                      className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${!selectedClass ? 'bg-blue-50 text-blue-600 font-medium' : 'hover:bg-blue-50'}`}
                       onClick={() => {
                         setSelectedClass(null);
                         setShowClassDropdown(false);
                       }}
                     >
-                      <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                      <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                       All Classes
                     </button>
                     {classOptionsList.map((opt) => (
                       <button
                         key={opt.value}
-                        className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${selectedClass?.value === opt.value ? 'bg-indigo-50 text-indigo-600 font-medium' : 'hover:bg-indigo-50'}`}
+                        className={`block w-full text-left px-3 sm:px-4 py-2 text-sm sm:text-base flex items-center gap-2 ${selectedClass?.value === opt.value ? 'bg-blue-50 text-blue-600 font-medium' : 'hover:bg-blue-50'}`}
                         onClick={() => {
                           setSelectedClass(opt);
                           setShowClassDropdown(false);
                         }}
                       >
-                        <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-600" />
+                        <FaUsers className="h-4 sm:h-5 w-4 sm:w-5 text-blue-600" />
                         {opt.label}
                       </button>
                     ))}
@@ -307,7 +307,7 @@ const SubmissionsListPage = () => {
           <div className="sm:hidden mb-4">
             <div ref={filterMenuRef} className="relative">
               <Button
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2 w-full"
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 py-2 w-full transition-transform duration-200 hover:scale-105"
                 onClick={() => setShowFilterMenu(!showFilterMenu)}
                 aria-label="Toggle filter menu"
                 aria-expanded={showFilterMenu}
@@ -316,7 +316,7 @@ const SubmissionsListPage = () => {
                 Filters
               </Button>
               {showFilterMenu && (
-                <div className="absolute top-full left-0 mt-2 w-full bg-white border border-indigo-200 rounded-lg shadow-xl z-20 overflow-hidden transition-all duration-200">
+                <div className="absolute top-full left-0 mt-2 w-full bg-white border border-blue-200 rounded-lg shadow-xl z-20 overflow-hidden animate-slide-down">
                   {[
                     { status: 'all', label: 'All', icon: FaFilter },
                     { status: 'pending', label: 'Pending', icon: FaFileAlt },
@@ -330,7 +330,7 @@ const SubmissionsListPage = () => {
                         setFilterStatus(status);
                         setShowFilterMenu(false);
                       }}
-                      className={`flex items-center gap-2 w-full justify-start px-3 sm:px-4 py-2 text-sm sm:text-base ${filterStatus === status ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'border-indigo-300 text-indigo-600 hover:bg-indigo-50'} rounded-none`}
+                      className={`flex items-center gap-2 w-full justify-start px-3 sm:px-4 py-2 text-sm sm:text-base ${filterStatus === status ? 'bg-blue-600 text-white hover:bg-blue-700' : 'border-blue-300 text-blue-600 hover:bg-blue-50'} rounded-none transition-all duration-200`}
                       aria-label={`Filter by ${label}`}
                     >
                       <Icon className="h-4 sm:h-5 w-4 sm:w-5" />
@@ -344,7 +344,7 @@ const SubmissionsListPage = () => {
           <div className="flex-1">
             {loading ? (
               <div className="flex justify-center items-center py-12 sm:py-16 min-h-[40vh]">
-                <FaSpinner className="h-10 sm:h-12 w-10 sm:w-12 text-indigo-600 animate-spin" aria-hidden="true" />
+                <FaSpinner className="h-10 sm:h-12 w-10 sm:w-12 text-blue-600 animate-spin" aria-hidden="true" />
               </div>
             ) : error ? (
               <Card className="bg-red-50 border-red-200 w-full max-w-3xl mx-auto animate-fade-in">
@@ -352,14 +352,14 @@ const SubmissionsListPage = () => {
                   <div className="text-red-700 text-xl sm:text-2xl mb-4">{error}</div>
                   <Button
                     onClick={() => navigate('/login')}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 sm:px-6 py-2"
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 sm:px-6 py-2 transition-transform duration-200 hover:scale-105"
                   >
                     Go to Login
                   </Button>
                 </div>
               </Card>
             ) : Object.keys(groupedSubmissions).length === 0 ? (
-              <Card className="bg-gray-50 border-indigo-200 w-full max-w-3xl mx-auto animate-fade-in">
+              <Card className="bg-gray-50 border-blue-200 w-full max-w-3xl mx-auto animate-fade-in">
                 <div className="p-6 sm:p-8 text-center">
                   <div className="text-4xl sm:text-5xl mb-4">📝</div>
                   <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">No Submissions Found</h3>
@@ -375,7 +375,7 @@ const SubmissionsListPage = () => {
                 {Object.entries(groupedSubmissions)
                   .slice(0, visibleSubmissions)
                   .map(([examId, { exam, submissions }]) => (
-                    <div key={examId} className="bg-gray-50 border-indigo-200 hover:border-indigo-300 transition-all duration-200">
+                    <div key={examId} className="bg-gray-50 border-blue-200 hover:border-blue-300 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
                       <Link to={`/teacher/exams/${examId}/results`} className="block mb-4">
                         <ExamCard
                           title={exam.title || 'Untitled Exam'}
@@ -392,8 +392,8 @@ const SubmissionsListPage = () => {
                           statusBadge={
                             <span
                               className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-medium ${submissions.some((s) => s.status === 'pending')
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-green-100 text-green-800'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-green-100 text-green-800'
                                 }`}
                             >
                               {submissions.some((s) => s.status === 'pending') ? 'Pending' : 'Graded'}
@@ -431,7 +431,7 @@ const SubmissionsListPage = () => {
                         {submissions.map((submission) => (
                           <Card
                             key={submission._id}
-                            className="bg-white border-indigo-200 hover:shadow-lg transition-all duration-200"
+                            className="bg-white border-blue-200 hover:shadow-lg transition-all duration-300"
                           >
                             <div className="p-4 sm:p-6">
                               <div className="flex justify-between items-start mb-2">
@@ -477,9 +477,9 @@ const SubmissionsListPage = () => {
                                 <Button
                                   onClick={() => navigate(`/teacher/submissions/${submission._id}/view`)}
                                   className={`${submission.status === 'pending'
-                                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                                      : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-600'
-                                    } rounded-md px-3 sm:px-4 py-1 text-xs sm:text-sm font-medium transform hover:scale-105 transition duration-200`}
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                    : 'bg-blue-100 hover:bg-blue-200 text-blue-600'
+                                    } rounded-md px-3 sm:px-4 py-1 text-xs sm:text-sm font-medium transform hover:scale-105 transition duration-300`}
                                 >
                                   {submission.status === 'pending' ? 'Review & Grade' : 'View Details'}
                                 </Button>
@@ -493,7 +493,7 @@ const SubmissionsListPage = () => {
                 {totalSubmissions > visibleSubmissions && (
                   <div className="col-span-full text-center mt-4">
                     <Button
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2 text-sm sm:text-base"
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-md px-4 py-2 text-sm sm:text-base transition-transform duration-200 hover:scale-105"
                       onClick={() => setVisibleSubmissions((prev) => prev + 10)}
                       aria-label="Show more submissions"
                     >
@@ -507,8 +507,8 @@ const SubmissionsListPage = () => {
           <div className="hidden sm:block w-full sm:w-48">
             <div className="sticky top-6">
               <div className="flex items-center gap-2 mb-4">
-                <FaFilter className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-base sm:text-lg font-semibold text-indigo-600">Filters</h3>
+                <FaFilter className="h-5 w-5 text-blue-600 animate-pulse" />
+                <h3 className="text-base sm:text-lg font-semibold text-blue-600">Filters</h3>
               </div>
               <div className="flex flex-col gap-2">
                 {[
@@ -522,9 +522,9 @@ const SubmissionsListPage = () => {
                     size="sm"
                     onClick={() => setFilterStatus(status)}
                     className={`flex items-center gap-2 w-full justify-start px-3 sm:px-4 py-2 text-sm sm:text-base ${filterStatus === status
-                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        : 'border-indigo-300 text-indigo-600 hover:bg-indigo-50'
-                      } rounded-md`}
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'border-blue-300 text-blue-600 hover:bg-blue-50'
+                      } rounded-md transition-all duration-200 hover:shadow-md`}
                     aria-label={`Filter by ${label}`}
                   >
                     <Icon className="h-4 sm:h-5 w-4 sm:w-5" />
@@ -544,10 +544,23 @@ const SubmissionsListPage = () => {
         .animate-fade-in {
           animation: fadeIn 0.5s ease-in;
         }
+        .animate-slide-down {
+          animation: slideDown 0.3s ease-out;
+        }
         @keyframes fadeIn {
           from {
             opacity: 0;
             transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
           }
           to {
             opacity: 1;
