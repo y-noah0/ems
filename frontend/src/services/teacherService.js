@@ -55,7 +55,8 @@ const teacherService = {
 
     fetchTeachers: async (schoolId) => {
         try {
-            const response = await api.post('/teachers', { schoolId: schoolId });
+            console.log('getting for, ', schoolId)
+            const response = await api.post('/teacher', { schoolId: schoolId });
             
             return response.data.teachers;
         } catch (error) {

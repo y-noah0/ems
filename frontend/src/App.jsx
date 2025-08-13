@@ -154,7 +154,7 @@ function App() {
                                 path="/headmaster/classes"
                                 element={
                                     <ProtectedRoute allowedRoles={["headmaster"]}>
-                                        <ClassesManagement />
+                                        <ManageClasses />
                                     </ProtectedRoute>
                                 }
                             />
@@ -185,10 +185,10 @@ function App() {
 
                             
                             <Route
-                                path="/headmaster/classes/performance"
+                                path="/headmaster/class/performance"
                                 element={
                                     <ProtectedRoute allowedRoles={["headmaster"]}>
-                                        <ClassesManagement />
+                                        <PerformancePage />
                                     </ProtectedRoute>
                                 }
                             />
@@ -443,16 +443,7 @@ function App() {
                                     </ProtectedRoute>
                                 }
                             />
-                            <Route
-                                path="/headmaster/classes"
-                                element={
-                                    <ProtectedRoute
-                                        allowedRoles={["dean", "headmaster"]}
-                                    >
-                                        <ClassesPage />
-                                    </ProtectedRoute>
-                                }
-                            />
+                            
                             <Route
                                 path="/dean/performance"
                                 element={

@@ -41,6 +41,7 @@ export default function UserManagement() {
             setLoading(true);
             try {
                 const data = await teacherService.fetchTeachers(currentSchool);
+                console.log(currentSchool)
                 const staffData = data;
 
                 setStaff(staffData);
@@ -69,7 +70,7 @@ export default function UserManagement() {
         setFormError("");
         try {
             // Build payload: only include fullName, email, role, school
-            const payload = { fullName: formData.fullName, email: formData.email, phoneNumber: formData.phoneNumber, role: formData.role, school: currentSchool };
+            const payload = { fullName: formData.fullName, email: formData.email, phoneNumber: formData.phoneNumber, role: formData.role, schoolId: currentSchool };
             if (editUser) {
                 await systemAdminService.updateUser(editUser._id, payload);
             } else {
@@ -77,7 +78,7 @@ export default function UserManagement() {
                 if (formData.role === 'dean' && staff.some(u => u.role === 'dean')) {
                     throw new Error('A dean already exists');
                 }
-                await systemAdminService.createStaff(payload);
+                await teacherService.register(payload);
             }
              // Refresh
              window.location.reload();

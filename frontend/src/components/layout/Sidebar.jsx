@@ -10,7 +10,7 @@ const Sidebar = ({ userRole = "student" }) => {
     location.pathname.includes("/dean/performance") ||
     location.pathname.includes("/headmaster/classes") ||
     location.pathname.includes("/headmaster/create-class") ||
-    location.pathname.includes("/headmaster/classes/performance")
+    location.pathname.includes("/headmaster/class/performance")
   );
 
   const menuItems = [
@@ -107,7 +107,7 @@ const Sidebar = ({ userRole = "student" }) => {
       active:
         location.pathname.includes("/headmaster/classes") ||
         location.pathname.includes("/headmaster/create-class") ||
-        location.pathname.includes("/headmaster/classes/performance"),
+        location.pathname.includes("/headmaster/class/performance"),
       roles: ["headmaster"],
       children: [
         {
@@ -117,8 +117,8 @@ const Sidebar = ({ userRole = "student" }) => {
         },
         {
           title: "Class Performance",
-          path: "/headmaster/classes/performance",
-          active: location.pathname.includes("/headmaster/classes/performance"),
+          path: "/headmaster/class/performance",
+          active: location.pathname.includes("/headmaster/class/performance"),
         },
       ],
     },
