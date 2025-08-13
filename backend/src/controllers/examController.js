@@ -11,6 +11,9 @@ const { checkScheduleConflicts } = require('../utils/scheduleValidator');
 const { toUTC } = require('../utils/dateUtils');
 const { logAudit } = require('../utils/auditLogger');
 const notificationService = require('../utils/notificationService');
+const { sendSMS } = require('../services/twilioService');
+const { sendEmail } = require('../services/emailService');
+const SocketNotificationService = require('../utils/socketNotificationService');
 const schedule = require('node-schedule');
 const enrollment = require('../models/enrollment');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -353,6 +356,72 @@ exports.createExam = async (req, res) => {
 
     await exam.save();
 
+      // Add audit log
+      await logAudit(
+        'exam',
+        exam._id,
+        'create',
+        req.user.id,
+        null,
+        {
+          title: exam.title,
+          status: exam.status,
+          schedule: exam.schedule,
+          school: schoolId
+        }
+      );
+
+      logger.info('Exam created successfully', {
+        examId: exam._id,
+        teacherId: req.user.id,
+        schoolId
+      });
+
+      // Real-time notification for exam scheduled
+      try {
+        SocketNotificationService.notifyExamScheduled(exam, exam.classes);
+      } catch (socketError) {
+        logger.error('Failed to send socket notification for exam scheduled', {
+          examId: exam._id,
+          error: socketError.message
+        });
+      }
+
+      // Notify students about the new exam
+      try {
+        const students = await User.find({
+          class: { $in: exam.classes },
+          role: 'student',
+          school: schoolId
+        });
+
+        for (const student of students) {
+          try {
+            if (student.phone) {
+              await sendSMS(
+                student.phone,
+                `New exam "${exam.title}" has been scheduled. Check your dashboard for details.`
+              );
+            }
+          } catch (smsErr) {
+            console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
+          }
+
+          try {
+            if (student.email) {
+              await sendEmail(
+                student.email,
+                'New Exam Scheduled',
+                `Dear ${student.fullName},\n\nA new exam "${exam.title}" has been scheduled. Please check your dashboard for details.`
+              );
+            }
+          } catch (emailErr) {
+            console.error(`Failed to send email to ${student.email}:`, emailErr.message);
+          }
+        }
+      } catch (notifyErr) {
+        console.error('Error notifying students:', notifyErr.message);
+      }
     // Log audit
     await logAudit('exam_created', req.user.id, exam._id, 'Exam', {
       title: sanitizedData.title,
@@ -407,6 +476,7 @@ exports.createExam = async (req, res) => {
 
     logger.info('Exam created successfully', { examId: exam._id, userId: req.user.id });
     res.status(201).json({ success: true, exam, message: 'Exam created successfully' });
+
   } catch (error) {
     logger.error('Error creating exam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -534,49 +604,78 @@ exports.updateExam = async (req, res) => {
       exam.subject = subjectId;
     }
 
-    if (schedule) {
-      const utcStart = toUTC(schedule.start);
-      const now = new Date();
-      const oneYearFromNow = new Date();
-      oneYearFromNow.setFullYear(now.getFullYear() + 1);
-      if (utcStart <= now) {
-        logger.warn('Start time must be in the future', { userId: req.user.id, startTime: utcStart });
-        return res.status(400).json({ success: false, message: 'Start time must be in the future' });
+      if (schedule) {
+        if (schedule.start && schedule.duration) {
+          const startDate = toUTC(sanitize(schedule.start));
+          if (status === 'scheduled' || exam.status === 'scheduled') {
+            if (startDate <= new Date()) {
+              logger.warn('Invalid start date in update: must be in the future', { examId, startDate, userId: req.user.id });
+              return res.status(400).json({
+                success: false,
+                message: 'Exam start time must be in the future'
+              });
+            }
+          }
+          exam.schedule = {
+            start: startDate,
+            duration: sanitize(schedule.duration)
+          };
+          if (exam.status === 'draft' || exam.status === 'pending') {
+            exam.status = 'scheduled';
+          }
+        } else if (schedule.start === null && schedule.duration === null) {
+          exam.schedule = undefined;
+          if (exam.status === 'scheduled') {
+            exam.status = 'draft';
+          }
+        }
       }
-      if (utcStart > oneYearFromNow) {
-        logger.warn('Start time too far in the future', { userId: req.user.id, startTime: utcStart });
-        return res.status(400).json({ success: false, message: 'Start time cannot be more than one year in the future' });
+
+      if (questions && questions.length >= 0) {
+        exam.questions = questions.map(q => {
+          const sanitizedQuestion = {
+            type: sanitize(q.type) || 'multiple-choice',
+            text: sanitize(q.text) || '',
+            maxScore: parseInt(q.maxScore || q.points || 10) || 10,
+          };
+
+          if (q.options && Array.isArray(q.options)) {
+            sanitizedQuestion.options = q.options.map(o => ({
+              text: sanitize(typeof o === 'object' ? o.text : String(o)),
+              isCorrect: typeof o === 'object' ? !!o.isCorrect : false
+            }));
+          } else {
+            sanitizedQuestion.options = [];
+          }
+
+          if (q.correctAnswer) {
+            sanitizedQuestion.correctAnswer = sanitize(String(q.correctAnswer));
+          } else if (sanitizedQuestion.type === 'multiple-choice' && sanitizedQuestion.options.length > 0) {
+            const correctOption = sanitizedQuestion.options.find(opt => opt.isCorrect);
+            sanitizedQuestion.correctAnswer = correctOption ? correctOption.text : '';
+          } else {
+            sanitizedQuestion.correctAnswer = '';
+          }
+          return sanitizedQuestion;
+        });
       }
-      const conflict = await checkScheduleConflicts(exam.classes, utcStart, schedule.duration, schoolId, examId);
-      if (conflict.hasConflict) {
-        logger.warn('Schedule conflict in updateExam', { examId, userId: req.user.id, exams: conflict.exams });
-        return res.status(400).json({ success: false, message: 'Schedule conflict with another exam', conflicts: conflict.exams });
-      }
-      exam.schedule = { start: utcStart, duration: schedule.duration };
-      exam.status = 'scheduled';
-    }
 
-    if (questions) {
-      exam.questions = questions;
-      await Exam.recalculateTotalPoints(examId);
-    }
-
-    exam.title = sanitizedData.title;
-    exam.type = sanitizedData.type;
-    exam.instructions = sanitizedData.instructions;
-
+    exam.updatedAt = new Date();
     await exam.save();
 
-    await logAudit('exam_updated', req.user.id, examId, 'Exam', {
-      title: sanitizedData.title,
-      type: sanitizedData.type,
-      classIds: classIds || exam.classes,
-      subjectId: subjectId || exam.subject,
-      termId: termId || exam.term
-    });
+    // Real-time notification for exam updated
+    try {
+      const changes = Object.keys(req.body).filter(key => key !== 'schoolId');
+      SocketNotificationService.notifyExamUpdated(exam, changes);
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for exam updated', {
+        examId: exam._id,
+        error: socketError.message
+      });
+    }
 
-    logger.info('Exam updated successfully', { examId, userId: req.user.id });
-    res.json({ success: true, exam, message: 'Exam updated successfully' });
+    logger.info('Exam updated successfully', { examId, teacherId: req.user.id, schoolId });
+    res.status(200).json({ success: true, exam: exam.toObject(), message: 'Exam updated successfully' });
   } catch (error) {
     logger.error('Error updating exam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -619,10 +718,18 @@ exports.deleteExam = async (req, res) => {
     exam.isDeleted = true;
     await exam.save();
 
-    await logAudit('exam_deleted', req.user.id, examId, 'Exam', { title: exam.title });
+    // Real-time notification for exam cancelled/deleted
+    try {
+      SocketNotificationService.notifyExamCancelled(exam, 'Exam was deleted by instructor');
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for exam deleted', {
+        examId: exam._id,
+        error: socketError.message
+      });
+    }
 
-    logger.info('Exam deleted successfully', { examId, userId: req.user.id });
-    res.json({ success: true, message: 'Exam deleted successfully' });
+    logger.info('Exam deleted successfully', { examId, teacherId: req.user.id, schoolId });
+    res.status(200).json({ success: true, message: 'Exam deleted successfully' });
   } catch (error) {
     logger.error('Error deleting exam', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server Error' });

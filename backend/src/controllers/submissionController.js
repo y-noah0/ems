@@ -10,6 +10,7 @@ const { toUTC } = require('../utils/dateUtils');
 const notificationService = require('../utils/notificationService');
 const { sendSMS } = require('../services/twilioService');
 const { sendEmail } = require('../services/emailService');
+const SocketNotificationService = require('../utils/socketNotificationService');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -390,49 +391,111 @@ submissionController.submitExam = async (req, res) => {
 
     if (answers && answers.length > 0) {
       answers.forEach(answer => {
-        const question = exam.questions.id(answer.questionId);
-        if (!question) return;
-
-        const existingAnswer = submission.answers.find(a => a.questionId.toString() === answer.questionId.toString());
-        if (existingAnswer) {
-          existingAnswer.answer = sanitize(answer.answer);
-          existingAnswer.timeSpent = answer.timeSpent || existingAnswer.timeSpent || 0;
-        } else {
-          submission.answers.push({
-            questionId: answer.questionId,
-            answer: sanitize(answer.answer),
-            timeSpent: answer.timeSpent || 0
-          });
+        const idx = submission.answers.findIndex(a => a.questionId.toString() === answer.questionId);
+        if (idx !== -1) {
+          submission.answers[idx].answer = sanitize(answer.answer) || '';
+          submission.answers[idx].timeSpent = parseInt(answer.timeSpent) || 0;
         }
       });
     }
 
-    // Auto-grade multiple-choice questions
-    let totalScore = 0;
-    submission.answers = submission.answers.map(answer => {
-      const question = exam.questions.id(answer.questionId);
-      if (question && ['multiple-choice', 'true-false'].includes(question.type)) {
-        const isCorrect = answer.answer === question.correctAnswer;
-        answer.score = isCorrect ? question.maxScore : 0;
-        answer.graded = isCorrect;
-        totalScore += answer.score;
-      }
-      return answer;
-    });
-
-    submission.status = 'submitted';
     submission.submittedAt = new Date();
-    submission.totalScore = totalScore;
-    submission.percentage = exam.totalPoints ? (totalScore / exam.totalPoints) * 100 : 0;
-    submission.gradeLetter = calculateGradeLetter(submission.percentage);
-
+    await autoGradeObjectiveQuestions(submission, submission.exam);
     await submission.save();
 
-    // Notify student and teacher
-    notificationService.notifyStudentExamSubmitted(submission.student, exam._id);
-    notificationService.notifyTeacherSubmissionReceived(exam.teacher, submission.student, exam._id);
+    await logAudit(
+      'submission',
+      submission._id,
+      'submit',
+      req.user.id,
+      { status: 'in-progress' },
+      { status: submission.status, submittedAt: submission.submittedAt, school: schoolId }
+    );
 
-    res.json({ success: true, message: 'Exam submitted successfully' });
+    if (submission.status === 'graded') {
+      await notificationService.sendGradeNotification(req.io, submission.student, submission);
+    }
+
+    // Real-time notification for submission received
+    try {
+      const exam = await Exam.findById(submission.exam).populate('teacher', 'fullName email phone');
+      const student = await User.findById(submission.student);
+
+      // Notify teacher about submission via Socket.IO
+      SocketNotificationService.notifySubmissionReceived(submission, student, exam);
+      
+      // If submission was auto-graded, notify student immediately
+      if (submission.status === 'graded') {
+        SocketNotificationService.notifySubmissionGraded(submission, exam);
+      }
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for submission', {
+        submissionId: submission._id,
+        error: socketError.message
+      });
+    }
+
+    try {
+      const exam = await Exam.findById(submission.exam).populate('teacher', 'fullName email phone');
+      const student = await User.findById(submission.student);
+
+      try {
+        if (exam.teacher.phone) {
+          await sendSMS(
+            exam.teacher.phone,
+            `Student ${student.fullName} has submitted the exam "${exam.title}".`
+          );
+        }
+      } catch (smsErr) {
+        console.error(`Failed to send SMS to ${exam.teacher.phone}:`, smsErr.message);
+      }
+
+      try {
+        if (exam.teacher.email) {
+          await sendEmail(
+            exam.teacher.email,
+            'Exam Submission Notification',
+            `Dear ${exam.teacher.fullName},\n\nStudent ${student.fullName} has submitted the exam "${exam.title}".`
+          );
+        }
+      } catch (emailErr) {
+        console.error(`Failed to send email to ${exam.teacher.email}:`, emailErr.message);
+      }
+
+      if (submission.status === 'graded') {
+        try {
+          if (student.phone) {
+            await sendSMS(
+              student.phone,
+              `Your exam "${exam.title}" has been graded. Check your dashboard for details.`
+            );
+          }
+        } catch (smsErr) {
+          console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
+        }
+
+        try {
+          if (student.email) {
+            await sendEmail(
+              student.email,
+              'Exam Graded Notification',
+              `Dear ${student.fullName},\n\nYour exam "${exam.title}" has been graded. Please check your dashboard for your results.`
+            );
+          }
+        } catch (emailErr) {
+          console.error(`Failed to send email to ${student.email}:`, emailErr.message);
+        }
+      }
+    } catch (notifyErr) {
+      console.error('Error sending notifications:', notifyErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Exam submitted',
+      submission,
+      autoGraded: submission.status === 'graded'
+    });
   } catch (error) {
     logger.error('submitExam error', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server error occurred while submitting exam' });
@@ -722,8 +785,56 @@ submissionController.gradeOpenQuestions = async (req, res) => {
 
     await submission.save();
 
-    // Notify student
-    notificationService.notifyStudentSubmissionGraded(submission.student, submission.exam._id, submission.totalScore, submission.percentage);
+    await logAudit(
+      'submission',
+      submission._id,
+      'grade',
+      req.user.id,
+      { answers: previousAnswers, status: submission.status !== 'graded' ? 'partially_graded' : null },
+      { totalScore, percentage: submission.percentage, status: 'graded', school: schoolId }
+    );
+
+    if (submission.status === 'graded') {
+      await notificationService.sendGradeNotification(req.io, submission.student, submission);
+
+      // Real-time notification for submission graded
+      try {
+        SocketNotificationService.notifySubmissionGraded(submission, exam);
+      } catch (socketError) {
+        logger.error('Failed to send socket notification for graded submission', {
+          submissionId: submission._id,
+          error: socketError.message
+        });
+      }
+
+      try {
+        const student = await User.findById(submission.student);
+        try {
+          if (student.phone) {
+            await sendSMS(
+              student.phone,
+              `Your exam "${exam.title}" has been graded. Check your dashboard for details.`
+            );
+          }
+        } catch (smsErr) {
+          console.error(`Failed to send SMS to ${student.phone}:`, smsErr.message);
+        }
+
+        try {
+          if (student.email) {
+            await sendEmail(
+              student.email,
+              'Exam Graded Notification',
+              `Dear ${student.fullName},\n\nYour exam "${exam.title}" has been graded. Please check your dashboard for your results.`
+            );
+          }
+        } catch (emailErr) {
+          console.error(`Failed to send email to ${student.email}:`, emailErr.message);
+        }
+      } catch (notifyErr) {
+        console.error('Error notifying student:', notifyErr.message);
+      }
+    }
 
     res.json({ success: true, message: 'Submission graded successfully' });
   } catch (error) {

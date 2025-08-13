@@ -1,42 +1,59 @@
 const express = require('express');
 const router = express.Router();
+
+// Import route modules
 const authRoutes = require('./auth');
+const schoolRoutes = require('./school');
 const adminRoutes = require('./admin');
+const systemAdminRoutes = require('./systemAdmin');
+const headmasterRoutes = require('./headmaster');
+const teacherRoutes = require('./teacher');
+const studentRoutes = require('./student');
+const classRoutes = require('./class');
+const subjectRoutes = require('./subject');
+const termRoutes = require('./terms');
+const tradeRoutes = require('./trade');
 const examRoutes = require('./exam');
 const submissionRoutes = require('./submission');
-const systemAdminRoutes = require('./systemAdmin');
-const notificationRoutes = require('./notification');
-const tradeRoutes = require('./trade');
-const subjectRoutes = require('./subject');
-const teacher = require('./teacher');
-const student = require('./student');
-const reportRoutes = require('./report');
-const promotionRoutes = require('./promotion');
 const enrollmentRoutes = require('./enrollment');
-const classes = require('./class');
-const headmasterRoutes = require('./headmaster');
+const promotionRoutes = require('./promotion');
+const reportRoutes = require('./report');
+const notificationRoutes = require('./notification');
+const uploadRoutes = require('./uploads');
 
-// Mount routes
-router.use('/headmasters', headmasterRoutes);
-router.use('/class', classes);
-router.use('/schools', require('./school'));
-router.use('/teachers', teacher);
-router.use('/students', student);
-router.use('/reports', reportRoutes);
-router.use('/promotions', promotionRoutes);
-router.use('/enrollments', enrollmentRoutes);
+// TEST ONLY - Remove before production deployment
+const testRoutes = require('./test');
+
+// Use routes
 router.use('/auth', authRoutes);
+router.use('/schools', schoolRoutes);
 router.use('/admin', adminRoutes);
+router.use('/system-admin', systemAdminRoutes);
+router.use('/headmaster', headmasterRoutes);
+router.use('/teacher', teacherRoutes);
+router.use('/student', studentRoutes);
+router.use('/classes', classRoutes);
+router.use('/subjects', subjectRoutes);
+router.use('/terms', termRoutes);
+router.use('/trades', tradeRoutes);
 router.use('/exams', examRoutes);
 router.use('/submissions', submissionRoutes);
-router.use('/system-admin', systemAdminRoutes);
+router.use('/enrollment', enrollmentRoutes);
+router.use('/promotion', promotionRoutes);
+router.use('/reports', reportRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/trade', tradeRoutes);
-router.use('/subjects', subjectRoutes);
+router.use('/uploads', uploadRoutes);
 
-// Special case for subjects under exams controller
-const examController = require('../controllers/examController');
-const authMiddleware = require('../middlewares/authMiddleware');
-router.get('/subjects/teacher', authMiddleware.authenticate, authMiddleware.isTeacher, examController.getTeacherSubjects);
+// TEST ONLY - Remove before production deployment
+router.use('/test', testRoutes);
+
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
 module.exports = router;

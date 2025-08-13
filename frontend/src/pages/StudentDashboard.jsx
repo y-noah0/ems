@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import examService from "../services/examService";
 import submissionService from "../services/submissionService";
 import { motion, AnimatePresence } from "framer-motion";
+import TestNotificationButton from "../components/TestNotificationButton";
 import {
     FiCalendar,
     FiClock,
@@ -336,6 +337,9 @@ const StudentDashboard = () => {
                     </motion.div>
                 </div>
             )}
+            
+            {/* Test Notification Button - only show in development */}
+            {window.location.hostname === 'localhost' && <TestNotificationButton />}
         </Layout>
     );
 };

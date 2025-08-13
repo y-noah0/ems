@@ -8,12 +8,11 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const { Server } = require('socket.io');
 const winston = require('winston');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const socketHandler = require('./socketHandler');
+const { initializeSocket, getIO } = require('./socketServer');
 const Exam = require('./models/Exam');
 const Submission = require('./models/Submission');
 const schedule = require('node-schedule');
@@ -21,13 +20,8 @@ const schedule = require('node-schedule');
 const app = express();
 const server = http.createServer(app);
 
-// ⚡ Attach Socket.IO
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST'],
-  },
-});
+// ⚡ Initialize Socket.IO with authentication
+const io = initializeSocket(server);
 
 // 🔒 Security & Middleware
 app.use(cors());
@@ -36,21 +30,13 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(morgan('dev')); // HTTP request logger
 
-// --- NEW: Serve uploads folder statically for image access ---
+// --- Serve uploads folder statically for image access ---
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Attach io instance to each request
+// Attach io instance to each request for controllers to use
 app.use((req, res, next) => {
-  req.io = io;
+  req.io = getIO();
   next();
-});
-
-// 🎧 Socket.IO events
-io.on('connection', (socket) => {
-  socket.on('join', (userId) => {
-    socket.join(userId);
-    console.log(`User ${userId} joined socket room`);
-  });
 });
 
 // 🛣️ Routes
@@ -118,19 +104,27 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam
                 submission.status = 'submitted';
                 submission.submittedAt = new Date();
                 await submission.save();
-                io.to(submission.student.toString()).emit('exam-auto-submitted', {
+                
+                // Real-time notification for auto-submission
+                io.to(`user:${submission.student.toString()}`).emit('exam:auto-submitted', {
+                  type: 'exam_auto_submitted',
                   examId: exam._id,
                   submissionId: submission._id,
                   title: exam.title,
                   submittedAt: submission.submittedAt,
+                  message: `Your exam "${exam.title}" was automatically submitted`
                 });
-                io.to(exam.teacher.toString()).emit('exam-auto-submitted', {
+                
+                io.to(`user:${exam.teacher.toString()}`).emit('submission:auto-submitted', {
+                  type: 'submission_auto_submitted',
                   examId: exam._id,
                   submissionId: submission._id,
                   studentId: submission.student,
                   title: exam.title,
                   submittedAt: submission.submittedAt,
+                  message: `Student submission auto-submitted for "${exam.title}"`
                 });
+                
                 logger.info('Auto-submitted submission', {
                   examId: exam._id,
                   submissionId: submission._id,
