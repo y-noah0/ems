@@ -31,38 +31,49 @@ export const NotificationProvider = ({ children }) => {
     );
   }, []);
 
-  // Handle notification click
-  const handleNotificationClick = useCallback((notification) => {
-    // Mark as read
-    markAsRead(notification.id);
+  // Route builder per notification type + user role
+  const buildNotificationRoute = useCallback((notification, role) => {
+    const n = notification;
+    const r = role || 'guest';
 
-    // Add navigation logic based on notification type
-    switch (notification.type) {
-      case 'exam_scheduled':
-      case 'exam_updated':
-        if (notification.examId) {
-          window.location.href = `/exams/${notification.examId}`;
-        }
-        break;
-      case 'submission_graded':
-        if (notification.submissionId) {
-          window.location.href = `/results/${notification.submissionId}`;
-        }
-        break;
-      case 'class_created':
-      case 'class_updated':
-        if (notification.classId) {
-          window.location.href = `/classes/${notification.classId}`;
-        }
-        break;
-      case 'enrollment_confirmed':
-        window.location.href = '/dashboard';
-        break;
-      default:
-        console.log('No specific action for notification type:', notification.type);
-        break;
+    const map = {
+      exam_scheduled: () => n.examId ? (r === 'teacher' ? `/teacher/exams/${n.examId}` : `/exams/${n.examId}`) : null,
+      exam_updated: () => n.examId ? (r === 'teacher' ? `/teacher/exams/${n.examId}` : `/exams/${n.examId}`) : null,
+      submission_graded: () => n.submissionId ? (r === 'student' ? `/results/${n.submissionId}` : `/grading/${n.submissionId}`) : null,
+      class_created: () => n.classId ? (r === 'teacher' ? `/teacher/classes/${n.classId}` : `/classes/${n.classId}`) : null,
+      class_updated: () => n.classId ? (r === 'teacher' ? `/teacher/classes/${n.classId}` : `/classes/${n.classId}`) : null,
+      class_deleted: () => '/classes',
+      enrollment_confirmed: () => r === 'student' ? '/student/dashboard' : '/dashboard',
+      promotion_result: () => r === 'student' ? '/student/promotions' : '/admin/promotions',
+      promotion_started: () => r === 'admin' ? '/admin/promotions' : '/dashboard',
+      exam_cancelled: () => '/exams',
+      submission_received: () => n.submissionId ? `/submissions/${n.submissionId}` : '/submissions',
+      user_registered: () => r === 'admin' ? '/admin/users' : '/users',
+      user_updated: () => r === 'admin' ? '/admin/users' : '/users',
+      user_deleted: () => r === 'admin' ? '/admin/users' : '/users',
+      term_created: () => '/terms',
+      term_updated: () => '/terms',
+      term_deleted: () => '/terms',
+      staff_created: () => r === 'admin' ? '/admin/staff' : '/staff',
+      password_reset: () => '/settings/security'
+    };
+
+    if (typeof n.link === 'string') return n.link; // explicit server-provided link
+    const builder = map[n.type];
+    return builder ? builder() : null;
+  }, []);
+
+  // Handle notification click with dynamic routing
+  const handleNotificationClick = useCallback((notification) => {
+    markAsRead(notification.id);
+    const role = currentUser?.role;
+    const target = buildNotificationRoute(notification, role);
+    if (target) {
+      window.location.href = target;
+    } else {
+      console.log('No route mapping for notification type:', notification.type);
     }
-  }, [markAsRead]);
+  }, [markAsRead, currentUser, buildNotificationRoute]);
 
   // Show browser notification
   const showBrowserNotification = useCallback((notification) => {
@@ -283,7 +294,8 @@ export const NotificationProvider = ({ children }) => {
     handleNotificationClick,
     getNotificationsByType,
     getNotificationsByPriority,
-    socketService
+  buildNotificationRoute,
+  socketService
   };
 
   // Debug helper (only in development)
