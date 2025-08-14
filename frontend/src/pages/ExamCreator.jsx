@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { FaPlus, FaTrash, FaCheck, FaTimes, FaSpinner, FaBook, FaClock, FaQuestionCircle } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaCheck, FaTimes, FaSpinner, FaBook, FaClock, FaQuestionCircle, FaCalendar } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -12,20 +12,27 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import examService from '../services/examService';
+import { getTerms } from '../services/termService';
 
 const ExamCreator = () => {
   const navigate = useNavigate();
+  // Destructure currentUser from AuthContext
   const { currentUser } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
+  console.log("Current User:", currentUser);
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
+  console.log("Classes:", classes);
+  const [terms, setTerms] = useState([]);
   const [isDirty, setIsDirty] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  
   const initialFormData = {
     title: '',
     instructions: '',
-    subjectIds: [],
+    subjectId: '',
     classIds: [],
+    termId: '',
     type: 'quiz',
     schedule: {
       start: '',
@@ -37,9 +44,9 @@ const ExamCreator = () => {
 
   const quillModules = {
     toolbar: [
-      [{ 'header': [1, 2, false] }],
+      [{ header: [1, 2, false] }],
       ['bold', 'italic', 'underline'],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      [{ list: 'ordered' }, { list: 'bullet' }],
       ['clean'],
     ],
   };
@@ -51,26 +58,52 @@ const ExamCreator = () => {
         setLoading(false);
         return;
       }
-
       setLoading(true);
       try {
-        const subjectsData = await examService.getTeacherSubjects(currentUser.school);
-        setSubjects(subjectsData);
-        if (subjectsData.length === 0) {
+        const [subjectsData, classesData] = await Promise.all([
+          examService.getTeacherSubjects(currentUser.school).catch(() => []),
+          examService.getClassesForTeacher(currentUser.school).catch(() => []),
+        ]);
+        setSubjects(Array.isArray(subjectsData) ? subjectsData : []);
+        setClasses(Array.isArray(classesData) ? classesData : []);
+        if (!Array.isArray(subjectsData) || subjectsData.length === 0) {
           toast.warn('No subjects assigned to you. Please contact your dean.');
         }
-
-        const classesData = await examService.getClassesForTeacher(currentUser.school);
-        setClasses(classesData);
+        if (!Array.isArray(classesData) || classesData.length === 0) {
+          toast.warn('No classes assigned to you. Please contact your dean.');
+        }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching subjects or classes:', error);
         toast.error(error.message || 'Failed to load subjects or classes.');
+        setSubjects([]);
+        setClasses([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
+  }, [currentUser]);
+
+  useEffect(() => {
+    const fetchTerms = async () => {
+      if (!currentUser?.school) return;
+      try {
+        const res = await getTerms(currentUser.school);
+        const currentYear = new Date().getFullYear();
+        const filteredTerms = Array.isArray(res.terms)
+          ? res.terms.filter(term => new Date(term.startDate).getFullYear() === currentYear)
+          : [];
+        setTerms(filteredTerms);
+        if (filteredTerms.length === 0) {
+          toast.warn('No terms available for the current year. Please contact your administrator.');
+        }
+      } catch (error) {
+        console.error('Error fetching terms:', error);
+        toast.error(error.message || 'Failed to load terms.');
+        setTerms([]);
+      }
+    };
+    fetchTerms();
   }, [currentUser]);
 
   useEffect(() => {
@@ -79,7 +112,6 @@ const ExamCreator = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     if (name === 'startTime') {
       const startTime = value ? new Date(value).toISOString() : '';
       setFormData((prev) => ({
@@ -111,13 +143,6 @@ const ExamCreator = () => {
     }));
   };
 
-  const handleSubjectIdsChange = (newSubjectIds) => {
-    setFormData((prev) => ({
-      ...prev,
-      subjectIds: newSubjectIds,
-    }));
-  };
-
   const handleClassIdsChange = (newClassIds) => {
     setFormData((prev) => ({
       ...prev,
@@ -141,10 +166,10 @@ const ExamCreator = () => {
             { id: Date.now() + 1, text: 'True', isCorrect: false },
             { id: Date.now() + 2, text: 'False', isCorrect: false },
           ];
-          questions[index].correctAnswer = value === 'true-false' ? 'true' : [];
+          questions[index].correctAnswer = [];
         } else {
           questions[index].options = [];
-          questions[index].correctAnswer = value === 'essay' ? '' : '';
+          questions[index].correctAnswer = '';
         }
       }
       return { ...prev, questions };
@@ -156,36 +181,25 @@ const ExamCreator = () => {
       const questions = [...prev.questions];
       const options = [...questions[questionIndex].options];
       if (field === 'isCorrect') {
-        if (questions[questionIndex].type === 'true-false') {
+        const questionType = questions[questionIndex].type;
+        if (questionType === 'multiple-choice' || questionType === 'true-false' || questionType === 'true-false-labeled') {
+          // Single select for correct answer
           options.forEach((opt, i) => {
-            options[i].isCorrect = i === optionIndex ? value : false;
+            options[i].isCorrect = i === optionIndex;
           });
-          questions[questionIndex].correctAnswer = options[optionIndex].text;
-        } else if (questions[questionIndex].type === 'multiple-choice' || questions[questionIndex].type === 'true-false-statements') {
-          if (value && !options[optionIndex].text.trim()) {
-            toast.error(`Option ${optionIndex + 1} must have text before marking as correct`);
-            return prev;
-          }
-          options[optionIndex] = { ...options[optionIndex], [field]: value };
+          questions[questionIndex].correctAnswer = [options[optionIndex].text];
+        } else if (questionType === 'true-false-statements') {
+          // Multi select for correct answers
+          options[optionIndex].isCorrect = value;
           questions[questionIndex].correctAnswer = options
             .filter((opt) => opt.isCorrect)
-            .map((opt) => opt.text)
-            .filter((text) => text.trim());
-        } else if (questions[questionIndex].type === 'true-false-labeled') {
-          options[optionIndex] = { ...options[optionIndex], [field]: value };
-          questions[questionIndex].correctAnswer = options
-            .filter((opt) => opt.isCorrect)
-            .map((opt) => opt.text)
-            .filter((text) => text.trim());
+            .map((opt) => opt.text);
         }
       } else {
         options[optionIndex] = { ...options[optionIndex], [field]: value };
-        if (questions[questionIndex].type !== 'true-false' && questions[questionIndex].type !== 'true-false-labeled') {
-          questions[questionIndex].correctAnswer = options
-            .filter((opt) => opt.isCorrect)
-            .map((opt) => opt.text)
-            .filter((text) => text.trim());
-        }
+        questions[questionIndex].correctAnswer = options
+          .filter((opt) => opt.isCorrect)
+          .map((opt) => opt.text);
       }
       questions[questionIndex].options = options;
       return { ...prev, questions };
@@ -232,7 +246,8 @@ const ExamCreator = () => {
     setIsAdding(true);
     setFormData((prev) => {
       const questions = [...prev.questions];
-      if (questions[questionIndex].type === 'true-false' || questions[questionIndex].type === 'true-false-labeled') {
+      const questionType = questions[questionIndex].type;
+      if (questionType === 'true-false' || questionType === 'true-false-labeled') {
         toast.error('True/False questions cannot have additional options');
         setTimeout(() => setIsAdding(false), 100);
         return prev;
@@ -257,7 +272,8 @@ const ExamCreator = () => {
     setIsAdding(true);
     setFormData((prev) => {
       const questions = [...prev.questions];
-      if (questions[questionIndex].type === 'true-false' || questions[questionIndex].type === 'true-false-labeled') {
+      const questionType = questions[questionIndex].type;
+      if (questionType === 'true-false' || questionType === 'true-false-labeled') {
         toast.error('True/False questions must have exactly two options');
         setTimeout(() => setIsAdding(false), 100);
         return prev;
@@ -272,8 +288,7 @@ const ExamCreator = () => {
       );
       questions[questionIndex].correctAnswer = questions[questionIndex].options
         .filter((opt) => opt.isCorrect)
-        .map((opt) => opt.text)
-        .filter((text) => text.trim());
+        .map((opt) => opt.text);
       setTimeout(() => setIsAdding(false), 100);
       return { ...prev, questions };
     });
@@ -290,7 +305,6 @@ const ExamCreator = () => {
       toast.error('No school associated with your account. Please log in again.');
       return;
     }
-
     setLoading(true);
     try {
       if (!formData.title.trim()) {
@@ -303,13 +317,10 @@ const ExamCreator = () => {
       if (plainInstructions.length > 1000) {
         throw new Error('Instructions cannot exceed 1000 characters');
       }
-      if (!formData.subjectIds.length) {
-        throw new Error('Please select at least one subject');
+      if (!formData.subjectId) {
+        throw new Error('Please select a subject');
       }
-      if (formData.subjectIds.length > 10) {
-        throw new Error('Cannot select more than 10 subjects');
-      }
-      if (!formData.subjectIds.every(id => subjects.some(s => s._id.toString() === id))) {
+      if (!subjects.some((s) => s._id.toString() === formData.subjectId)) {
         throw new Error('Invalid subject ID selected');
       }
       if (!formData.classIds.length) {
@@ -318,8 +329,14 @@ const ExamCreator = () => {
       if (formData.classIds.length > 10) {
         throw new Error('Cannot select more than 10 classes');
       }
-      if (!formData.classIds.every(id => classes.some(c => c._id.toString() === id))) {
+      if (!formData.classIds.every((id) => classes.some((c) => c._id.toString() === id))) {
         throw new Error('Invalid class ID selected');
+      }
+      if (!formData.termId) {
+        throw new Error('Please select a term');
+      }
+      if (!terms.some((t) => t._id.toString() === formData.termId)) {
+        throw new Error('Invalid term ID selected');
       }
       if (!formData.schedule.start) {
         throw new Error('Start time is required');
@@ -363,42 +380,31 @@ const ExamCreator = () => {
             if (q.options.length > 10) {
               throw new Error(`Question ${index + 1} cannot have more than 10 options`);
             }
-            if (q.options.some(opt => !opt.text.trim())) {
+            if (q.options.some((opt) => !opt.text.trim())) {
               throw new Error(`Question ${index + 1} options must have non-empty text`);
             }
-            if (!q.options.some((opt) => opt.isCorrect)) {
-              throw new Error(`Question ${index + 1} must have at least one correct option`);
+            if (q.type === 'multiple-choice' && q.options.filter((opt) => opt.isCorrect).length !== 1) {
+              throw new Error(`Question ${index + 1} must have exactly one correct option`);
+            }
+            if (q.type === 'true-false-statements' && !q.options.some((opt) => opt.isCorrect)) {
+              throw new Error(`Question ${index + 1} must have at least one correct statement`);
             }
             if (q.correctAnswer.some((text) => !text.trim())) {
               throw new Error(`Question ${index + 1} correct options must have non-empty text`);
             }
-            if (q.options.every(opt => opt.isCorrect)) {
-              toast.warn(`Question ${index + 1}: All options are marked correct. Ensure this is intentional.`);
-            }
           }
-          if (q.type === 'true-false') {
+          if (q.type === 'true-false' || q.type === 'true-false-labeled') {
             if (!q.options || q.options.length !== 2 || q.options[0].text !== 'True' || q.options[1].text !== 'False') {
               throw new Error(`Question ${index + 1} must have exactly two options: True and False`);
             }
-            if (!q.options.some((opt) => opt.isCorrect)) {
-              throw new Error(`Question ${index + 1} must have one correct option (True or False)`);
+            if (q.type === 'true-false' && q.options.filter((opt) => opt.isCorrect).length !== 1) {
+              throw new Error(`Question ${index + 1} must have exactly one correct option (True or False)`);
             }
-            if (q.correctAnswer !== 'True' && q.correctAnswer !== 'False') {
-              throw new Error(`Question ${index + 1} must have a correct answer of True or False`);
-            }
-          }
-          if (q.type === 'true-false-labeled') {
-            if (!q.options || q.options.length !== 2 || q.options[0].text !== 'True' || q.options[1].text !== 'False') {
-              throw new Error(`Question ${index + 1} must have exactly two options: True and False`);
-            }
-            if (!q.options.some((opt) => opt.isCorrect)) {
+            if (q.type === 'true-false-labeled' && !q.options.some((opt) => opt.isCorrect)) {
               throw new Error(`Question ${index + 1} must have at least one correct option (True or False)`);
             }
-            if (q.correctAnswer.some((text) => !text.trim())) {
+            if (q.correctAnswer.length === 0 || q.correctAnswer.some((text) => !text.trim())) {
               throw new Error(`Question ${index + 1} correct options must have non-empty text`);
-            }
-            if (q.options.every(opt => opt.isCorrect)) {
-              toast.warn(`Question ${index + 1}: Both True and False are marked correct. Ensure this is intentional.`);
             }
           }
           if (q.type === 'short-answer' && !q.correctAnswer.trim()) {
@@ -416,8 +422,9 @@ const ExamCreator = () => {
       const examDataToSubmit = {
         title: formData.title,
         instructions: formData.instructions || undefined,
-        subjectIds: formData.subjectIds,
+        subjectId: formData.subjectId,
         classIds: formData.classIds,
+        termId: formData.termId,
         type: formData.type,
         teacherId: currentUser.id,
         schedule: {
@@ -429,7 +436,7 @@ const ExamCreator = () => {
           text: q.text,
           maxScore: q.maxScore,
           options: q.options || [],
-          correctAnswer: q.correctAnswer || '',
+          correctAnswer: q.correctAnswer,
         })),
       };
 
@@ -480,7 +487,7 @@ const ExamCreator = () => {
         </h1>
       </motion.div>
 
-      {loading && (
+      {loading ? (
         <div className="flex justify-center items-center h-64">
           <motion.div
             animate={{ rotate: 360 }}
@@ -489,10 +496,8 @@ const ExamCreator = () => {
             <FaSpinner className="h-16 w-16 text-indigo-600" aria-hidden="true" />
           </motion.div>
         </div>
-      )}
-
-      {!loading && (
-        <Card className="bg-white">
+      ) : (
+        <Card className="bg-white shadow-md rounded-lg">
           <motion.form
             onSubmit={handleSubmit}
             className="p-6"
@@ -533,15 +538,49 @@ const ExamCreator = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <motion.div variants={itemVariants}>
-                  <MultiSelect
-                    label="Subjects"
-                    name="subjectIds"
-                    options={subjects}
-                    selectedValues={formData.subjectIds}
-                    onChange={handleSubjectIdsChange}
-                  />
+                  <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
+                    <FaBook className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                    Subject
+                  </label>
+                  <select
+                    name="subjectId"
+                    value={formData.subjectId}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                    required
+                  >
+                    <option value="">Select a subject</option>
+                    {subjects.map((subject) => (
+                      <option key={subject._id} value={subject._id}>
+                        {subject.name || 'Unnamed Subject'}
+                      </option>
+                    ))}
+                  </select>
                 </motion.div>
 
+                <motion.div variants={itemVariants}>
+                  <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
+                    <FaCalendar className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                    Term
+                  </label>
+                  <select
+                    name="termId"
+                    value={formData.termId}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                    required
+                  >
+                    <option value="">Select Term</option>
+                    {terms.map((term) => (
+                      <option key={term._id} value={term._id}>
+                        Term {term.termNumber} ({new Date(term.startDate).getFullYear()})
+                      </option>
+                    ))}
+                  </select>
+                </motion.div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <motion.div variants={itemVariants}>
                   <MultiSelect
                     label="Classes"
@@ -551,9 +590,7 @@ const ExamCreator = () => {
                     onChange={handleClassIdsChange}
                   />
                 </motion.div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <motion.div variants={itemVariants}>
                   <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
                     <FaBook className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
@@ -573,7 +610,9 @@ const ExamCreator = () => {
                     <option value="quiz">Quiz</option>
                   </select>
                 </motion.div>
+              </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <motion.div variants={itemVariants}>
                   <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
                     <FaClock className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
@@ -590,23 +629,23 @@ const ExamCreator = () => {
                     className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
                   />
                 </motion.div>
-              </div>
 
-              <motion.div variants={itemVariants}>
-                <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
-                  <FaClock className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
-                  Start Time
-                </label>
-                <Input
-                  type="datetime-local"
-                  name="startTime"
-                  value={formData.schedule.start ? new Date(formData.schedule.start).toISOString().slice(0, 16) : ''}
-                  onChange={handleChange}
-                  required
-                  placeholder="Select start time"
-                  className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
-                />
-              </motion.div>
+                <motion.div variants={itemVariants}>
+                  <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
+                    <FaClock className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                    Start Time
+                  </label>
+                  <Input
+                    type="datetime-local"
+                    name="startTime"
+                    value={formData.schedule.start ? new Date(formData.schedule.start).toISOString().slice(0, 16) : ''}
+                    onChange={handleChange}
+                    required
+                    placeholder="Select start time"
+                    className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                  />
+                </motion.div>
+              </div>
 
               <motion.div variants={itemVariants}>
                 <h3 className="text-lg font-medium text-indigo-600 mb-4 flex items-center">
@@ -621,7 +660,7 @@ const ExamCreator = () => {
                     animate="visible"
                     className="mb-4"
                   >
-                    <Card className="p-4 bg-gray-50 shadow-lg">
+                    <Card className="p-4 bg-gray-50 shadow-lg rounded-lg">
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-indigo-600 mb-1">
@@ -645,10 +684,10 @@ const ExamCreator = () => {
                             onChange={(e) => handleQuestionChange(qIndex, 'type', e.target.value)}
                             className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
                           >
-                            <option value="multiple-choice">Multiple Choice</option>
+                            <option value="multiple-choice">Multiple Choice (Single Correct)</option>
                             <option value="true-false">True/False (Single Correct)</option>
-                            <option value="true-false-labeled">True/False (Fixed Options)</option>
-                            <option value="true-false-statements">True/False (Statements)</option>
+                            <option value="true-false-labeled">True/False Labeled (Single Correct)</option>
+                            <option value="true-false-statements">True/False Statements (Select All That Apply)</option>
                             <option value="short-answer">Short Answer</option>
                             <option value="essay">Essay</option>
                           </select>
@@ -670,7 +709,7 @@ const ExamCreator = () => {
                         {(question.type === 'multiple-choice' || question.type === 'true-false' || question.type === 'true-false-labeled' || question.type === 'true-false-statements') && (
                           <div>
                             <h4 className="text-sm font-medium text-indigo-600 mb-2">
-                              {question.type === 'true-false' ? 'Options (Select the correct answer)' : question.type === 'true-false-statements' ? 'Statements (Mark each as True/Correct)' : 'Options (Select all correct answers)'}
+                              {question.type === 'true-false-statements' ? 'Statements (Mark all that are true)' : question.type === 'multiple-choice' ? 'Options (Select one correct answer)' : 'Options (Select one correct)'}
                             </h4>
                             {question.options.map((option, oIndex) => (
                               <motion.div
@@ -680,52 +719,35 @@ const ExamCreator = () => {
                                 exit={{ opacity: 0, x: -10 }}
                                 className="flex items-center space-x-2 mb-2"
                               >
-                                {question.type === 'true-false' ? (
-                                  <>
-                                    <span className="flex-1 px-3 py-2 bg-gray-100 border border-indigo-300 rounded-md text-gray-700">
-                                      {option.text}
-                                    </span>
-                                    <input
-                                      type="radio"
-                                      name={`correctAnswer-${qIndex}`}
-                                      checked={option.isCorrect}
-                                      onChange={(e) => handleOptionChange(qIndex, oIndex, 'isCorrect', e.target.checked)}
-                                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-indigo-300"
-                                      aria-label={`Mark ${option.text} as correct`}
-                                    />
-                                  </>
-                                ) : (
-                                  <>
-                                    <Input
-                                      value={option.text}
-                                      onChange={(e) => handleOptionChange(qIndex, oIndex, 'text', e.target.value)}
-                                      required
-                                      maxLength={200}
-                                      placeholder={question.type === 'true-false-statements' ? `Statement ${oIndex + 1}` : `Option ${oIndex + 1}`}
-                                      className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
-                                      disabled={question.type === 'true-false-labeled'}
-                                    />
-                                    <input
-                                      type={question.type === 'true-false' ? 'radio' : 'checkbox'}
-                                      checked={option.isCorrect}
-                                      onChange={(e) => handleOptionChange(qIndex, oIndex, 'isCorrect', e.target.checked)}
-                                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-indigo-300 rounded"
-                                      aria-label={question.type === 'true-false-statements' ? `Mark statement ${oIndex + 1} as True/Correct` : `Mark ${option.text || `option ${oIndex + 1}`} as correct`}
-                                    />
-                                    {(question.type === 'multiple-choice' || question.type === 'true-false-statements') && (
-                                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                                        <Button
-                                          type="button"
-                                          onClick={() => removeOption(qIndex, oIndex)}
-                                          disabled={question.options.length <= 2 || isAdding}
-                                          className="bg-gray-600 hover:bg-gray-700"
-                                          aria-label={`Remove ${question.type === 'true-false-statements' ? 'statement' : 'option'} ${oIndex + 1}`}
-                                        >
-                                          <FaTrash className="h-4 w-4 text-white" aria-hidden="true" />
-                                        </Button>
-                                      </motion.div>
-                                    )}
-                                  </>
+                                <Input
+                                  value={option.text}
+                                  onChange={(e) => handleOptionChange(qIndex, oIndex, 'text', e.target.value)}
+                                  required
+                                  maxLength={200}
+                                  placeholder={question.type === 'true-false-statements' ? `Statement ${oIndex + 1}` : `Option ${oIndex + 1}`}
+                                  className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                                  disabled={question.type === 'true-false' || question.type === 'true-false-labeled'}
+                                />
+                                <input
+                                  type={question.type === 'true-false-statements' ? 'checkbox' : 'radio'}
+                                  name={question.type === 'true-false-statements' ? `correctAnswer-${qIndex}-${oIndex}` : `correctAnswer-${qIndex}`}
+                                  checked={option.isCorrect}
+                                  onChange={(e) => handleOptionChange(qIndex, oIndex, 'isCorrect', e.target.checked)}
+                                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-indigo-300 rounded"
+                                  aria-label={`Mark ${option.text || `option ${oIndex + 1}`} as correct`}
+                                />
+                                {(question.type === 'multiple-choice' || question.type === 'true-false-statements') && (
+                                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                                    <Button
+                                      type="button"
+                                      onClick={() => removeOption(qIndex, oIndex)}
+                                      disabled={question.options.length <= 2 || isAdding}
+                                      className="bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5"
+                                      aria-label={`Remove ${question.type === 'true-false-statements' ? 'statement' : 'option'} ${oIndex + 1}`}
+                                    >
+                                      <FaTrash className="h-4 w-4" aria-hidden="true" />
+                                    </Button>
+                                  </motion.div>
                                 )}
                               </motion.div>
                             ))}
@@ -735,7 +757,7 @@ const ExamCreator = () => {
                                   type="button"
                                   onClick={() => addOption(qIndex)}
                                   disabled={isAdding}
-                                  className="flex items-center bg-indigo-600 hover:bg-indigo-700"
+                                  className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-3 py-1.5"
                                   aria-label={`Add new ${question.type === 'true-false-statements' ? 'statement' : 'option'}`}
                                 >
                                   <FaPlus className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -776,10 +798,10 @@ const ExamCreator = () => {
                             type="button"
                             onClick={() => removeQuestion(qIndex)}
                             disabled={isAdding}
-                            className="flex items-center bg-gray-600 hover:bg-gray-700"
+                            className="flex items-center bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5"
                             aria-label={`Remove question ${qIndex + 1}`}
                           >
-                            <FaTrash className="h-4 w-4 mr-1 text-white" aria-hidden="true" />
+                            <FaTrash className="h-4 w-4 mr-1" aria-hidden="true" />
                             Remove Question
                           </Button>
                         </motion.div>
@@ -792,7 +814,7 @@ const ExamCreator = () => {
                     type="button"
                     onClick={addQuestion}
                     disabled={isAdding}
-                    className="flex items-center bg-indigo-600 hover:bg-indigo-700"
+                    className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-3 py-1.5"
                     aria-label="Add new question"
                   >
                     <FaPlus className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -809,7 +831,7 @@ const ExamCreator = () => {
                   <Button
                     type="button"
                     onClick={handleCancel}
-                    className="flex items-center bg-gray-600 hover:bg-gray-700"
+                    className="flex items-center bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5"
                     aria-label="Cancel exam creation"
                   >
                     <FaTimes className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -820,7 +842,7 @@ const ExamCreator = () => {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="flex items-center bg-indigo-600 hover:bg-indigo-700"
+                    className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-3 py-1.5"
                     aria-label="Create exam"
                   >
                     {loading ? (

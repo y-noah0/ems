@@ -7,16 +7,24 @@ import tradeService from "../../services/tradeService";
 import subjectService from "../../services/subjectService";
 import schoolService from "../../services/schoolService";
 import { useAuth } from "../../context/AuthContext";
+import {
+    FaBook,
+    FaSearch,
+    FaPlus,
+    FaTrash,
+    FaUndo,
+    FaCheckCircle,
+} from "react-icons/fa";
 
 export default function TradesOffered() {
     const user = useAuth();
-    const schoolId = user?.currentUser.school || '';
+    const schoolId = user?.currentUser?.school || "";
     const [searchTerm, setSearchTerm] = useState("");
     const [deleteConfirmation, setDeleteConfirmation] = useState(null);
-    const [undoTimeout, setUndoTimeout] = useState(null); // for undo
+    const [undoTimeout, setUndoTimeout] = useState(null);
     const [trades, setTrades] = useState([]);
     const [subjects, setSubjects] = useState([]);
-    const [lastDeleted, setLastDeleted] = useState(null); // for undo
+    const [lastDeleted, setLastDeleted] = useState(null);
     const [schoolInfo, setSchoolInfo] = useState(null);
     const [allTrades, setAllTrades] = useState([]);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -24,76 +32,79 @@ export default function TradesOffered() {
     const navigate = useNavigate();
     const { showToast } = useContext(ToastContext);
 
-    // Fetch trades and subjects from backend
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const tradesRes = await tradeService.getTradesBySchool(schoolId);
-                setTrades(tradesRes);
+                const tradesRes = await tradeService.getTradesBySchool(
+                    schoolId
+                );
+                setTrades(tradesRes || []);
                 const subjectsRes = await subjectService.getSubjects(schoolId);
-                setSubjects(subjectsRes);
-                // load school info and all trades for modal
+                setSubjects(subjectsRes || []);
                 const schoolRes = await schoolService.getSchoolById(schoolId);
                 setSchoolInfo(schoolRes);
                 const all = await tradeService.getAllTrades();
-                setAllTrades(all);
+                setAllTrades(all || []);
             } catch (error) {
-                showToast("Failed to load data: " + error.message, "error");
+                showToast(
+                    "Failed to load data: " +
+                        (error.message || "Unknown error"),
+                    "error"
+                );
             }
         };
         fetchData();
     }, [showToast, schoolId]);
 
-    // Category grouping (derived from trades for this school)
-    const [activeCategory, setActiveCategory] = useState('All');
+    const [activeCategory, setActiveCategory] = useState("All");
     const categories = useMemo(() => {
-        const uniqueCats = Array.from(new Set(trades.map(t => t.category).filter(Boolean)));
-        return ['All', ...uniqueCats];
+        const uniqueCats = Array.from(
+            new Set(trades.map((t) => t.category).filter(Boolean))
+        );
+        return ["All", ...uniqueCats];
     }, [trades]);
 
-    // Get subject count for a trade
     const getSubjectCount = (tradeId) => {
-        return subjects.filter(subject => 
-            subject.trades && subject.trades.map(t => t.toString()).includes(tradeId)
+        return subjects.filter(
+            (subject) =>
+                subject.trades &&
+                subject.trades.map((t) => t.toString()).includes(tradeId)
         ).length;
     };
 
-    // Get all trades for table display
     const getAllTrades = () => filterTrades(trades);
 
-    // Handle trade click to navigate to detail page
     const handleTradeClick = (trade) => {
         navigate(`/headmaster/trade/${trade._id}`);
     };
 
-    // Handle edit
     const handleEdit = (trade, e) => {
         e.stopPropagation();
         navigate(`/headmaster/trade/edit/${trade._id}`);
     };
 
-    // Handle delete with confirmation
     const handleDelete = (trade, e) => {
         e.stopPropagation();
         setDeleteConfirmation({
-            id: trade.id,
+            id: trade._id,
             name: trade.name,
-            action: () => confirmDelete(trade)
+            action: () => confirmDelete(trade),
         });
     };
 
-    // Confirm delete
     const confirmDelete = (trade) => {
-        // remove from UI immediately and allow undo
         setLastDeleted(trade);
-        setTrades(prev => prev.filter(t => t._id !== trade._id));
-        showToast(`${trade.name} deleted (undo available)`, 'success');
-        // schedule permanent deletion from school's offerings
+        setTrades((prev) => prev.filter((t) => t._id !== trade._id));
+        showToast(`${trade.name} deleted (undo available for 5s)`, "success");
         const timeout = setTimeout(async () => {
             try {
                 await schoolService.removeTradeFromSchool(schoolId, trade._id);
             } catch (err) {
-                showToast(err.message || 'Failed to remove trade from school', 'error');
+                showToast(
+                    err.message || "Failed to remove trade from school",
+                    "error"
+                );
+                setTrades((prev) => [...prev, trade]); // Revert on failure
             } finally {
                 setLastDeleted(null);
                 setUndoTimeout(null);
@@ -103,34 +114,34 @@ export default function TradesOffered() {
         setDeleteConfirmation(null);
     };
 
-    // Handle undo
     const handleUndo = () => {
         if (undoTimeout && lastDeleted) {
             clearTimeout(undoTimeout);
             setUndoTimeout(null);
-            // restore deleted trade
-            setTrades(prev => [lastDeleted, ...prev]);
+            setTrades((prev) => [lastDeleted, ...prev]);
             setLastDeleted(null);
-            showToast("Deletion undone", 'info');
+            showToast("Deletion undone", "info");
         }
     };
 
-    // Handle search and category filter
     const filterTrades = (tradesList) => {
         let filtered = tradesList;
-        if (activeCategory && activeCategory !== 'All') {
-            filtered = filtered.filter(trade => trade.category === activeCategory);
+        if (activeCategory && activeCategory !== "All") {
+            filtered = filtered.filter(
+                (trade) => trade.category === activeCategory
+            );
         }
         if (!searchTerm) return filtered;
-        return filtered.filter((trade) =>
-            trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            trade.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (trade.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+        return filtered.filter(
+            (trade) =>
+                trade.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                trade.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (trade.description || "")
+                    .toLowerCase()
+                    .includes(searchTerm.toLowerCase())
         );
     };
 
-
-    // Handle adding selected trades to school
     const handleAddSelected = async () => {
         if (!schoolInfo || selectedTradeIds.length === 0) {
             setShowAddModal(false);
@@ -138,15 +149,21 @@ export default function TradesOffered() {
             return;
         }
         try {
-            // Add each selected trade via dedicated endpoint
-            await Promise.all(selectedTradeIds.map(tradeId =>
-                schoolService.addTradeToSchool(schoolId, tradeId)
-            ));
-            const toAdd = allTrades.filter(t => selectedTradeIds.includes(t._id));
-            setTrades(prev => [...prev, ...toAdd]);
-            showToast('Trades added successfully', 'success');
+            await Promise.all(
+                selectedTradeIds.map((tradeId) =>
+                    schoolService.addTradeToSchool(schoolId, tradeId)
+                )
+            );
+            const toAdd = allTrades.filter((t) =>
+                selectedTradeIds.includes(t._id)
+            );
+            setTrades((prev) => [...prev, ...toAdd]);
+            showToast("Trades added successfully", "success");
         } catch (err) {
-            showToast('Failed to add trades: ' + err.message, 'error');
+            showToast(
+                "Failed to add trades: " + (err.message || "Unknown error"),
+                "error"
+            );
         } finally {
             setShowAddModal(false);
             setSelectedTradeIds([]);
@@ -155,62 +172,66 @@ export default function TradesOffered() {
 
     return (
         <Layout>
-            <div className="px-6 py-4">
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex gap-2">
-                        {categories.map(cat => (
+            <div className="px-4 sm:px-6 py-4 w-full max-w-7xl mx-auto font-roboto">
+                <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+                    <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+                        {categories.map((cat) => (
                             <Button
                                 key={cat}
-                                size="xs"
-                                variant={activeCategory === cat ? 'primary' : 'outline'}
+                                size="sm"
+                                variant={
+                                    activeCategory === cat
+                                        ? "primary"
+                                        : "outline"
+                                }
                                 onClick={() => setActiveCategory(cat)}
+                                className="whitespace-nowrap transition-all duration-200 hover:shadow-md"
                             >
                                 {cat}
                             </Button>
                         ))}
                     </div>
-                    {/* Search */}
-                    <div className="relative w-64">
-                        <input
-                            type="text"
-                            placeholder="Search trades..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path
-                                    fillRule="evenodd"
-                                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                                    clipRule="evenodd"
-                                />
-                            </svg>
+                    <div className="relative px-4 w-full sm:w-64 max-h-8 flex justify-between items-center border border-black/25 rounded-lg">
+                            <input
+                                type="text"
+                                placeholder="Search subjects..."
+                                className="py-2 w-full  text-sm placeholder:text-sm sm:text-sm text-gray-900 focus:outline-none duration-200"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                aria-label="Search Trades"
+                            />
+                            <FaSearch className="h-4 sm:h-4 w-4 sm:w-4 text-main-gray" />
                         </div>
+                    <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                        
+
+                        <Button
+                            onClick={() => setShowAddModal(true)}
+                            size="sm"
+                            
+                        >
+                            Add Trade
+                        </Button>
                     </div>
-                    <Button onClick={() => setShowAddModal(true)} size="sm">
-                        Add Trade
-                    </Button>
                 </div>
 
-                {/* Trades Table */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                    <div className="px-6 py-4 border-b border-gray-200">
+                <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden animate-fade-in">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                         <h2 className="text-lg font-semibold text-gray-900">
-                            {activeCategory === 'All' ? 'Trades Catalog' : `${activeCategory} Trades Catalog`}
+                            {activeCategory === "All"
+                                ? "Trades Catalog"
+                                : `${activeCategory} Trades Catalog`}
                         </h2>
                     </div>
-                    
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Trade (Name / Code)
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Description
-                            </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Trade (Name / Code)
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Description
+                                    </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Subjects
                                     </th>
@@ -219,11 +240,11 @@ export default function TradesOffered() {
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y divide-gray-100">
                                 {getAllTrades().map((trade) => (
                                     <tr
                                         key={trade._id}
-                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                        className="hover:bg-indigo-50 cursor-pointer transition-colors duration-200 animate-fade-in"
                                         onClick={() => handleTradeClick(trade)}
                                     >
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -231,28 +252,34 @@ export default function TradesOffered() {
                                                 <div className="text-sm font-medium text-gray-900">
                                                     {trade.name}
                                                 </div>
-                                                <div className="text-xs text-gray-400 mt-1">
-                                                    {trade.code} - {trade.fullName}
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    {trade.code} -{" "}
+                                                    {trade.fullName || "N/A"}
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {trade.description || '—'}
+                                            {trade.description || "—"}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                                                {getSubjectCount(trade._id)} subjects
+                                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700">
+                                                {getSubjectCount(trade._id)}{" "}
+                                                subjects
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
-                                                onClick={(e) => handleEdit(trade, e)}
-                                                className="text-blue-600 hover:text-blue-900 mr-3 transition-colors"
+                                                onClick={(e) =>
+                                                    handleEdit(trade, e)
+                                                }
+                                                className="text-indigo-600 hover:text-indigo-900 mr-3 transition-colors"
                                             >
                                                 Edit
                                             </button>
                                             <button
-                                                onClick={(e) => handleDelete(trade, e)}
+                                                onClick={(e) =>
+                                                    handleDelete(trade, e)
+                                                }
                                                 className="text-red-600 hover:text-red-900 transition-colors"
                                             >
                                                 Delete
@@ -262,12 +289,11 @@ export default function TradesOffered() {
                                 ))}
                             </tbody>
                         </table>
-                        
                         {getAllTrades().length === 0 && (
-                            <div className="text-center py-12">
-                                <div className="text-gray-500">
-                                    {searchTerm ? "No trades found matching your search." : "No trades available."}
-                                </div>
+                            <div className="text-center py-12 text-gray-500 bg-gray-50">
+                                {searchTerm
+                                    ? "No trades found matching your search."
+                                    : "No trades available."}
                             </div>
                         )}
                     </div>
@@ -275,18 +301,20 @@ export default function TradesOffered() {
 
                 {/* Delete Confirmation Modal */}
                 {deleteConfirmation && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 border-2 border-gradient-to-r from-red-600 to-red-800 animate-scale-in">
                             <div className="flex items-center mb-4">
                                 <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                    </svg>
+                                    <FaTrash className="w-6 h-6 text-red-600" />
                                 </div>
                                 <div className="ml-4">
-                                    <h3 className="text-lg font-medium text-gray-900">Delete Trade</h3>
+                                    <h3 className="text-lg font-medium text-gray-900">
+                                        Delete Trade
+                                    </h3>
                                     <p className="text-sm text-gray-500">
-                                        Are you sure you want to delete "{deleteConfirmation.name}"? This action cannot be undone.
+                                        Are you sure you want to delete "
+                                        {deleteConfirmation.name}"? This action
+                                        cannot be undone.
                                     </p>
                                 </div>
                             </div>
@@ -294,13 +322,14 @@ export default function TradesOffered() {
                                 <Button
                                     variant="outline"
                                     onClick={() => setDeleteConfirmation(null)}
+                                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     variant="primary"
                                     onClick={deleteConfirmation.action}
-                                    className="bg-red-600 hover:bg-red-700"
+                                    className="bg-red-600 hover:bg-red-700 text-white"
                                 >
                                     Delete
                                 </Button>
@@ -311,47 +340,77 @@ export default function TradesOffered() {
 
                 {/* Undo Toast */}
                 {undoTimeout && (
-                    <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg flex items-center space-x-3 z-50">
-                        <span>Trade deleted successfully</span>
+                    <div className="fixed bottom-4 right-4 bg-gray-800 text-white p-4 rounded-lg shadow-lg flex items-center space-x-3 z-50 animate-fade-in">
+                        <span>
+                            {lastDeleted?.name} deleted (undo available for 5s)
+                        </span>
                         <Button
                             size="sm"
                             onClick={handleUndo}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1"
                         >
-                            Undo
+                            <FaUndo className="h-4 w-4" /> Undo
                         </Button>
                     </div>
                 )}
 
                 {/* Add Trade Modal */}
                 {showAddModal && schoolInfo && (
-                    <div className="fixed inset-0 bg-black/10 bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg p-6 max-w-xl w-full mx-4">
-                            <h3 className="text-lg font-semibold mb-4">Select Trades to Add</h3>
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-xl w-full mx-4 border-2 border-gradient-to-r from-indigo-600 to-indigo-800 animate-scale-in">
+                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                <FaPlus className="h-5 w-5 text-indigo-600" />
+                                Select Trades to Add
+                            </h3>
                             {(() => {
-                                const candidates = allTrades.filter(t =>
-                                    t.category === schoolInfo.category && !trades.some(off => off._id === t._id)
+                                const candidates = allTrades.filter(
+                                    (t) =>
+                                        t.category === schoolInfo.category &&
+                                        !trades.some((off) => off._id === t._id)
                                 );
                                 if (candidates.length === 0) {
-                                    return <div className="text-center text-gray-500 py-4">No other trades found.</div>;
+                                    return (
+                                        <div className="text-center text-gray-500 py-4">
+                                            No other trades found.
+                                        </div>
+                                    );
                                 }
                                 return (
-                                    <ul className="max-h-60 overflow-y-auto mb-4">
-                                        {candidates.map(trade => (
-                                            <li key={trade._id} className="flex items-center p-2">
+                                    <ul className="max-h-60 overflow-y-auto mb-4 border border-gray-200 rounded bg-gray-50/50 p-2">
+                                        {candidates.map((trade) => (
+                                            <li
+                                                key={trade._id}
+                                                className="flex items-center p-2 hover:bg-gray-100 transition-colors"
+                                            >
                                                 <input
                                                     type="checkbox"
-                                                    className="mr-2"
-                                                    checked={selectedTradeIds.includes(trade._id)}
+                                                    className="mr-2 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                                    checked={selectedTradeIds.includes(
+                                                        trade._id
+                                                    )}
                                                     onChange={() => {
-                                                        setSelectedTradeIds(prev =>
-                                                            prev.includes(trade._id)
-                                                                ? prev.filter(id => id !== trade._id)
-                                                                : [...prev, trade._id]
+                                                        setSelectedTradeIds(
+                                                            (prev) =>
+                                                                prev.includes(
+                                                                    trade._id
+                                                                )
+                                                                    ? prev.filter(
+                                                                          (
+                                                                              id
+                                                                          ) =>
+                                                                              id !==
+                                                                              trade._id
+                                                                      )
+                                                                    : [
+                                                                          ...prev,
+                                                                          trade._id,
+                                                                      ]
                                                         );
                                                     }}
                                                 />
-                                                <span>{trade.name} ({trade.code})</span>
+                                                <span className="text-sm text-gray-900">
+                                                    {trade.name} ({trade.code})
+                                                </span>
                                             </li>
                                         ))}
                                     </ul>
@@ -359,21 +418,24 @@ export default function TradesOffered() {
                             })()}
                             <div className="flex justify-end space-x-3">
                                 <Button
-                                    variant="secondary"
-                                    size='sm'
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => {
                                         setShowAddModal(false);
                                         setSelectedTradeIds([]);
                                     }}
+                                    className="border-indigo-300 text-indigo-600 hover:bg-indigo-50"
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     variant="primary"
-                                    size='sm'
+                                    size="sm"
                                     onClick={handleAddSelected}
                                     disabled={selectedTradeIds.length === 0}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
                                 >
+                                    <FaCheckCircle className="h-4 w-4 mr-1" />{" "}
                                     Add Selected
                                 </Button>
                             </div>
@@ -381,6 +443,41 @@ export default function TradesOffered() {
                     </div>
                 )}
             </div>
+            <style jsx>{`
+                @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
+                .font-roboto {
+                    font-family: "Roboto", sans-serif;
+                }
+                .animate-fade-in {
+                    animation: fadeIn 0.5s ease-in;
+                }
+                .animate-scale-in {
+                    animation: scaleIn 0.3s ease-out;
+                }
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                @keyframes scaleIn {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+                .border-gradient-to-r {
+                    border-image: linear-gradient(to right, #4b5eaa, #6b46c1) 1;
+                }
+            `}</style>
         </Layout>
     );
 }

@@ -13,6 +13,7 @@ const Class = require('../models/Class');
 const Term = require('../models/term');
 const { sendEmail } = require('../services/emailService');
 const { sendSMS } = require('../services/twilioService');
+const SocketNotificationService = require('../utils/socketNotificationService');
 const fs = require('fs');
 const path = require('path');
 
@@ -137,7 +138,7 @@ const sendNotification = async (user, message, subject, req) => {
     logger.error('Error sending socket notification', { userId: user._id, error: error.message, ip: req.ip });
   }
 
-  // Email notification
+  // Email notification (restored using Nodemailer)
   if (email && user.email) {
     try {
       const htmlContent = emailTemplate(user.fullName, message, subject);
@@ -323,6 +324,17 @@ const register = async (req, res) => {
     await user.save();
     logger.info('User registered', { userId: user._id, role, ip: req.ip });
 
+    // Real-time notification for new user registration
+    try {
+      SocketNotificationService.notifyUserRegistered(user);
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for user registration', {
+        userId: user._id,
+        error: socketError.message,
+        ip: req.ip
+      });
+    }
+
     if (role === 'student') {
       if (!classId || !termId) {
         logger.warn('Missing classId or termId for student enrollment', { userId: user._id, ip: req.ip });
@@ -458,6 +470,26 @@ const login = async (req, res) => {
       console.warn('Notification error during login:', notifyErr.message);
     }
 
+    // Real-time notification for new login session (notify other user sessions)
+    try {
+      SocketNotificationService.emitToUser(user._id, 'auth:login', {
+        type: 'new_login_session',
+        message: `New login detected from ${req.ip}`,
+        title: 'New Login Session',
+        data: {
+          loginTime: new Date(),
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        }
+      });
+    } catch (socketError) {
+      logger.error('Failed to send socket notification for login', {
+        userId: user._id,
+        error: socketError.message,
+        ip: req.ip
+      });
+    }
+
     return res.json({
       success: true,
       token,
@@ -508,15 +540,17 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { userId, token } = req.body;
-    const user = await User.findOne({ _id: userId, emailVerificationToken: token, isDeleted: false });
+    const { email, token } = req.body;
+    const normalizedEmail = email.toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail, emailVerificationToken: token, isDeleted: false });
+
     if (!user) {
-      logger.warn('Invalid user ID or verification token', { userId, ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Invalid user ID or verification token' });
+      logger.warn('Invalid email or verification token', { email: normalizedEmail, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Invalid email or verification token' });
     }
 
     if (user.emailVerified) {
-      logger.warn('Email already verified', { userId, ip: req.ip });
+      logger.warn('Email already verified', { email: normalizedEmail, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Email already verified' });
     }
 
@@ -525,7 +559,7 @@ const verifyEmail = async (req, res) => {
     await user.save();
 
     await sendNotification(user, 'Your email has been successfully verified for your EMS account.', 'EMS Email Verification', req);
-    logger.info('Email verified', { userId: user._id, ip: req.ip });
+    logger.info('Email verified', { email: user.email, ip: req.ip });
 
     const payload = { id: user._id, role: user.role, tokenVersion: user.tokenVersion };
     const tokenJwt = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });

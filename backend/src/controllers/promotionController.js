@@ -7,6 +7,7 @@ const Class = require('../models/Class');
 const Term = require('../models/term');
 const User = require('../models/User');
 const School = require('../models/school');
+const SocketNotificationService = require('../utils/socketNotificationService');
 
 // Helper: Get next level for promotion
 const getNextLevel = (currentLevel) => {
@@ -335,6 +336,50 @@ exports.promoteStudents = async (req, res) => {
         }
 
         await session.commitTransaction();
+
+        // Send real-time notifications for promotion completion
+        try {
+            // Notify all school teachers and administrators about promotion completion
+            await SocketNotificationService.emitToRole('teacher', `school_${schoolId}`, {
+                type: 'promotion_completed',
+                title: 'Promotion Process Completed',
+                message: `Class promotion process has been completed successfully`,
+                data: {
+                    classId,
+                    academicYear,
+                    timestamp: new Date()
+                },
+                priority: 'high'
+            });
+
+            await SocketNotificationService.emitToRole('headmaster', `school_${schoolId}`, {
+                type: 'promotion_completed',
+                title: 'Promotion Process Completed',
+                message: `Class promotion process has been completed successfully`,
+                data: {
+                    classId,
+                    academicYear,
+                    timestamp: new Date()
+                },
+                priority: 'high'
+            });
+
+            // Notify students about their promotion results (they can check their new enrollments)
+            await SocketNotificationService.emitToClass(classId, {
+                type: 'promotion_results_available',
+                title: 'Promotion Results Available',
+                message: 'Your promotion results are now available. Please check your dashboard.',
+                data: {
+                    classId,
+                    academicYear,
+                    timestamp: new Date()
+                },
+                priority: 'high'
+            });
+        } catch (notificationError) {
+            console.error('Error sending promotion completion notifications:', notificationError);
+        }
+
         return res.status(200).json({ message: 'Promotion process completed successfully.' });
     } catch (error) {
         await session.abortTransaction();
@@ -537,6 +582,56 @@ exports.transitionStudentsToNextTerm = async (req, res) => {
         }
 
         await session.commitTransaction();
+
+        // Send real-time notifications for term transition completion
+        try {
+            // Notify all school teachers and administrators about term transition
+            await SocketNotificationService.emitToRole('teacher', `school_${schoolId}`, {
+                type: 'term_transition_completed',
+                title: 'Term Transition Completed',
+                message: `Students have been successfully transitioned to Term ${currentTermNumber + 1}`,
+                data: {
+                    classId,
+                    fromTerm: currentTermNumber,
+                    toTerm: currentTermNumber + 1,
+                    academicYear,
+                    timestamp: new Date()
+                },
+                priority: 'medium'
+            });
+
+            await SocketNotificationService.emitToRole('headmaster', `school_${schoolId}`, {
+                type: 'term_transition_completed',
+                title: 'Term Transition Completed',
+                message: `Students have been successfully transitioned to Term ${currentTermNumber + 1}`,
+                data: {
+                    classId,
+                    fromTerm: currentTermNumber,
+                    toTerm: currentTermNumber + 1,
+                    academicYear,
+                    timestamp: new Date()
+                },
+                priority: 'medium'
+            });
+
+            // Notify students about their term transition
+            await SocketNotificationService.emitToClass(classId, {
+                type: 'term_transition',
+                title: `Welcome to Term ${currentTermNumber + 1}`,
+                message: `You have been successfully transitioned to Term ${currentTermNumber + 1}. Check your new schedule and assignments.`,
+                data: {
+                    classId,
+                    fromTerm: currentTermNumber,
+                    toTerm: currentTermNumber + 1,
+                    academicYear,
+                    timestamp: new Date()
+                },
+                priority: 'medium'
+            });
+        } catch (notificationError) {
+            console.error('Error sending term transition notifications:', notificationError);
+        }
+
         return res.status(200).json({ message: `Students successfully transitioned to Term ${currentTermNumber + 1}.` });
     } catch (error) {
         await session.abortTransaction();

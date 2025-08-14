@@ -1,13 +1,27 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import DynamicTable from '../components/class/DynamicTable';
 import examService from '../services/examService';
 import submissionService from '../services/submissionService';
+import { useAuth } from '../context/AuthContext';
+import { motion } from 'framer-motion';
+import {
+  FiArrowLeft,
+  FiBookOpen,
+  FiUser,
+  FiClock,
+  FiTarget,
+  FiList,
+  FiPlayCircle,
+  FiCheckCircle,
+  FiFileText
+} from 'react-icons/fi';
 
 const StudentExamDetails = () => {
+  const { currentUser } = useAuth();
   const { examId } = useParams();
   const navigate = useNavigate();
 
@@ -21,35 +35,37 @@ const StudentExamDetails = () => {
       setLoading(true);
       setError('');
       try {
-        const examData = await examService.getExamById(examId);
-        // Calculate schedule.end
+        if (!currentUser?.school) {
+          throw new Error('School ID not found. Please ensure you are logged in correctly.');
+        }
+        const schoolId = currentUser.school;
+        const examData = await examService.getExamById(examId, schoolId);
+
         if (examData.schedule?.start && examData.schedule?.duration) {
           const start = new Date(examData.schedule.start);
           examData.schedule.end = new Date(start.getTime() + examData.schedule.duration * 60 * 1000);
         }
         setExam(examData);
 
-        const studentSubmissions = await submissionService.getStudentSubmissions();
+        const studentSubmissions = await submissionService.getStudentSubmissions(schoolId);
         const examSubmissions = studentSubmissions.filter(
-          submission => submission.exam?._id === examId || submission.exam === examId
+          (submission) => submission.exam?._id === examId || submission.exam === examId
         );
         setSubmissions(examSubmissions);
-
-        // Debug output
-        console.log('Exam status:', examData.status);
-        console.log('Exam schedule:', examData.schedule);
-        console.log('Current time:', new Date());
-        console.log('Submissions:', examSubmissions);
       } catch (error) {
-        console.error('Error fetching exam details:', error);
         setError(error.message || 'Failed to load exam details');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchExamDetails();
-  }, [examId]);
+    if (currentUser) {
+      fetchExamDetails();
+    } else {
+      setLoading(false);
+      setError('User not authenticated. Please log in.');
+    }
+  }, [examId, currentUser]);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not scheduled';
@@ -79,7 +95,6 @@ const StudentExamDetails = () => {
     } else if (exam.status === 'completed') {
       return { label: 'Completed', color: 'purple' };
     }
-
     return { label: 'Unknown', color: 'gray' };
   };
 
@@ -92,177 +107,197 @@ const StudentExamDetails = () => {
 
     return (
       exam.status === 'active' ||
-      (exam.status === 'scheduled' &&
-        start && start <= now &&
-        end && end >= now)
+      (exam.status === 'scheduled' && start && start <= now && end && end >= now)
     );
   };
 
   const hasCompletedExam = () => {
-    return submissions.some(submission => submission.status === 'graded');
+    return submissions.some((submission) => submission.status === 'graded');
   };
 
-  // Submissions table columns
   const submissionsColumns = [
-    { 
-      key: 'submittedAt', 
+    {
+      key: 'submittedAt',
       title: 'Date',
-      render: (value) => (
-        <span className="text-sm text-gray-900">
-          {new Date(value).toLocaleString()}
-        </span>
-      )
+      render: (value) => <span className="text-sm">{new Date(value).toLocaleString()}</span>
     },
-    { 
-      key: 'status', 
+    {
+      key: 'status',
       title: 'Status',
       render: (value) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          value === 'graded'
-            ? 'bg-green-100 text-green-800'
-            : 'bg-yellow-100 text-yellow-800'
-        }`}>
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${value === 'graded' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+            }`}
+        >
           {value}
         </span>
       )
     },
-    { 
-      key: 'totalScore', 
+    {
+      key: 'totalScore',
       title: 'Score',
       render: (value) => (
-        <span className="text-sm font-medium text-gray-900">
-          {value !== undefined
-            ? `${value}/${exam?.totalPoints || 100}`
-            : '-'}
+        <span className="text-sm font-medium">
+          {value !== undefined ? `${value}/${exam?.totalPoints || 100}` : '-'}
         </span>
       )
     }
   ];
 
-  const handleTakeExam = () => {
-    navigate(`/student/take-exam/${examId}`);
-  };
-
+  const handleTakeExam = () => navigate(`/student/take-exam/${examId}`);
   const handleViewResults = () => {
-    const submission = submissions.find(s => s.status === 'graded');
-    if (submission) {
-      navigate(`/student/submissions/${submission._id}`);
-    }
+    const submission = submissions.find((s) => s.status === 'graded');
+    if (submission) navigate(`/student/submissions/${submission._id}`);
   };
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Exam Details</h1>
-        <Button
-          variant="secondary"
-          className="mt-2"
-          onClick={() => navigate('/student/exams')}
-          size="sm"
-        >
-          Back to Exams
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-6 flex items-center justify-between"
+      >
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2 select-none">
+            <FiFileText className="text-blue-600" /> Exam Details
+          </h1>
+        </div>
+        <Button variant="secondary" size="sm" onClick={() => navigate('/student/exams')}>
+          <FiArrowLeft className="mr-1" /> Back
         </Button>
-      </div>
+      </motion.div>
 
+      {/* Loading / Error / Content */}
       {loading ? (
         <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+            className="h-12 w-12 border-b-4 border-blue-600 rounded-full"
+          />
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-red-50 border border-red-300 text-red-700 px-6 py-4 rounded-lg font-medium shadow-sm"
+        >
           {error}
-        </div>
+        </motion.div>
       ) : exam ? (
-        <div className="space-y-6">
-          <Card>
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between">
-              <div className="mb-6 md:mb-0">
-                <h2 className="text-xl font-semibold text-gray-900">{exam.title}</h2>
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center">
-                    <span className="text-gray-600 w-32">Subject:</span>
-                    <span className="font-medium">{exam.subject?.name || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-600 w-32">Type:</span>
-                    <span className="font-medium">{exam.type || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-600 w-32">Teacher:</span>
-                    <span className="font-medium">{exam.teacher?.fullName || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-600 w-32">Start Time:</span>
-                    <span className="font-medium">{formatDate(exam.schedule?.start)}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-600 w-32">End Time:</span>
-                    <span className="font-medium">{formatDate(exam.schedule?.end)}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-600 w-32">Duration:</span>
-                    <span className="font-medium">{exam.schedule?.duration} minutes</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-600 w-32">Total Points:</span>
-                    <span className="font-medium">{exam.totalPoints || '-'}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-gray-600 w-32">Status:</span>
-                    <span
-                      className={`inline-block px-2 py-1 text-xs rounded-full bg-${getStatusInfo(exam).color}-100 text-${getStatusInfo(exam).color}-800`}
-                    >
-                      {getStatusInfo(exam).label}
-                    </span>
-                  </div>
-                </div>
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="overflow-hidden rounded-2xl shadow-xl bg-white max-w-4xl mx-auto"
+        >
+          {/* Status gradient */}
+          <div
+            className={`h-2 rounded-t-xl bg-gradient-to-r from-${getStatusInfo(exam).color}-400 to-${getStatusInfo(exam).color}-600`}
+          />
+          <div className="p-8">
+            <h2 className="text-3xl font-bold mb-6 flex items-center gap-3 tracking-tight select-none">
+              <FiBookOpen className="text-blue-600 text-3xl" /> {exam.title}
+            </h2>
 
-                {exam.instructions && (
-                  <div className="mt-6">
-                    <h3 className="font-medium text-gray-900 mb-2">Instructions:</h3>
-                    <div dangerouslySetInnerHTML={{ __html: exam.instructions }} />
-                  </div>
-                )}
+            {/* Exam Info Grid */}
+            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 text-gray-700 mb-8 select-none">
+              <div className="flex items-center gap-2">
+                <FiBookOpen className="text-blue-500 text-xl" />
+                <span className="font-semibold">Subject:</span>
+                <span className="ml-auto font-medium">{exam.subject?.name || 'N/A'}</span>
               </div>
-
-              <div className="flex flex-col gap-3">
-                {isExamAvailable() && !hasCompletedExam() && (
-                  <Button
-                    variant="primary"
-                    onClick={handleTakeExam}
-                  >
-                    Take Exam
-                  </Button>
-                )}
-
-                {hasCompletedExam() && (
-                  <Button
-                    variant="secondary"
-                    onClick={handleViewResults}
-                  >
-                    View Results
-                  </Button>
-                )}
+              <div className="flex items-center gap-2">
+                <FiList className="text-green-500 text-xl" />
+                <span className="font-semibold">Type:</span>
+                <span className="ml-auto font-medium">{exam.type || 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiUser className="text-purple-500 text-xl" />
+                <span className="font-semibold">Teacher:</span>
+                <span className="ml-auto font-medium">{exam.teacher?.fullName || 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiClock className="text-yellow-500 text-xl" />
+                <span className="font-semibold">Start:</span>
+                <span className="ml-auto font-medium">{formatDate(exam.schedule?.start)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiClock className="text-yellow-500 text-xl" />
+                <span className="font-semibold">End:</span>
+                <span className="ml-auto font-medium">{formatDate(exam.schedule?.end)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiTarget className="text-red-500 text-xl" />
+                <span className="font-semibold">Duration:</span>
+                <span className="ml-auto font-medium">{exam.schedule?.duration} mins</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiTarget className="text-red-500 text-xl" />
+                <span className="font-semibold">Total Points:</span>
+                <span className="ml-auto font-medium">{exam.totalPoints || '-'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <FiPlayCircle
+                  className={`text-${getStatusInfo(exam).color}-500 text-xl`}
+                />
+                <span className="font-semibold">Status:</span>
+                <span
+                  className={`ml-auto px-3 py-1 rounded-full text-sm bg-${getStatusInfo(exam).color}-100 text-${getStatusInfo(exam).color}-800 font-semibold select-text`}
+                >
+                  {getStatusInfo(exam).label}
+                </span>
               </div>
             </div>
-          </Card>
 
-          {submissions.length > 0 && (
-            <Card title="Your Submissions">
-              <div className="overflow-x-auto">
-                <DynamicTable
-                  data={submissions}
-                  columns={submissionsColumns}
-                  emptyMessage="No submissions available"
-                />
+            {/* Instructions */}
+            {exam.instructions && (
+              <div className="mt-6 prose max-w-none text-gray-600">
+                <h3 className="font-semibold mb-3 flex items-center gap-2 select-none">
+                  <FiFileText className="text-indigo-600 text-xl" /> Instructions
+                </h3>
+                <div dangerouslySetInnerHTML={{ __html: exam.instructions }} />
               </div>
-            </Card>
-          )}
-        </div>
+            )}
+
+            {/* Actions */}
+            <div className="mt-8 flex gap-4 select-none">
+              {isExamAvailable() && !hasCompletedExam() && (
+                <Button variant="primary" onClick={handleTakeExam}>
+                  Take Exam
+                </Button>
+              )}
+              {hasCompletedExam() && (
+                <Button variant="secondary" onClick={handleViewResults}>
+                  View Results
+                </Button>
+              )}
+            </div>
+          </div>
+        </motion.div>
       ) : (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-6 py-4 rounded-lg font-semibold shadow-sm max-w-4xl mx-auto select-none">
           Exam not found.
         </div>
+      )}
+
+      {/* Submissions */}
+      {submissions.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mt-10 overflow-hidden rounded-2xl shadow-xl bg-white p-8 max-w-4xl mx-auto"
+        >
+          <h3 className="text-2xl font-bold mb-6 select-none">Your Submissions</h3>
+          <DynamicTable
+            data={submissions}
+            columns={submissionsColumns}
+            emptyMessage="No submissions available"
+          />
+        </motion.div>
       )}
     </Layout>
   );

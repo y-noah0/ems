@@ -19,17 +19,23 @@ const StudentResults = () => {
     const fetchStudentResults = async () => {
       setLoading(true);
       try {
+        // Assume schoolId is available in currentUser.school._id; adjust based on your AuthContext structure
+        const schoolId = currentUser?.school;
+        if (!schoolId) {
+          throw new Error('School ID not found in user context');
+        }
+
         const isStudent = currentUser?.role === 'student';
         const isViewingOwnResults = isStudent && !studentId;
-        
+
         // Different approach based on user role and scenario
         if (isViewingOwnResults) {
           // Student viewing their own results - use student data from auth context
           setStudent(currentUser);
-          
-          // Get results using submissionService (proper student route)
-          const submissionsData = await submissionService.getStudentSubmissions();
-          
+
+          // Get results using submissionService (proper student route) with schoolId
+          const submissionsData = await submissionService.getStudentSubmissions(schoolId);
+
           // Transform the submissions to match the expected results format
           const formattedResults = submissionsData.map(sub => ({
             _id: sub._id,
@@ -40,23 +46,23 @@ const StudentResults = () => {
             maxScore: sub.totalPoints || sub.exam?.totalPoints || 100,
             date: sub.submittedAt || sub.startTime
           }));
-          
+
           setResults(formattedResults);
         } else {
           // Admin/Dean viewing student results - use admin routes
           // Determine which student ID to use
           const targetStudentId = studentId || (isStudent ? currentUser._id : null);
-          
+
           if (!targetStudentId) {
             throw new Error('No student ID available');
           }
-          
-          // Get student data
-          const studentData = await adminService.getStudentById(targetStudentId);
+
+          // Get student data (assuming adminService methods take schoolId as second argument)
+          const studentData = await adminService.getStudentById(targetStudentId, schoolId);
           setStudent(studentData);
-          
-          // Get results
-          const resultsData = await adminService.getStudentResults(targetStudentId);
+
+          // Get results (assuming adminService methods take schoolId as second argument)
+          const resultsData = await adminService.getStudentResults(targetStudentId, schoolId);
           setResults(resultsData);
         }
       } catch (error) {
@@ -100,20 +106,21 @@ const StudentResults = () => {
     );
   }
 
-  // Calculate average score
-  const totalScore = results.reduce((sum, result) => {
-    // Calculate percentage score for each result
-    const scoreValue = typeof result.score === 'number' ? result.score : 0;
-    const maxScoreValue = result.maxScore || 100;
-    const percentage = (scoreValue / maxScoreValue) * 100;
-    return sum + percentage;
-  }, 0);
+  // Calculate percentages for all results
+  const percentages = results.map(r => ((r.score || 0) / (r.maxScore || 100)) * 100);
+
+  // Calculate average score (as percentage)
+  const totalScore = percentages.reduce((sum, perc) => sum + perc, 0);
   const averageScore = results.length > 0 ? (totalScore / results.length).toFixed(2) : 0;
+
+  // Calculate highest and lowest as percentages
+  const highestScore = results.length > 0 ? Math.max(...percentages).toFixed(1) : '–';
+  const lowestScore = results.length > 0 ? Math.min(...percentages).toFixed(1) : '–';
 
   // Results table columns
   const resultsColumns = [
-    { 
-      key: 'subject', 
+    {
+      key: 'subject',
       title: 'Subject',
       render: (value) => (
         <span className="text-sm font-medium text-gray-900">
@@ -121,8 +128,8 @@ const StudentResults = () => {
         </span>
       )
     },
-    { 
-      key: 'title', 
+    {
+      key: 'title',
       title: 'Exam Title',
       render: (value) => (
         <span className="text-sm text-gray-900">
@@ -130,8 +137,8 @@ const StudentResults = () => {
         </span>
       )
     },
-    { 
-      key: 'type', 
+    {
+      key: 'type',
       title: 'Type',
       render: (value) => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -139,8 +146,8 @@ const StudentResults = () => {
         </span>
       )
     },
-    { 
-      key: 'score', 
+    {
+      key: 'score',
       title: 'Score',
       render: (value, item) => (
         <span className="text-sm font-medium text-gray-900">
@@ -148,8 +155,8 @@ const StudentResults = () => {
         </span>
       )
     },
-    { 
-      key: 'percentage', 
+    {
+      key: 'percentage',
       title: 'Percentage',
       render: (value, item) => {
         const percentage = ((item.score || 0) / (item.maxScore || 100)) * 100;
@@ -161,8 +168,8 @@ const StudentResults = () => {
         );
       }
     },
-    { 
-      key: 'date', 
+    {
+      key: 'date',
       title: 'Date',
       render: (value) => (
         <span className="text-sm text-gray-500">
@@ -186,28 +193,28 @@ const StudentResults = () => {
             <p className="text-3xl font-semibold text-gray-800">{averageScore}%</p>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
           <div className="text-center">
             <h2 className="text-gray-600 text-sm font-medium">Exams Taken</h2>
             <p className="text-3xl font-semibold text-gray-800">{results.length}</p>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
           <div className="text-center">
             <h2 className="text-gray-600 text-sm font-medium">Highest Score</h2>
             <p className="text-3xl font-semibold text-gray-800">
-              {results.length > 0 ? Math.max(...results.map(r => r.score)) : '–'}%
+              {highestScore}%
             </p>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
           <div className="text-center">
             <h2 className="text-gray-600 text-sm font-medium">Lowest Score</h2>
             <p className="text-3xl font-semibold text-gray-800">
-              {results.length > 0 ? Math.min(...results.map(r => r.score)) : '–'}%
+              {lowestScore}%
             </p>
           </div>
         </div>

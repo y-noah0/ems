@@ -134,7 +134,7 @@ const sendNotification = async (user, message, subject, req) => {
     logger.error('Error sending socket notification', { userId: user._id, error: error.message, ip: req.ip });
   }
 
-  // Email notification
+  // Email notification (restored using Nodemailer)
   if (email && user.email) {
     try {
       const htmlContent = emailTemplate(user.fullName, message, subject);

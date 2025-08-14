@@ -1,6 +1,37 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import Button from "./Button";
+
+// Helper functions for status and formatting
+const getStatusInfo = (exam) => {
+if (!exam) return { label: "Unknown", color: "gray" };
+const now = new Date();
+const start = exam.startTime ? new Date(exam.startTime) : null;
+const end = exam.endTime ? new Date(exam.endTime) : null;
+if (exam.status === "draft") {
+    return { label: "Draft", color: "gray" };
+} else if (exam.status === "scheduled") {
+    if (!start || start > now) {
+        return { label: "Upcoming", color: "blue" };
+    } else if (start <= now && end >= now) {
+        return { label: "In Progress", color: "green" };
+    } else {
+        return { label: "Past", color: "gray" };
+    }
+} else if (exam.status === "active") {
+    return { label: "Active", color: "green" };
+} else if (exam.status === "completed") {
+    return { label: "Completed", color: "purple" };
+}
+return { label: "Unknown", color: "gray" };
+};
+
+const formatDate = (dateString) => {
+if (!dateString) return "Not scheduled";
+const date = new Date(dateString);
+return date.toLocaleString();
+};
 
 const ExamCard = ({
     examId,
@@ -11,208 +42,155 @@ const ExamCard = ({
     status,
     startTime,
     endTime,
-    questions,
+    questions = [],
     totalPoints,
     progress = 0,
+    teacher,
+    type,
+    instructions,
+    schedule,
 }) => {
-    const user = useAuth()
-    const userRole = user.currentUser.role
-    
-    const navigate = useNavigate();
+const user = useAuth();
+const userRole = user.currentUser.role;
+const navigate = useNavigate();
 
-    const getStatusColor = () => {
-        switch (status) {
-            case "active":
-                return { bg: "#e6f0ff", text: "#0066ff" };
-            case "completed":
-                return { bg: "#e6ffe6", text: "#00cc00" };
-            case "upcoming":
-            default:
-                return { bg: "#fff4e6", text: "#ff9933" };
-        }
-    };
+const exam = {
+    _id: examId,
+    title,
+    subject: typeof subject === "string" ? { name: subject } : subject,
+    classCode,
+    description,
+    status,
+    startTime,
+    endTime,
+    questions,
+    totalPoints,
+    progress,
+    teacher,
+    type,
+    instructions,
+    schedule: schedule || {
+        start: startTime,
+        end: endTime,
+        duration: schedule?.duration || "-",
+    },
+};
 
-    const handleViewClick = () => {
-        console.log('ExamCard: handleViewClick called');
-        console.log('ExamCard: userRole:', userRole);
-        console.log('ExamCard: examId:', examId);
-        
-        if (userRole === 'teacher') {
-            // Navigate to teacher exam view with tabs for exam details and submissions
-            console.log('ExamCard: Navigating to teacher route:', `/teacher/exams/${examId}`);
-            navigate(`/teacher/exams/${examId}`);
-        } else if (userRole === 'dean') {
-            // Navigate to dean exam view
-            console.log('ExamCard: Navigating to dean route:', `/dean/exams/${examId}`);
-            navigate(`/dean/exams/${examId}`);
-        } else {
-            // Navigate to student exam view
-            console.log('ExamCard: Navigating to student route:', `/student/exams/${examId}`);
-            navigate(`/student/exams/${examId}`);
-        }
-    };
+const statusInfo = getStatusInfo(exam);
 
-    const statusColor = getStatusColor();
+const handleViewClick = (e) => {
+    e.stopPropagation();
+    if (userRole === "teacher") {
+        navigate(`/teacher/exams/${examId}`);
+    } else if (userRole === "dean") {
+        navigate(`/dean/exams/${examId}`);
+    } else {
+        navigate(`/student/exams/${examId}`);
+    }
+};
 
-    return (
-        <div
-            style={{
-                background: "white",
-                borderRadius: "10px",
-                padding: "20px",
-                boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.05)",
-                display: "flex",
-                flexDirection: "column",
-                minWidth: "440px",
-                maxWidth: "440px",
-                maxHeight: "240px",
-                width: "100%",
-                border: "1px solid rgba(0, 0, 0, 0.1)",
-            }}
-        >
-            <div>
-                <div className="flex justify-between items-center">
-                    <h2
-                        style={{
-                            fontSize: "16px",
-                            color: "#333",
-                            margin: 0,
-                            marginBottom: "5px",
-                            fontWeight: 600,
-                        }}
-                    >
-                        {title}
-                    </h2>
-                    <div
-                        style={{
-                            backgroundColor: statusColor.bg,
-                            color: statusColor.text,
-                            padding: "4px 15px",
-                            borderRadius: "20px",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            fontWeight: 500,
-                            fontSize: "14px",
-                        }}
-                    >
-                        <span
-                            style={{
-                                display: "inline-block",
-                                width: "4px",
-                                height: "4px",
-                                backgroundColor: "currentColor",
-                                borderRadius: "50%",
-                                marginRight: "8px",
-                            }}
-                        ></span>
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </div>
-                </div>
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        color: "#666",
-                        gap: "8px",
-                        fontSize: "14px",
-                    }}
-                >
-                    {subject}{" "}
-                    <span
-                        style={{
-                            fontSize: "20px",
-                            lineHeight: 0,
-                            height: "2px",
-                        }}
-                    >
-                        •
-                    </span>{" "}
-                    {classCode}
+// Map Upcoming label to Pending to match UI wording
+const displayStatusLabel = statusInfo.label === "Upcoming" ? "Pending" : statusInfo.label;
+
+// Tinted background for status using existing status color
+const statusColorMap = {
+    green: { bg: "#22c55e1A", dot: "#22c55e", text: "#166534" },
+    blue: { bg: "#3b82f61A", dot: "#1e40af", text: "#1e3a8a" },
+    purple: { bg: "#a855f71A", dot: "#7c3aed", text: "#6d28d9" },
+    gray: { bg: "#6b72801A", dot: "#6b7280", text: "#374151" },
+};
+const statusColors = statusColorMap[statusInfo.color] || statusColorMap.gray;
+
+// Gold color specified for Pending (ECBE3F)
+if (displayStatusLabel === "Pending") {
+    statusColors.bg = "#ECBE3F1A"; // /10
+    statusColors.dot = "#ECBE3F";
+    statusColors.text = "#B38700";
+}
+
+return (
+    <div
+        className="bg-white flex flex-col cursor-pointer transition hover:shadow-md"
+        style={{
+            width: 440,
+            height: 240,
+            border: "1px solid rgba(0,0,0,0.1)",
+            borderRadius: 10,
+            padding: 24,
+        }}
+        tabIndex={0}
+        role="button"
+        onClick={handleViewClick}
+    >
+        <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+                <h2 className="text-[18px] leading-snug font-semibold text-gray-900 mb-1 truncate" title={title}>{title}</h2>
+                <div className="flex items-center text-[13px] text-gray-600 gap-2 mb-3">
+                    <span>{exam.subject?.name || "N/A"}</span>
+                    <span className="w-1 h-1 rounded-full bg-gray-400 inline-block" />
+                    <span>{classCode || ""}</span>
                 </div>
             </div>
-
             <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: '6px'
-                }}
+                className="flex items-center gap-2 px-3 py-1 rounded-full text-[12px] font-medium select-none"
+                style={{ backgroundColor: statusColors.bg, color: statusColors.text }}
             >
-                <p
-                    style={{
-                        color: "#666",
-                        fontSize: "14px",
-                        margin: 0,
-                        fontWeight: 500,
-                        width: "50%",
-                    }}
-                >
-                    {description || `An exam on ${title.toLowerCase()}`}
-                </p>
-                <div style={{ display: "flex", alignItems: "center" }}></div>
-                <div
-                    style={{
-                        border: "1px solid #e0e0e0",
-                        borderRadius: "10px",
-                        padding: "20px",
-                    }}
-                >
-                    <div style={{ fontSize: "14px", marginBottom: "10px" }}>
-                        {startTime} - {endTime}
-                    </div>
-                    <div
-                        style={{
-                            fontSize: "14px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                        }}
-                    >
-                        <span>{questions} questions </span>
-                        <span> /{totalPoints}</span>
-                    </div>
-                </div>
+                <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: statusColors.dot }}
+                />
+                <span>{displayStatusLabel}</span>
             </div>
-
-            <div
-                style={{
-                    width: "100%",
-                    height: "6px",
-                    backgroundColor: "#e0e0e0",
-                    borderRadius: "3px",
-
-                }}
-            >
-                <div
-                    style={{
-                        height: "100%",
-                        width: `${progress}%`,
-                        backgroundColor: "#0066ff",
-                        borderRadius: "3px",
-                    }}
-                ></div>
-            </div>
-
-            <button
-                onClick={handleViewClick}
-                style={{
-                    backgroundColor: "#0066ff",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "10px",
-                    padding: "4px 24px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    alignSelf: "flex-start",
-                    marginTop: "10px",
-                    maxHeight: "30px",
-                }}
-            >
-                View
-            </button>
         </div>
-    );
+
+        <div className="flex flex-1 gap-4 overflow-hidden">
+            <div className="flex-1 min-w-0">
+                <p className="text-[13px] leading-snug text-gray-700 line-clamp-3 pr-2">
+                    {description || instructions?.replace(/<[^>]+>/g, "") || ""}
+                </p>
+                <div className="absolute" />
+            </div>
+            <div
+                className="shrink-0 flex flex-col justify-start text-[13px] rounded-xl"
+                style={{
+                    width: 170,
+                    backgroundColor: "#F9FAFB",
+                    border: "1px solid rgba(0,0,0,0.05)",
+                    padding: "12px 14px",
+                }}
+            >
+                <div className="text-gray-900 font-medium text-[13px] mb-2 leading-none">
+                    {exam.schedule?.start ? new Date(exam.schedule.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                    {" - "}
+                    {exam.schedule?.end ? new Date(exam.schedule.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                </div>
+                <div className="flex items-center justify-between text-gray-700">
+                    <span>{questions?.length || 0} questions</span>
+                    <span className="font-semibold">/{totalPoints || 0}</span>
+                </div>
+            </div>
+        </div>
+
+        <div className="mt-4">
+            <div className="w-full h-1.5 bg-[#ECF2FD] rounded-full overflow-hidden">
+                <div
+                    className="h-full rounded-full"
+                        style={{ width: `${progress}%`, backgroundColor: "#2563eb", transition: "width .3s" }}
+                />
+            </div>
+            <div className="flex items-center justify-between mt-3">
+                <Button
+                    size="sm"
+                    onClick={handleViewClick}
+                    className="!bg-blue-600 hover:!bg-blue-700 !rounded-[10px] !px-5 !py-2 text-[13px] font-semibold"
+                >
+                    View
+                </Button>
+                <span className="text-[12px] text-gray-500">--:--</span>
+            </div>
+        </div>
+    </div>
+);
 };
 
 export default ExamCard;

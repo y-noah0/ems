@@ -4,6 +4,7 @@ const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const winston = require('winston');
 const mongoose = require('mongoose');
+const SocketNotificationService = require('../utils/socketNotificationService');
 
 // Logger setup
 const logger = winston.createLogger({
@@ -111,6 +112,41 @@ const createClass = async (req, res) => {
     }
 
     await newClass.save();
+
+    // Send real-time notifications for class creation
+    try {
+      await SocketNotificationService.emitToRole('teacher', `school_${schoolId}`, {
+        type: 'class_created',
+        title: 'New Class Created',
+        message: `A new ${normalizedLevel} class has been created`,
+        data: {
+          classId: newClass._id,
+          level: normalizedLevel,
+          trade,
+          year: normalizedYear,
+          capacity,
+          timestamp: new Date()
+        },
+        priority: 'medium'
+      });
+
+      await SocketNotificationService.emitToRole('headmaster', `school_${schoolId}`, {
+        type: 'class_created',
+        title: 'New Class Created',
+        message: `A new ${normalizedLevel} class has been created`,
+        data: {
+          classId: newClass._id,
+          level: normalizedLevel,
+          trade,
+          year: normalizedYear,
+          capacity,
+          timestamp: new Date()
+        },
+        priority: 'medium'
+      });
+    } catch (notificationError) {
+      console.error('Error sending class creation notifications:', notificationError);
+    }
 
     res.status(201).json({ success: true, class: newClass });
 
@@ -251,6 +287,39 @@ const updateClass = async (req, res) => {
         classDoc.subjects = subjects;
         await classDoc.save();
 
+        // Send real-time notifications for class update
+        try {
+          await SocketNotificationService.emitToRole('teacher', `school_${schoolId}`, {
+            type: 'class_updated',
+            title: 'Class Updated',
+            message: `Class ${level} details have been updated`,
+            data: {
+              classId: classDoc._id,
+              level,
+              trade,
+              year,
+              capacity,
+              timestamp: new Date()
+            },
+            priority: 'low'
+          });
+
+          await SocketNotificationService.emitToClass(classDoc._id, {
+            type: 'class_updated',
+            title: 'Class Information Updated',
+            message: 'Your class information has been updated. Please check for any changes.',
+            data: {
+              classId: classDoc._id,
+              level,
+              capacity,
+              timestamp: new Date()
+            },
+            priority: 'medium'
+          });
+        } catch (notificationError) {
+          console.error('Error sending class update notifications:', notificationError);
+        }
+
         logger.info('Class updated', { classId: classDoc._id, school });
         res.json({ success: true, class: classDoc });
     } catch (error) {
@@ -284,6 +353,37 @@ const deleteClass = async (req, res) => {
 
         classDoc.isDeleted = true;
         await classDoc.save();
+
+        // Send real-time notifications for class deletion
+        try {
+          await SocketNotificationService.emitToRole('teacher', `school_${schoolId}`, {
+            type: 'class_deleted',
+            title: 'Class Deleted',
+            message: `Class ${classDoc.level} has been deleted`,
+            data: {
+              classId: classDoc._id,
+              level: classDoc.level,
+              trade: classDoc.trade,
+              year: classDoc.year,
+              timestamp: new Date()
+            },
+            priority: 'high'
+          });
+
+          await SocketNotificationService.emitToClass(classDoc._id, {
+            type: 'class_deleted',
+            title: 'Class Deleted',
+            message: 'Your class has been deleted. Please contact administration for more information.',
+            data: {
+              classId: classDoc._id,
+              level: classDoc.level,
+              timestamp: new Date()
+            },
+            priority: 'high'
+          });
+        } catch (notificationError) {
+          console.error('Error sending class deletion notifications:', notificationError);
+        }
 
         logger.info('Class soft deleted', { classId: classDoc._id, school: schoolId });
         res.json({ success: true, message: 'Class deleted' });

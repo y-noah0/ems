@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaPlus, FaTimes } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
-const MultiSelect = ({ label, name, options, selectedValues, onChange }) => {
+const MultiSelect = ({ label, options, selectedValues, onChange }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const handleAdd = (value) => {
@@ -55,7 +55,7 @@ const MultiSelect = ({ label, name, options, selectedValues, onChange }) => {
                                 className={`px-4 py-2 cursor-pointer hover:bg-teal-50 flex items-center ${selectedValues.includes(option._id.toString()) ? 'bg-teal-100' : ''
                                     }`}
                             >
-                                <span>{option.name || option.className || `${option.level}${option.trade?.code || ''}`}</span>
+                                <span>{option.level && option.trade ? `${option.level} ${option.trade.code}` : (option.name || option.className)}</span>
                             </div>
                         ))}
                     </motion.div>
@@ -72,7 +72,7 @@ const MultiSelect = ({ label, name, options, selectedValues, onChange }) => {
                             exit={{ opacity: 0, scale: 0.8 }}
                             className="flex items-center bg-teal-100 text-teal-800 px-2 py-1 rounded-full text-sm"
                         >
-                            <span>{option?.name || option?.className || `${option?.level}${option?.trade?.code || ''}`}</span>
+                            <span>{option?.level && option?.trade ? `${option.level}${option.trade.code}` : (option?.name || option?.className)}</span>
                             <FaTimes
                                 className="h-4 w-4 ml-1 cursor-pointer hover:text-red-500"
                                 onClick={() => handleRemove(value)}

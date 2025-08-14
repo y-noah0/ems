@@ -118,7 +118,7 @@ router.post('/register', upload.single('profilePicture'), registerValidation, re
 // @desc    Verify email
 // @access  Public
 router.post('/verify-email', [
-  check('userId', 'User ID is required').notEmpty(),
+  check('email', 'Email is required').notEmpty().isEmail().normalizeEmail(),
   check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 })
 ], verifyEmail);
 

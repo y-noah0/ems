@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 * {
-    user-select: none;
+    /* user-select: none; */
 }
 
 @theme {
