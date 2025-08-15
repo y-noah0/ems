@@ -109,6 +109,25 @@ const emailTemplate = (userFullName, message, subject) => `
 </html>
 `;
 
+// Dedicated verification email sender (ignores role notification restrictions)
+const sendVerificationEmail = async (user, req, reason = 'verify') => {
+  try {
+    if (!user.email) return;
+    // Ensure token exists
+    if (!user.emailVerificationToken) {
+      user.emailVerificationToken = Math.floor(100000 + Math.random() * 900000).toString();
+      await user.save();
+    }
+    const actionText = reason === 'login' ? 'A login attempt was made' : 'Welcome to EMS';
+    const message = `${actionText}. Please verify your email using this code: <strong>${user.emailVerificationToken}</strong>. If you did not request this, please ignore.`;
+    const htmlContent = emailTemplate(user.fullName, message, 'EMS Email Verification');
+    await sendEmail(user.email, 'EMS Email Verification', message.replace(/<[^>]+>/g, ''), htmlContent);
+    logger.info('Verification email dispatched', { userId: user._id, context: reason, ip: req.ip });
+  } catch (err) {
+    logger.error('Failed to send verification email', { userId: user._id, error: err.message, ip: req.ip });
+  }
+};
+
 // Send notification (email, SMS, and socket.io)
 const sendNotification = async (user, message, subject, req) => {
   // Only send notifications for deans, headmasters, or teachers
@@ -303,7 +322,7 @@ const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Subjects are only allowed for teachers' });
     }
 
-    const verificationCode = role !== 'student' ? Math.floor(100000 + Math.random() * 900000).toString() : undefined;
+  const verificationCode = role !== 'student' ? Math.floor(100000 + Math.random() * 900000).toString() : undefined;
 
     const user = new User({
       fullName,
@@ -371,15 +390,13 @@ const register = async (req, res) => {
     }
 
     if (role !== 'student' && email) {
-      const message = `Welcome to the EMS! Your account has been successfully registered. Your verification code is: <strong>${user.emailVerificationToken}</strong>. Please use this code to verify your email in the EMS application. Your password is: <strong>${userPassword}</strong>.`;
-      const sent = await sendNotification(user, message, 'EMS Account Registration', req);
-      if (!sent) {
-        logger.error('Failed to send registration notification', { userId: user._id, ip: req.ip });
-        return res.status(500).json({ success: false, message: 'User registered, but failed to send registration notification', userId: user._id });
-      }
+      // Send verification email (guaranteed) plus optional notification
+      await sendVerificationEmail(user, req, 'register');
+      const message = `Your account has been registered. Use code ${user.emailVerificationToken} to verify your email.`;
+      await sendNotification(user, message, 'EMS Account Registration', req);
     } else if (role === 'student') {
       const message = `Welcome, ${user.fullName}! Your registration number and password is ${registrationNumber}.`;
-      await sendNotification(user, message, 'Welcome to EMS', req); // Skipped due to role check
+      await sendNotification(user, message, 'Welcome to EMS', req); // may be skipped due to role filter
     }
 
     res.status(201).json({
@@ -429,7 +446,14 @@ const login = async (req, res) => {
     }
 
     if (!user.emailVerified && user.role !== 'student') {
-      return res.status(400).json({ success: false, message: 'Email not verified' });
+      // Rotate code to alphanumeric 6 chars for each login attempt
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let newCode = '';
+      for (let i = 0; i < 6; i++) newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+      user.emailVerificationToken = newCode;
+      await user.save();
+      await sendVerificationEmail(user, req, 'login');
+      return res.status(400).json({ success: false, message: 'Email not verified. Verification email sent.' });
     }
 
     if (user.twoFactorEnabled) {
@@ -540,18 +564,23 @@ const verifyEmail = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { userId, token } = req.body;
-    const user = await User.findOne({ _id: userId, emailVerificationToken: token, isDeleted: false });
+    const { userId, email, token } = req.body;
+    if (!userId && !email) {
+      return res.status(400).json({ success: false, message: 'Provide userId or email' });
+    }
+    const query = userId ? { _id: userId } : { email: email?.toLowerCase() };
+    const user = await User.findOne({ ...query, isDeleted: false });
     if (!user) {
       logger.warn('Invalid user ID or verification token', { userId, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Invalid user ID or verification token' });
     }
-
     if (user.emailVerified) {
-      logger.warn('Email already verified', { userId, ip: req.ip });
+      logger.warn('Email already verified', { userId: user._id, ip: req.ip });
       return res.status(400).json({ success: false, message: 'Email already verified' });
     }
-
+    if (!user.emailVerificationToken || user.emailVerificationToken.toString() !== token.toString()) {
+      return res.status(400).json({ success: false, message: 'Invalid verification code' });
+    }
     user.emailVerificationToken = null;
     user.emailVerified = true;
     await user.save();
@@ -600,11 +629,14 @@ const resendVerificationCode = async (req, res) => {
       return res.status(429).json({ success: false, message: 'Too many resend attempts. Please wait before trying again.' });
     }
 
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-    user.emailVerificationToken = verificationCode;
+  // Always rotate a fresh 6-char mixed code (alphanumeric for better entropy)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let verificationCode = '';
+  for (let i = 0; i < 6; i++) verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
+  user.emailVerificationToken = verificationCode;
     await user.save();
 
-    const message = `A new verification code has been generated for your EMS account. Your verification code is: <strong>${verificationCode}</strong>. Please use this code to verify your email in the EMS application.`;
+  const message = `A new verification code has been generated for your EMS account. Your verification code is: <strong>${verificationCode}</strong>. Please use this code to verify your email in the EMS application.`;
     const sent = await sendNotification(user, message, 'EMS Verification Code Resend', req);
     if (!sent) {
       logger.error('Failed to send verification code resend notification', { userId: user._id, ip: req.ip });

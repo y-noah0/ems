@@ -149,6 +149,15 @@ function App() {
                                     </ProtectedRoute>
                                 }
                             />
+
+                            <Route
+                                path="/headmaster/exams"
+                                element={
+                                    <ProtectedRoute allowedRoles={["headmaster"]}>
+                                        <ExamManagement />
+                                    </ProtectedRoute>
+                                }
+                            />
                           
                             <Route
                                 path="/headmaster/classes"
@@ -416,14 +425,7 @@ function App() {
                                     </ProtectedRoute>
                                 }
                             />
-                            <Route
-                                path="/dean/exams"
-                                element={
-                                    <ProtectedRoute allowedRoles={["dean"]}>
-                                        <ExamManagement />
-                                    </ProtectedRoute>
-                                }
-                            />
+                            
                             {/* Dean Routes */}
                             <Route
                                 path="/dean/dashboard"

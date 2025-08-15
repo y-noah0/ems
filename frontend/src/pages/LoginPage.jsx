@@ -51,13 +51,14 @@ const LoginPage = () => {
         navigate('/');
       }
     } catch (err) {
-      setError(err.message || 'Invalid login credentials');
+      const msg = err?.message || err?.error || 'Invalid login credentials';
+      setError(msg);
       console.error('Login error:', err);
-      if (err.message == "Email not verified") {
-        navigate('/verify-email', { 
-          state: { email: formData.identifier } 
+      if (msg.startsWith('Email not verified')) {
+        navigate('/verify-email', {
+          state: { email: formData.identifier }
         });
-      }else if (err.message == "2FA code required") {
+      } else if (msg === '2FA code required') {
         navigate('/two-factor');
       }
     } finally {

@@ -200,7 +200,7 @@ const Sidebar = ({ userRole = "student" }) => {
       roles: ["admin"],
     },
     {
-      title: "Exams Management",
+      title: "Exams",
       icon: FaFileAlt,
       path: "/headmaster/exams",
       active: location.pathname.includes("/headmaster/exams"),

@@ -118,8 +118,9 @@ router.post('/register', upload.single('profilePicture'), registerValidation, re
 // @desc    Verify email
 // @access  Public
 router.post('/verify-email', [
-  check('userId', 'User ID is required').notEmpty(),
-  check('token', 'Verification code is required').notEmpty().isNumeric().isLength({ min: 6, max: 6 })
+  check('userId').optional().isMongoId().withMessage('Invalid user ID'),
+  check('email').optional().isEmail().withMessage('Invalid email').normalizeEmail(),
+  check('token', 'Verification code is required').matches(/^[A-Z0-9]{6}$/i).withMessage('Verification code must be 6 alphanumeric characters')
 ], verifyEmail);
 
 // @route   POST /auth/resend-verification

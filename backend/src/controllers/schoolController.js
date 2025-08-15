@@ -16,6 +16,7 @@ const logger = winston.createLogger({
 
 // Validation rules
 const schoolValidation = [
+    check('code').notEmpty().withMessage('School code is required').isLength({ min: 2, max: 12 }).withMessage('Code must be 2-12 chars').matches(/^[A-Za-z0-9_-]+$/).withMessage('Code can contain letters, numbers, underscore, hyphen').toUpperCase(),
     check('name').notEmpty().withMessage('School name is required').trim(),
     check('address').notEmpty().withMessage('Address is required').trim(),
     check('contactEmail').isEmail().withMessage('Invalid email').normalizeEmail(),
@@ -23,7 +24,8 @@ const schoolValidation = [
     check('headmaster').isMongoId().withMessage('Invalid headmaster ID'),
     check('category').isIn(['REB', 'TVET', 'PRIMARY', 'OLEVEL', "CAMBRIDGE", 'UNIVERSITY']).withMessage('Category must be REB, TVET, or PRIMARY'),
     check('tradesOffered').optional().isArray().withMessage('Trades offered must be an array'),
-    check('logo').optional().matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i).withMessage('Invalid image URL')
+    check('logo').optional().matches(/^https?:\/\/.*\.(?:png|jpg|jpeg|svg|gif)$/i).withMessage('Invalid image URL'),
+    check('website').optional().isURL({ protocols: ['http','https'], require_protocol: true }).withMessage('Invalid website URL')
 ];
 
 // Create school
@@ -35,13 +37,30 @@ const createSchool = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { name, address, contactEmail, contactPhone, headmaster, tradesOffered, category } = req.body;
-        const logo = req.file ? req.file.path : req.body.logo || null;
+    const { name, address, contactEmail, contactPhone, headmaster, tradesOffered, category, code, website } = req.body;
+        // Normalize logo path:
+        // - If file uploaded, ensure it becomes /uploads/... and uses forward slashes so it matches model validator
+        // - If provided as URL, leave as-is
+        let logo = null;
+        if (req.file) {
+            // req.file.path example on Windows: 'uploads\\schools\\123.png'
+            // Convert backslashes, ensure single leading slash
+            const normalized = req.file.path.replace(/\\/g, '/');
+            logo = '/' + normalized.replace(/^\/?/, '');
+        } else if (req.body.logo) {
+            logo = req.body.logo; // Could be an http(s) URL already matching validator
+        }
 
         const existing = await School.findOne({ name, category });
         if (existing) {
             logger.warn('School with this name and category already exists', { name, category, ip: req.ip });
             return res.status(400).json({ success: false, message: 'School with this name and category already exists' });
+        }
+
+        const existingCode = await School.findOne({ code });
+        if (existingCode) {
+            logger.warn('School code already exists', { code, ip: req.ip });
+            return res.status(400).json({ success: false, message: 'School code already exists' });
         }
 
         // Validate headmaster
@@ -59,7 +78,9 @@ const createSchool = async (req, res) => {
             headmaster,
             tradesOffered: tradesOffered || [],
             category,
-            logo
+            logo,
+            code: code?.toUpperCase(),
+            website: website || null
         });
 
         await school.save();
@@ -162,7 +183,7 @@ const updateSchool = async (req, res) => {
             return res.status(400).json({ success: false, errors: errors.array() });
         }
 
-        const { name, address, contactEmail, contactPhone, headmaster, tradesOffered, category } = req.body;
+    const { name, address, contactEmail, contactPhone, headmaster, tradesOffered, category, website, code } = req.body;
         let school;
         try {
             school = await validateEntity(School, req.params.id, 'School');
@@ -206,6 +227,15 @@ const updateSchool = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Another school with this name and category exists' });
         }
 
+        if (code && code.toUpperCase() !== school.code) {
+            const codeTaken = await School.findOne({ code: code.toUpperCase(), _id: { $ne: school._id } });
+            if (codeTaken) {
+                logger.warn('Updated school code already in use', { code, schoolId: school._id, ip: req.ip });
+                return res.status(400).json({ success: false, message: 'School code already exists' });
+            }
+            school.code = code.toUpperCase();
+        }
+
         school.name = name;
         school.address = address;
         school.contactEmail = contactEmail;
@@ -213,7 +243,15 @@ const updateSchool = async (req, res) => {
         school.headmaster = headmaster;
         school.tradesOffered = tradesOffered || [];
         school.category = category;
-        school.logo = req.file ? req.file.path : req.body.logo || school.logo;
+        if (req.file) {
+            const normalized = req.file.path.replace(/\\/g, '/');
+            school.logo = '/' + normalized.replace(/^\/?/, '');
+        } else if (req.body.logo) {
+            school.logo = req.body.logo; // Accept direct URL update
+        }
+        if (website !== undefined) {
+            school.website = website || null;
+        }
 
         await school.save();
         logger.info('School updated', { schoolId: school._id, name, category, ip: req.ip });

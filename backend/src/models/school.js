@@ -2,6 +2,16 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const SchoolSchema = new Schema({
+    code: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        uppercase: true,
+        minlength: 2,
+        maxlength: 12,
+        match: [/^[A-Z0-9_-]+$/i, 'School code may contain only letters, numbers, underscore and hyphen']
+    },
     name: {
         type: String,
         required: true,
@@ -51,6 +61,19 @@ const SchoolSchema = new Schema({
         },
         default: null
     },
+    website: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        validate: {
+            validator: function (v) {
+                if (!v) return true; // optional
+                return /^https?:\/\/[\w.-]+(\.[\w\.-]+)+(\:[0-9]+)?(\/[^\s]*)?$/i.test(v);
+            },
+            message: 'Invalid website URL'
+        },
+        default: null
+    },
     isDeleted: {
         type: Boolean,
         default: false
@@ -58,6 +81,7 @@ const SchoolSchema = new Schema({
 }, { timestamps: true });
 
 SchoolSchema.index({ name: 1, category: 1 });
+SchoolSchema.index({ code: 1 }, { unique: true });
 
 SchoolSchema.pre('save', async function (next) {
     const User = mongoose.model('User');

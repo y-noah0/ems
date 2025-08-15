@@ -92,14 +92,16 @@ export default function VerifyEmail() {
                                     next && next.focus();
                                 });
                             }}>
-                                {Array.from({length: CODE_LENGTH}).map((_,idx)=> (
+                {Array.from({length: CODE_LENGTH}).map((_,idx)=> (
                                     <input
                                         key={idx}
                                         id={`code-box-${idx}`}
-                                        type="text"
-                                        inputMode="numeric"
+                    type="text"
+                    inputMode="text"
                                         maxLength={1}
-                                        className="w-8 h-10 text-center text-xl font-mono border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                    pattern="[A-Za-z0-9]"
+                    autoComplete="one-time-code"
+                    className="w-8 h-10 text-center text-xl font-mono border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm uppercase tracking-wider"
                                         defaultValue={token[idx]||''}
                                         onChange={(e)=>{
                                             const v = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g,'');
@@ -132,7 +134,7 @@ export default function VerifyEmail() {
                                     />
                                 ))}
                             </div>
-                            <p className="mt-2 text-xs text-gray-500">Enter the 6-character code sent to your email.</p>
+                            <p className="mt-2 text-xs text-gray-500">Enter the 6-character code (letters & numbers) sent to your email.</p>
                         </div>
 
                         <div className="mt-6">

@@ -63,7 +63,7 @@ const schoolService = {
   },
   updateSchool: async (id, schoolData) => {
     try {
-      const response = await api.put(`/${id}`, schoolData, {
+      const response = await api.patch(`/${id}`, schoolData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
