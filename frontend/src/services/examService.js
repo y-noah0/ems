@@ -267,6 +267,19 @@ const examService = {
     }
   },
 
+  // Regrade submission (update existing manual grades) using update-grades endpoint
+  regradeSubmission: async (submissionId, grades, schoolId) => {
+    try {
+      const response = await api.post(`/submissions/${submissionId}/update-grades`, { grades, submissionId }, { schoolId });
+      toast.success('Submission regraded');
+      return response.data;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to regrade submission';
+      toast.error(errorMsg);
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
   // Get all teacher submissions (assumes submissions.js route)
   getTeacherSubmissions: async (schoolId) => {
     try {

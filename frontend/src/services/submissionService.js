@@ -186,11 +186,14 @@ const submissionService = {
     }
   },
 
-  gradeOpenQuestions: async (submissionId, grades, schoolId) => {
+  gradeOpenQuestions: async (submissionId, grades, schoolId, feedback='') => {
     try {
-      const response = await api.post(`/submissions/${submissionId}/grade`, { grades }, { schoolId });
+      const response = await api.post(`/submissions/${submissionId}/grade`, { submissionId, grades, feedback }, { schoolId });
+      toast.success('Submission graded');
       return response.data;
     } catch (error) {
+      const msg = error.response?.data?.message || 'Failed to grade submission';
+      toast.error(msg);
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },

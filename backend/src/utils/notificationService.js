@@ -36,14 +36,18 @@ exports.sendNotification = async (io, userId, data) => {
     
     await notification.save();
     
-    // Send real-time notification
-    io.to(userId).emit('notification', {
+    // Send real-time notification (support both legacy room id and new namespaced pattern user:{id})
+    const payload = {
       id: notification._id,
       type: notification.type,
       title: notification.title,
       message: notification.message,
       createdAt: notification.createdAt
-    });
+    };
+    // Namespaced room (used by SocketNotificationService)
+    io.to(`user:${userId}`).emit('notification', payload);
+    // Legacy direct room (in case some clients joined plain id)
+    io.to(userId.toString()).emit('notification', payload);
     
     return notification;
   } catch (error) {
@@ -57,7 +61,7 @@ exports.sendGradeNotification = async (io, studentId, submission) => {
   return this.sendNotification(io, studentId, {
     type: 'grade',
     title: 'Exam Graded',
-    message: `Your ${submission.exam.title} exam has been graded.`,
+    message: `Your ${(submission.exam && submission.exam.title) || 'exam'} exam has been graded.`,
     relatedModel: 'Submission',
     relatedId: submission._id
   });

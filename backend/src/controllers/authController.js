@@ -571,8 +571,8 @@ const verifyEmail = async (req, res) => {
     const query = userId ? { _id: userId } : { email: email?.toLowerCase() };
     const user = await User.findOne({ ...query, isDeleted: false });
     if (!user) {
-      logger.warn('Invalid user ID or verification token', { userId, ip: req.ip });
-      return res.status(400).json({ success: false, message: 'Invalid user ID or verification token' });
+      logger.warn('Invalid email or verification token', { email: normalizedEmail, ip: req.ip });
+      return res.status(400).json({ success: false, message: 'Invalid email or verification token' });
     }
     if (user.emailVerified) {
       logger.warn('Email already verified', { userId: user._id, ip: req.ip });
@@ -586,7 +586,7 @@ const verifyEmail = async (req, res) => {
     await user.save();
 
     await sendNotification(user, 'Your email has been successfully verified for your EMS account.', 'EMS Email Verification', req);
-    logger.info('Email verified', { userId: user._id, ip: req.ip });
+    logger.info('Email verified', { email: user.email, ip: req.ip });
 
     const payload = { id: user._id, role: user.role, tokenVersion: user.tokenVersion };
     const tokenJwt = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '12h' });

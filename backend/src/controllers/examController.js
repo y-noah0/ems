@@ -10,11 +10,16 @@ const { validateEntity, validateEntities } = require('../utils/entityValidator')
 const { checkScheduleConflicts } = require('../utils/scheduleValidator');
 const { toUTC } = require('../utils/dateUtils');
 const { logAudit } = require('../utils/auditLogger');
-const notificationService = require('../utils/notificationService');
+// Two notification mechanisms:
+// 1. Real-time immediate (notificationService) for socket + direct Notification doc
+// 2. Queued (notificationServices) for email/SMS batching
+const notificationService = require('../utils/notificationService'); // real-time
+const notificationQueueService = require('../utils/notificationServices'); // queue processor
 const { sendSMS } = require('../services/twilioService');
 const { sendEmail } = require('../services/emailService');
 const SocketNotificationService = require('../utils/socketNotificationService');
-const schedule = require('node-schedule');
+// Use a distinct name for the scheduler to avoid shadowing with request body field "schedule"
+const jobScheduler = require('node-schedule');
 const enrollment = require('../models/enrollment');
 const mongoSanitize = require('express-mongo-sanitize');
 
@@ -42,7 +47,8 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Validation Rules
 const allowedExamTypes = ['assessment1', 'assessment2', 'exam', 'homework', 'quiz'];
-const allowedQuestionTypes = ['multiple-choice', 'true-false', 'true-false-labeled', 'true-false-statements', 'short-answer', 'essay'];
+// Reduced & renamed question types
+const allowedQuestionTypes = ['true-false', 'multiple-choice', 'short-answer', 'essay'];
 
 // Define validation arrays
 const validateCreateExam = [
@@ -63,23 +69,19 @@ const validateCreateExam = [
   check('questions.*.options').custom((options, { req, path }) => {
     const questionIndex = parseInt(path.match(/\[(\d+)\]/)[1]);
     const questionType = req.body.questions[questionIndex].type;
-    if (['multiple-choice', 'true-false', 'true-false-labeled', 'true-false-statements'].includes(questionType)) {
-      if (!Array.isArray(options) || options.length < 2) {
-        throw new Error(`Question ${questionIndex + 1} must have at least 2 options`);
+    if (questionType === 'multiple-choice') {
+      if (!Array.isArray(options) || options.length < 2 || options.length > 10) {
+        throw new Error(`Question ${questionIndex + 1} must have 2-10 options`);
       }
-      if (options.length > 10) {
-        throw new Error(`Question ${questionIndex + 1} cannot have more than 10 options`);
-      }
-      if (options.some(opt => !opt.text || opt.text.trim() === '')) {
+      if (options.some(opt => !opt.text || !opt.text.trim())) {
         throw new Error(`Question ${questionIndex + 1} options must have non-empty text`);
       }
-      if (questionType === 'true-false' || questionType === 'true-false-labeled') {
-        if (options.length !== 2 || options[0].text !== 'True' || options[1].text !== 'False') {
-          throw new Error(`Question ${questionIndex + 1} must have exactly two options: True and False`);
-        }
+    } else if (questionType === 'true-false') {
+      if (!Array.isArray(options) || options.length !== 2 || options[0].text !== 'True' || options[1].text !== 'False') {
+        throw new Error(`Question ${questionIndex + 1} must have exactly two options: True and False`);
       }
     } else if (options && options.length > 0) {
-      throw new Error(`Question ${questionIndex + 1} of type ${questionType} should not have options`);
+      throw new Error(`Question ${questionIndex + 1} should not have options`);
     }
     return true;
   }),
@@ -87,11 +89,8 @@ const validateCreateExam = [
     const questionIndex = parseInt(path.match(/\[(\d+)\]/)[1]);
     const questionType = req.body.questions[questionIndex].type;
     const options = req.body.questions[questionIndex].options || [];
-    if (questionType === 'multiple-choice' || questionType === 'true-false-statements' || questionType === 'true-false-labeled') {
-      if (!Array.isArray(correctAnswer)) {
-        throw new Error(`Question ${questionIndex + 1} correctAnswer must be an array`);
-      }
-      if (correctAnswer.length === 0) {
+    if (questionType === 'multiple-choice') {
+      if (!Array.isArray(correctAnswer) || correctAnswer.length === 0) {
         throw new Error(`Question ${questionIndex + 1} must have at least one correct answer`);
       }
       if (correctAnswer.some(text => !text.trim())) {
@@ -101,18 +100,20 @@ const validateCreateExam = [
         throw new Error(`Question ${questionIndex + 1} correct answers must match option texts marked as correct`);
       }
     } else if (questionType === 'true-false') {
-      if (typeof correctAnswer !== 'string' || !['True', 'False'].includes(correctAnswer)) {
+      if (typeof correctAnswer !== 'string' || !['True','False'].includes(correctAnswer)) {
         throw new Error(`Question ${questionIndex + 1} correctAnswer must be 'True' or 'False'`);
       }
       if (!options.some(opt => opt.text === correctAnswer && opt.isCorrect)) {
         throw new Error(`Question ${questionIndex + 1} correct answer must match an option marked as correct`);
       }
     } else if (questionType === 'short-answer') {
-      if (typeof correctAnswer !== 'string' || !correctAnswer.trim()) {
-        throw new Error(`Question ${questionIndex + 1} must have a non-empty correct answer`);
-      }
-      if (correctAnswer.length > 200) {
-        throw new Error(`Question ${questionIndex + 1} correct answer cannot exceed 200 characters`);
+      if (correctAnswer) {
+        if (typeof correctAnswer !== 'string') {
+          throw new Error(`Question ${questionIndex + 1} correct answer must be a string`);
+        }
+        if (correctAnswer.length > 200) {
+          throw new Error(`Question ${questionIndex + 1} correct answer cannot exceed 200 characters`);
+        }
       }
     } else if (questionType === 'essay') {
       if (correctAnswer && typeof correctAnswer !== 'string') {
@@ -144,23 +145,19 @@ const validateUpdateExam = [
   check('questions.*.options').optional().custom((options, { req, path }) => {
     const questionIndex = parseInt(path.match(/\[(\d+)\]/)[1]);
     const questionType = req.body.questions[questionIndex].type;
-    if (['multiple-choice', 'true-false', 'true-false-labeled', 'true-false-statements'].includes(questionType)) {
-      if (!Array.isArray(options) || options.length < 2) {
-        throw new Error(`Question ${questionIndex + 1} must have at least 2 options`);
+    if (questionType === 'multiple-choice') {
+      if (!Array.isArray(options) || options.length < 2 || options.length > 10) {
+        throw new Error(`Question ${questionIndex + 1} must have 2-10 options`);
       }
-      if (options.length > 10) {
-        throw new Error(`Question ${questionIndex + 1} cannot have more than 10 options`);
-      }
-      if (options.some(opt => !opt.text || opt.text.trim() === '')) {
+      if (options.some(opt => !opt.text || !opt.text.trim())) {
         throw new Error(`Question ${questionIndex + 1} options must have non-empty text`);
       }
-      if (questionType === 'true-false' || questionType === 'true-false-labeled') {
-        if (options.length !== 2 || options[0].text !== 'True' || options[1].text !== 'False') {
-          throw new Error(`Question ${questionIndex + 1} must have exactly two options: True and False`);
-        }
+    } else if (questionType === 'true-false') {
+      if (!Array.isArray(options) || options.length !== 2 || options[0].text !== 'True' || options[1].text !== 'False') {
+        throw new Error(`Question ${questionIndex + 1} must have exactly two options: True and False`);
       }
     } else if (options && options.length > 0) {
-      throw new Error(`Question ${questionIndex + 1} of type ${questionType} should not have options`);
+      throw new Error(`Question ${questionIndex + 1} should not have options`);
     }
     return true;
   }),
@@ -168,11 +165,8 @@ const validateUpdateExam = [
     const questionIndex = parseInt(path.match(/\[(\d+)\]/)[1]);
     const questionType = req.body.questions[questionIndex].type;
     const options = req.body.questions[questionIndex].options || [];
-    if (questionType === 'multiple-choice' || questionType === 'true-false-statements' || questionType === 'true-false-labeled') {
-      if (!Array.isArray(correctAnswer)) {
-        throw new Error(`Question ${questionIndex + 1} correctAnswer must be an array`);
-      }
-      if (correctAnswer.length === 0) {
+    if (questionType === 'multiple-choice') {
+      if (!Array.isArray(correctAnswer) || correctAnswer.length === 0) {
         throw new Error(`Question ${questionIndex + 1} must have at least one correct answer`);
       }
       if (correctAnswer.some(text => !text.trim())) {
@@ -182,18 +176,20 @@ const validateUpdateExam = [
         throw new Error(`Question ${questionIndex + 1} correct answers must match option texts marked as correct`);
       }
     } else if (questionType === 'true-false') {
-      if (typeof correctAnswer !== 'string' || !['True', 'False'].includes(correctAnswer)) {
+      if (typeof correctAnswer !== 'string' || !['True','False'].includes(correctAnswer)) {
         throw new Error(`Question ${questionIndex + 1} correctAnswer must be 'True' or 'False'`);
       }
       if (!options.some(opt => opt.text === correctAnswer && opt.isCorrect)) {
         throw new Error(`Question ${questionIndex + 1} correct answer must match an option marked as correct`);
       }
     } else if (questionType === 'short-answer') {
-      if (typeof correctAnswer !== 'string' || !correctAnswer.trim()) {
-        throw new Error(`Question ${questionIndex + 1} must have a non-empty correct answer`);
-      }
-      if (correctAnswer.length > 200) {
-        throw new Error(`Question ${questionIndex + 1} correct answer cannot exceed 200 characters`);
+      if (correctAnswer) {
+        if (typeof correctAnswer !== 'string') {
+          throw new Error(`Question ${questionIndex + 1} correct answer must be a string`);
+        }
+        if (correctAnswer.length > 200) {
+          throw new Error(`Question ${questionIndex + 1} correct answer cannot exceed 200 characters`);
+        }
       }
     } else if (questionType === 'essay') {
       if (correctAnswer && typeof correctAnswer !== 'string') {
@@ -253,7 +249,7 @@ exports.createExam = async (req, res) => {
       classIds,
       subjectId,
       teacherId,
-      schedule,
+      schedule: scheduleData, // rename to avoid clashing with jobScheduler
       questions,
       instructions
     } = req.body;
@@ -318,7 +314,7 @@ exports.createExam = async (req, res) => {
     }
 
     // Validate schedule
-    const utcSchedule = schedule ? { start: toUTC(schedule.start), duration: schedule.duration } : {};
+  const utcSchedule = scheduleData ? { start: toUTC(scheduleData.start), duration: scheduleData.duration } : {};
     if (utcSchedule.start) {
       const startTime = new Date(utcSchedule.start);
       const now = new Date();
@@ -334,8 +330,8 @@ exports.createExam = async (req, res) => {
       }
       const conflict = await checkScheduleConflicts(classIds, utcSchedule.start, utcSchedule.duration, schoolId);
       if (conflict.hasConflict) {
-        logger.warn('Schedule conflict detected', { userId: req.user.id, schedule, exams: conflict.exams });
-        return res.status(400).json({ success: false, message: 'Schedule conflict with another exam', conflicts: conflict.exams });
+        logger.warn('Schedule conflict detected', { userId: req.user.id, schedule: utcSchedule, exams: conflict.exams });
+        return res.status(400).json({ success: false, message: 'Class is already in another Exam', conflicts: conflict.exams });
       }
     }
 
@@ -422,26 +418,30 @@ exports.createExam = async (req, res) => {
       } catch (notifyErr) {
         console.error('Error notifying students:', notifyErr.message);
       }
-    // Log audit
-    await logAudit('exam_created', req.user.id, exam._id, 'Exam', {
-      title: sanitizedData.title,
-      type: sanitizedData.type,
-      classIds,
-      subjectId,
-      termId
-    });
+    // Additional audit for scheduling (if scheduled)
+    if (exam.status === 'scheduled') {
+      await logAudit(
+        'exam',
+        exam._id,
+        'schedule',
+        req.user.id,
+        null,
+        { start: exam.schedule.start, duration: exam.schedule.duration }
+      );
+    }
 
     // Schedule auto-completion job if scheduled
     if (utcSchedule.start && utcSchedule.duration) {
       const endTime = new Date(utcSchedule.start.getTime() + utcSchedule.duration * 60 * 1000);
-      schedule.scheduleJob(endTime, async () => {
+      // Use jobScheduler to schedule auto-completion
+      jobScheduler.scheduleJob(endTime, async () => {
         try {
           const updatedExam = await Exam.findById(exam._id);
           if (updatedExam && updatedExam.status === 'active') {
             updatedExam.status = 'completed';
             await updatedExam.save();
             logger.info('Exam auto-completed', { examId: exam._id });
-            await logAudit('exam_auto_completed', 'system', exam._id, 'Exam', { title: sanitizedData.title });
+            await logAudit('exam', exam._id, 'status_change', 'system', { previousStatus: 'active' }, { newStatus: 'completed', title: sanitizedData.title });
           }
         } catch (error) {
           logger.error('Error auto-completing exam', { error: error.message, examId: exam._id });
@@ -457,21 +457,23 @@ exports.createExam = async (req, res) => {
       isDeleted: false
     }).distinct('student');
 
+    // Queue notifications (basic DB + socket + optional email/SMS already handled above)
     if (studentIds.length > 0) {
-      await notificationService.queueNotification(
-        'exam_created',
-        exam._id,
-        studentIds,
-        `A new ${sanitizedData.type} "${sanitizedData.title}" has been scheduled.`,
-        'email'
-      );
-      await notificationService.queueNotification(
-        'exam_created',
-        exam._id,
-        studentIds,
-        `New ${sanitizedData.type}: ${sanitizedData.title} scheduled.`,
-        'sms'
-      );
+      try {
+        // Reuse existing notification model directly (batch insert)
+        const Notification = require('../models/Notification');
+        const notifications = studentIds.map(sid => ({
+          user: sid,
+            type: 'exam',
+            title: 'New Exam Scheduled',
+            message: `A new ${sanitizedData.type} "${sanitizedData.title}" has been scheduled.`,
+            relatedModel: 'Exam',
+            relatedId: exam._id
+        }));
+        await Notification.insertMany(notifications, { ordered: false });
+      } catch (notifErr) {
+        logger.error('Failed bulk create notifications', { error: notifErr.message });
+      }
     }
 
     logger.info('Exam created successfully', { examId: exam._id, userId: req.user.id });
@@ -493,7 +495,12 @@ exports.getExamById = async (req, res) => {
     }
 
     const { examId } = req.params;
-    const { schoolId } = req.query;
+    // Accept schoolId from either query (legacy) or body (current client interceptor behavior for PUT)
+    const schoolId = (req.query && req.query.schoolId) || (req.body && req.body.schoolId);
+    if (!schoolId) {
+      logger.warn('Missing schoolId in completeExam', { examId, userId: req.user.id });
+      return res.status(400).json({ success: false, message: 'schoolId is required' });
+    }
 
     if (req.user.school.toString() !== schoolId) {
       logger.warn('School ID mismatch in getExamById', { userId: req.user.id, schoolId });
@@ -929,7 +936,41 @@ exports.activateExam = async (req, res) => {
     exam.status = 'active';
     await exam.save();
 
-    await logAudit('exam_activated', req.user.id, examId, 'Exam', { title: exam.title });
+    // Schedule end-of-exam auto submission job (minimal intrusion)
+    try {
+      if (exam.schedule && exam.schedule.start && exam.schedule.duration) {
+        const endTime = new Date(new Date(exam.schedule.start).getTime() + exam.schedule.duration * 60000);
+        if (endTime > new Date()) {
+          const jobName = `auto-submit-${exam._id}`;
+          // Cancel existing if any to avoid duplicates
+          const existing = jobScheduler.scheduledJobs[jobName];
+          if (existing) existing.cancel();
+          jobScheduler.scheduleJob(jobName, endTime, async () => {
+            try {
+              const Submission = require('../models/Submission');
+              const submissions = await Submission.find({ exam: exam._id, status: 'in-progress', isDeleted: false });
+              for (const sub of submissions) {
+                sub.status = 'auto-submitted';
+                sub.submittedAt = new Date();
+                await sub.save();
+              }
+              // Mark exam completed if still active
+              const freshExam = await Exam.findById(exam._id);
+              if (freshExam && freshExam.status === 'active') {
+                freshExam.status = 'completed';
+                await freshExam.save();
+              }
+            } catch (e) {
+              console.error('End-of-exam auto submit job error', e.message);
+            }
+          });
+        }
+      }
+    } catch (schedErr) {
+      logger.error('Failed scheduling end job', { error: schedErr.message, examId });
+    }
+
+  await logAudit('exam', examId, 'status_change', req.user.id, { previousStatus: exam.status }, { newStatus: 'active', title: exam.title });
 
     // Queue notifications
     const studentIds = await mongoose.model('Enrollment').find({
@@ -940,14 +981,14 @@ exports.activateExam = async (req, res) => {
     }).distinct('student');
 
     if (studentIds.length > 0) {
-      await notificationService.queueNotification(
+  await notificationQueueService.queueNotification(
         'exam_activated',
         exam._id,
         studentIds,
         `The exam "${exam.title}" is now active.`,
         'email'
       );
-      await notificationService.queueNotification(
+  await notificationQueueService.queueNotification(
         'exam_activated',
         exam._id,
         studentIds,
@@ -976,7 +1017,7 @@ exports.completeExam = async (req, res) => {
     const { examId } = req.params;
     const { schoolId } = req.query;
 
-    if (req.user.school.toString() !== schoolId) {
+  if (!req.user.school || req.user.school.toString() !== schoolId) {
       logger.warn('School ID mismatch in completeExam', { userId: req.user.id, schoolId });
       return res.status(403).json({ success: false, message: 'Unauthorized to complete exam for this school' });
     }
@@ -1000,7 +1041,7 @@ exports.completeExam = async (req, res) => {
     exam.status = 'completed';
     await exam.save();
 
-    await logAudit('exam_completed', req.user.id, examId, 'Exam', { title: exam.title });
+  await logAudit('exam', examId, 'status_change', req.user.id, { previousStatus: exam.status }, { newStatus: 'completed', title: exam.title });
 
     // Queue notifications
     const studentIds = await mongoose.model('Enrollment').find({
@@ -1011,14 +1052,14 @@ exports.completeExam = async (req, res) => {
     }).distinct('student');
 
     if (studentIds.length > 0) {
-      await notificationService.queueNotification(
+  await notificationQueueService.queueNotification(
         'exam_completed',
         exam._id,
         studentIds,
         `The exam "${exam.title}" has been completed.`,
         'email'
       );
-      await notificationService.queueNotification(
+  await notificationQueueService.queueNotification(
         'exam_completed',
         exam._id,
         studentIds,
@@ -1267,30 +1308,30 @@ exports.scheduleExam = async (req, res) => {
     }
     const conflict = await checkScheduleConflicts(exam.classes, utcStart, duration, schoolId, examId);
     if (conflict.hasConflict) {
-      logger.warn('Schedule conflict in scheduleExam', { examId, userId: req.user.id, exams: conflict.exams });
-      return res.status(400).json({ success: false, message: 'Schedule conflict with another exam', conflicts: conflict.exams });
+      logger.warn('Schedule conflict in scheduleExam', { examId, userId: req.user.id, exams: conflict.exams, attemptedSchedule: { start: utcStart, duration } });
+      return res.status(400).json({ success: false, message: 'Class is already in another Exam', conflicts: conflict.exams });
     }
 
     exam.schedule = { start: utcStart, duration };
     exam.status = 'scheduled';
     await exam.save();
 
-    const endTime = new Date(utcStart.getTime() + duration * 60 * 1000);
-    schedule.scheduleJob(endTime, async () => {
+  const endTime = new Date(utcStart.getTime() + duration * 60 * 1000);
+  jobScheduler.scheduleJob(endTime, async () => {
       try {
         const updatedExam = await Exam.findById(examId);
         if (updatedExam && updatedExam.status === 'active') {
           updatedExam.status = 'completed';
           await updatedExam.save();
           logger.info('Exam auto-completed', { examId });
-          await logAudit('exam_auto_completed', 'system', examId, 'Exam', { title: exam.title });
+          await logAudit('exam', examId, 'status_change', 'system', { previousStatus: 'active' }, { newStatus: 'completed', title: exam.title });
         }
       } catch (error) {
         logger.error('Error auto-completing exam', { error: error.message, examId });
       }
     });
 
-    await logAudit('exam_scheduled', req.user.id, examId, 'Exam', {
+    await logAudit('exam', examId, 'schedule', req.user.id, null, {
       title: exam.title,
       start,
       duration
@@ -1305,14 +1346,14 @@ exports.scheduleExam = async (req, res) => {
     }).distinct('student');
 
     if (studentIds.length > 0) {
-      await notificationService.queueNotification(
+  await notificationQueueService.queueNotification(
         'exam_scheduled',
         exam._id,
         studentIds,
         `The exam "${exam.title}" has been scheduled for ${start}.`,
         'email'
       );
-      await notificationService.queueNotification(
+  await notificationQueueService.queueNotification(
         'exam_scheduled',
         exam._id,
         studentIds,
@@ -1330,7 +1371,7 @@ exports.scheduleExam = async (req, res) => {
 };
 
 // Schedule job to mark exams as past (run daily at midnight)
-schedule.scheduleJob('0 0 * * *', async () => {
+jobScheduler.scheduleJob('0 0 * * *', async () => {
   try {
     await Exam.markExamsAsPast();
     logger.info('Daily job to mark past exams completed');

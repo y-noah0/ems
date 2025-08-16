@@ -502,8 +502,8 @@ const ExamEditor = () => {
                   <option value="midterm">Midterm</option>
                   <option value="final">Final</option>
                   <option value="quiz">Quiz</option>
-                  <option value="hw">Homework</option>
-                  <option value="ass1">Assignment 1</option>
+                  <option value="homework">Homework</option>
+                  <option value="assessment1">Assignment 1</option>
                   <option value="ass2">Assignment 2</option>
                   <option value="exam">Regular Exam</option>
                   <option value="practice">Practice</option>

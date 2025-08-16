@@ -101,7 +101,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/school-exam
                 isDeleted: false,
               });
               for (const submission of submissions) {
-                submission.status = 'submitted';
+                submission.status = 'auto-submitted';
                 submission.submittedAt = new Date();
                 await submission.save();
                 

@@ -59,7 +59,7 @@ const initializeSocket = (server) => {
     });
 
     // Socket connection handler
-    io.on('connection', (socket) => {
+    io.on('connection', async (socket) => {
         const user = socket.user;
         logger.info('Socket connected', {
             socketId: socket.id,
@@ -68,8 +68,9 @@ const initializeSocket = (server) => {
             school: user.school ? user.school._id.toString() : 'N/A'
         });
 
-        // Join user-specific room
-        socket.join(`user:${user._id}`);
+    // Join user-specific rooms (both new namespaced and legacy for backward compatibility)
+    socket.join(`user:${user._id}`);
+    socket.join(user._id.toString());
 
         // Join role-based rooms
         socket.join(`role:${user.role}`);
@@ -79,13 +80,28 @@ const initializeSocket = (server) => {
             socket.join(`school:${user.school._id}`);
         }
 
-        // Join class-specific rooms for students and teachers
-        if (user.role === 'student' && user.class) {
-            socket.join(`class:${user.class}`);
-        } else if (user.role === 'teacher' && user.classes) {
-            user.classes.forEach(classId => {
-                socket.join(`class:${classId}`);
-            });
+        // Dynamically join class rooms
+        try {
+            if (user.role === 'student') {
+                // Fetch active enrollments
+                const Enrollment = require('./models/enrollment');
+                const enrollments = await Enrollment.find({ student: user._id, isActive: true, isDeleted: false });
+                enrollments.forEach(enr => socket.join(`class:${enr.class.toString()}`));
+                logger.info('Student joined class rooms', { userId: user._id.toString(), classCount: enrollments.length });
+            } else if (user.role === 'teacher') {
+                // Determine classes via subjects taught
+                const Subject = require('./models/Subject');
+                const Class = require('./models/Class');
+                const subjects = await Subject.find({ teacher: user._id, isDeleted: false }, { _id: 1 });
+                if (subjects.length) {
+                    const subjectIds = subjects.map(s => s._id);
+                    const classes = await Class.find({ subjects: { $in: subjectIds }, isDeleted: false }, { _id: 1 });
+                    classes.forEach(cls => socket.join(`class:${cls._id.toString()}`));
+                    logger.info('Teacher joined class rooms', { userId: user._id.toString(), classCount: classes.length });
+                }
+            }
+        } catch (joinErr) {
+            logger.error('Error joining dynamic class rooms', { userId: user._id.toString(), error: joinErr.message });
         }
 
         // Handle manual room joins (with authorization)

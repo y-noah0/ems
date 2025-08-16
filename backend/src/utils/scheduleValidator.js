@@ -73,11 +73,21 @@ exports.checkScheduleConflicts = async (classIds, startDate, duration, schoolId,
 
   console.log('Query returned exams:', conflictingExams);
 
-  if (conflictingExams.length > 0) {
-    console.log('❌ Conflict detected with:', conflictingExams.map(e => e.title));
+  // Filter out active exams that have already ended before the proposed start
+  const validConflicts = conflictingExams.filter(e => {
+    if (e.status === 'active' && e.schedule && e.schedule.start && e.schedule.duration) {
+      const existingEnd = new Date(e.schedule.start.getTime() + e.schedule.duration * 60000);
+      if (existingEnd <= startDate) {
+        return false;
+      }
+    }
+    return true;
+  });
+  if (validConflicts.length > 0) {
+    console.log('❌ Conflict detected with:', validConflicts.map(e => e.title));
     return {
       hasConflict: true,
-      exams: conflictingExams
+      exams: validConflicts
     };
   }
 

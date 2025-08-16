@@ -16,13 +16,17 @@ import { getTerms } from '../services/termService';
 
 const ExamCreator = () => {
   const navigate = useNavigate();
+  // Destructure currentUser from AuthContext
   const { currentUser } = useAuth();
+  console.log("Current User:", currentUser);
   const [subjects, setSubjects] = useState([]);
   const [classes, setClasses] = useState([]);
+  console.log("Classes:", classes);
   const [terms, setTerms] = useState([]);
   const [isDirty, setIsDirty] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  
   const initialFormData = {
     title: '',
     instructions: '',
@@ -109,10 +113,12 @@ const ExamCreator = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === 'startTime') {
-      const startTime = value ? new Date(value).toISOString() : '';
+      // value from datetime-local is a local time string (YYYY-MM-DDTHH:mm)
+      // Create a Date treating it as local, then store the actual ISO string
+      const startTime = value ? new Date(value) : null;
       setFormData((prev) => ({
         ...prev,
-        schedule: { ...prev.schedule, start: startTime },
+        schedule: { ...prev.schedule, start: startTime ? startTime.toISOString() : '' },
       }));
     } else if (name === 'duration') {
       setFormData((prev) => ({
@@ -151,18 +157,18 @@ const ExamCreator = () => {
       const questions = [...prev.questions];
       questions[index] = { ...questions[index], [field]: value };
       if (field === 'type') {
-        if (value === 'multiple-choice' || value === 'true-false-statements') {
+        if (value === 'multiple-choice') {
           questions[index].options = [
             { id: Date.now() + 1, text: '', isCorrect: false },
             { id: Date.now() + 2, text: '', isCorrect: false },
           ];
           questions[index].correctAnswer = [];
-        } else if (value === 'true-false' || value === 'true-false-labeled') {
+        } else if (value === 'true-false') {
           questions[index].options = [
             { id: Date.now() + 1, text: 'True', isCorrect: false },
             { id: Date.now() + 2, text: 'False', isCorrect: false },
           ];
-          questions[index].correctAnswer = [];
+          questions[index].correctAnswer = '';
         } else {
           questions[index].options = [];
           questions[index].correctAnswer = '';
@@ -178,14 +184,14 @@ const ExamCreator = () => {
       const options = [...questions[questionIndex].options];
       if (field === 'isCorrect') {
         const questionType = questions[questionIndex].type;
-        if (questionType === 'multiple-choice' || questionType === 'true-false' || questionType === 'true-false-labeled') {
-          // Single select for correct answer
+        if (questionType === 'true-false') {
+          // enforce single correct selection
           options.forEach((opt, i) => {
             options[i].isCorrect = i === optionIndex;
           });
-          questions[questionIndex].correctAnswer = [options[optionIndex].text];
-        } else if (questionType === 'true-false-statements') {
-          // Multi select for correct answers
+          questions[questionIndex].correctAnswer = options[optionIndex].text; // string
+        } else if (questionType === 'multiple-choice') {
+          // toggle only this option for multi-select
           options[optionIndex].isCorrect = value;
           questions[questionIndex].correctAnswer = options
             .filter((opt) => opt.isCorrect)
@@ -193,9 +199,15 @@ const ExamCreator = () => {
         }
       } else {
         options[optionIndex] = { ...options[optionIndex], [field]: value };
-        questions[questionIndex].correctAnswer = options
-          .filter((opt) => opt.isCorrect)
-          .map((opt) => opt.text);
+        const questionType = questions[questionIndex].type;
+        if (questionType === 'true-false') {
+          const selected = options.find((opt) => opt.isCorrect);
+            questions[questionIndex].correctAnswer = selected ? selected.text : '';
+        } else if (questionType === 'multiple-choice') {
+          questions[questionIndex].correctAnswer = options
+            .filter((opt) => opt.isCorrect)
+            .map((opt) => opt.text);
+        }
       }
       questions[questionIndex].options = options;
       return { ...prev, questions };
@@ -243,7 +255,7 @@ const ExamCreator = () => {
     setFormData((prev) => {
       const questions = [...prev.questions];
       const questionType = questions[questionIndex].type;
-      if (questionType === 'true-false' || questionType === 'true-false-labeled') {
+  if (questionType === 'true-false') {
         toast.error('True/False questions cannot have additional options');
         setTimeout(() => setIsAdding(false), 100);
         return prev;
@@ -269,7 +281,7 @@ const ExamCreator = () => {
     setFormData((prev) => {
       const questions = [...prev.questions];
       const questionType = questions[questionIndex].type;
-      if (questionType === 'true-false' || questionType === 'true-false-labeled') {
+  if (questionType === 'true-false') {
         toast.error('True/False questions must have exactly two options');
         setTimeout(() => setIsAdding(false), 100);
         return prev;
@@ -369,7 +381,7 @@ const ExamCreator = () => {
           if (isNaN(q.maxScore) || q.maxScore <= 0) {
             throw new Error(`Question ${index + 1} must have a positive score`);
           }
-          if (q.type === 'multiple-choice' || q.type === 'true-false-statements') {
+          if (q.type === 'multiple-choice') {
             if (!q.options || q.options.length < 2) {
               throw new Error(`Question ${index + 1} must have at least 2 options`);
             }
@@ -379,34 +391,25 @@ const ExamCreator = () => {
             if (q.options.some((opt) => !opt.text.trim())) {
               throw new Error(`Question ${index + 1} options must have non-empty text`);
             }
-            if (q.type === 'multiple-choice' && q.options.filter((opt) => opt.isCorrect).length !== 1) {
-              throw new Error(`Question ${index + 1} must have exactly one correct option`);
+            if (q.options.filter((opt) => opt.isCorrect).length === 0) {
+              throw new Error(`Question ${index + 1} must have at least one correct option`);
             }
-            if (q.type === 'true-false-statements' && !q.options.some((opt) => opt.isCorrect)) {
-              throw new Error(`Question ${index + 1} must have at least one correct statement`);
-            }
-            if (q.correctAnswer.some((text) => !text.trim())) {
+            if (!Array.isArray(q.correctAnswer) || q.correctAnswer.length === 0 || q.correctAnswer.some((text) => !text.trim())) {
               throw new Error(`Question ${index + 1} correct options must have non-empty text`);
             }
           }
-          if (q.type === 'true-false' || q.type === 'true-false-labeled') {
+          if (q.type === 'true-false') {
             if (!q.options || q.options.length !== 2 || q.options[0].text !== 'True' || q.options[1].text !== 'False') {
               throw new Error(`Question ${index + 1} must have exactly two options: True and False`);
             }
-            if (q.type === 'true-false' && q.options.filter((opt) => opt.isCorrect).length !== 1) {
+            if (q.options.filter((opt) => opt.isCorrect).length !== 1) {
               throw new Error(`Question ${index + 1} must have exactly one correct option (True or False)`);
             }
-            if (q.type === 'true-false-labeled' && !q.options.some((opt) => opt.isCorrect)) {
-              throw new Error(`Question ${index + 1} must have at least one correct option (True or False)`);
-            }
-            if (q.correctAnswer.length === 0 || q.correctAnswer.some((text) => !text.trim())) {
-              throw new Error(`Question ${index + 1} correct options must have non-empty text`);
+            if (typeof q.correctAnswer !== 'string' || !['True','False'].includes(q.correctAnswer)) {
+              throw new Error(`Question ${index + 1} correct answer must be 'True' or 'False'`);
             }
           }
-          if (q.type === 'short-answer' && !q.correctAnswer.trim()) {
-            throw new Error(`Question ${index + 1} must have a correct answer`);
-          }
-          if (q.type === 'short-answer' && q.correctAnswer.length > 200) {
+          if (q.type === 'short-answer' && q.correctAnswer && q.correctAnswer.length > 200) {
             throw new Error(`Question ${index + 1} correct answer cannot exceed 200 characters`);
           }
           if (q.type === 'essay' && q.correctAnswer && q.correctAnswer.length > 2000) {
@@ -432,7 +435,10 @@ const ExamCreator = () => {
           text: q.text,
           maxScore: q.maxScore,
           options: q.options || [],
-          correctAnswer: q.correctAnswer,
+          // Ensure correctAnswer shape matches backend validation
+          correctAnswer: q.type === 'true-false'
+            ? (Array.isArray(q.correctAnswer) ? (q.correctAnswer[0] || '') : q.correctAnswer)
+            : q.correctAnswer,
         })),
       };
 
@@ -634,7 +640,7 @@ const ExamCreator = () => {
                   <Input
                     type="datetime-local"
                     name="startTime"
-                    value={formData.schedule.start ? new Date(formData.schedule.start).toISOString().slice(0, 16) : ''}
+                    value={formData.schedule.start ? (() => { const d = new Date(formData.schedule.start); const off = d.getTimezoneOffset(); const local = new Date(d.getTime() - off * 60000); return local.toISOString().slice(0,16); })() : ''}
                     onChange={handleChange}
                     required
                     placeholder="Select start time"
@@ -680,10 +686,9 @@ const ExamCreator = () => {
                             onChange={(e) => handleQuestionChange(qIndex, 'type', e.target.value)}
                             className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
                           >
-                            <option value="multiple-choice">Multiple Choice (Single Correct)</option>
-                            <option value="true-false">True/False (Single Correct)</option>
-                            <option value="true-false-labeled">True/False Labeled (Single Correct)</option>
-                            <option value="true-false-statements">True/False Statements (Select All That Apply)</option>
+                            <option value="multiple-choice">Multiple Choice (Select all that apply)</option>
+                            <option value="true-false">True/False</option>
+                            {/* Deprecated types removed */}
                             <option value="short-answer">Short Answer</option>
                             <option value="essay">Essay</option>
                           </select>
@@ -702,10 +707,10 @@ const ExamCreator = () => {
                             className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
                           />
                         </div>
-                        {(question.type === 'multiple-choice' || question.type === 'true-false' || question.type === 'true-false-labeled' || question.type === 'true-false-statements') && (
+                        {(question.type === 'multiple-choice' || question.type === 'true-false') && (
                           <div>
                             <h4 className="text-sm font-medium text-indigo-600 mb-2">
-                              {question.type === 'true-false-statements' ? 'Statements (Mark all that are true)' : question.type === 'multiple-choice' ? 'Options (Select one correct answer)' : 'Options (Select one correct)'}
+                              {question.type === 'multiple-choice' ? 'Options (Select all that apply)' : 'Options (Select one correct)'}
                             </h4>
                             {question.options.map((option, oIndex) => (
                               <motion.div
@@ -720,26 +725,37 @@ const ExamCreator = () => {
                                   onChange={(e) => handleOptionChange(qIndex, oIndex, 'text', e.target.value)}
                                   required
                                   maxLength={200}
-                                  placeholder={question.type === 'true-false-statements' ? `Statement ${oIndex + 1}` : `Option ${oIndex + 1}`}
+                                  placeholder={`Option ${oIndex + 1}`}
                                   className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
-                                  disabled={question.type === 'true-false' || question.type === 'true-false-labeled'}
+                                  disabled={question.type === 'true-false'}
                                 />
-                                <input
-                                  type={question.type === 'true-false-statements' ? 'checkbox' : 'radio'}
-                                  name={question.type === 'true-false-statements' ? `correctAnswer-${qIndex}-${oIndex}` : `correctAnswer-${qIndex}`}
-                                  checked={option.isCorrect}
-                                  onChange={(e) => handleOptionChange(qIndex, oIndex, 'isCorrect', e.target.checked)}
-                                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-indigo-300 rounded"
-                                  aria-label={`Mark ${option.text || `option ${oIndex + 1}`} as correct`}
-                                />
-                                {(question.type === 'multiple-choice' || question.type === 'true-false-statements') && (
+                                {question.type === 'true-false' ? (
+                                  <input
+                                    type='radio'
+                                    name={`correctAnswer-${qIndex}`}
+                                    checked={option.isCorrect}
+                                    onChange={(e) => handleOptionChange(qIndex, oIndex, 'isCorrect', e.target.checked)}
+                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-indigo-300 rounded"
+                                    aria-label={`Mark ${option.text || `option ${oIndex + 1}`} as correct`}
+                                  />
+                                ) : (
+                                  <input
+                                    type='checkbox'
+                                    name={`correctAnswer-${qIndex}-${oIndex}`}
+                                    checked={option.isCorrect}
+                                    onChange={(e) => handleOptionChange(qIndex, oIndex, 'isCorrect', e.target.checked)}
+                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-indigo-300 rounded"
+                                    aria-label={`Toggle ${option.text || `option ${oIndex + 1}`} as correct`}
+                                  />
+                                )}
+                                {question.type === 'multiple-choice' && (
                                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                     <Button
                                       type="button"
                                       onClick={() => removeOption(qIndex, oIndex)}
                                       disabled={question.options.length <= 2 || isAdding}
                                       className="bg-gray-600 hover:bg-gray-700 text-white rounded-md px-3 py-1.5"
-                                      aria-label={`Remove ${question.type === 'true-false-statements' ? 'statement' : 'option'} ${oIndex + 1}`}
+                                      aria-label={`Remove option ${oIndex + 1}`}
                                     >
                                       <FaTrash className="h-4 w-4" aria-hidden="true" />
                                     </Button>
@@ -747,17 +763,17 @@ const ExamCreator = () => {
                                 )}
                               </motion.div>
                             ))}
-                            {(question.type === 'multiple-choice' || question.type === 'true-false-statements') && (
+                            {question.type === 'multiple-choice' && (
                               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                 <Button
                                   type="button"
                                   onClick={() => addOption(qIndex)}
                                   disabled={isAdding}
                                   className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-3 py-1.5"
-                                  aria-label={`Add new ${question.type === 'true-false-statements' ? 'statement' : 'option'}`}
+                                  aria-label='Add new option'
                                 >
                                   <FaPlus className="h-4 w-4 mr-1" aria-hidden="true" />
-                                  Add {question.type === 'true-false-statements' ? 'Statement' : 'Option'}
+                                  Add Option
                                 </Button>
                               </motion.div>
                             )}
@@ -765,13 +781,12 @@ const ExamCreator = () => {
                         )}
                         {question.type === 'short-answer' && (
                           <div>
-                            <h4 className="text-sm font-medium text-indigo-600 mb-2">Correct Answer</h4>
+                            <h4 className="text-sm font-medium text-indigo-600 mb-2">Sample Correct Answer (Optional)</h4>
                             <Input
-                              value={question.correctAnswer}
+                              value={question.correctAnswer || ''}
                               onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
-                              required
                               maxLength={200}
-                              placeholder="Enter correct answer"
+                              placeholder="Enter sample correct answer (optional)"
                               className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
                             />
                           </div>

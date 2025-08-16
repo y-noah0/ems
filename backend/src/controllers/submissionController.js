@@ -117,6 +117,9 @@ const validateGetStudentMarksByID = [
 
 const submissionController = {};
 
+// Violation threshold (minimal addition – adjust value as needed)
+const MAX_VIOLATIONS = 3;
+
 // Helper: calculate time remaining
 const calculateTimeRemaining = (submission, exam) => {
   const now = new Date();
@@ -225,7 +228,7 @@ submissionController.startExam = async (req, res) => {
       const timeRemaining = calculateTimeRemaining(submission, exam);
       if (timeRemaining === 0) {
         // Auto-submit if time expired
-        await submissionController.autoSubmitExamInternal(submission, exam, 'time_expired');
+        await submissionController.autoSubmitExamInternal(submission, exam, 'time_expired', '', req.io);
         return res.status(400).json({ success: false, message: 'Exam time has expired' });
       }
       return res.json({
@@ -248,8 +251,18 @@ submissionController.startExam = async (req, res) => {
     });
     await submission.save();
 
-    // Notify teacher
-    notificationService.notifyTeacherExamStarted(exam.teacher, req.user.id, examId);
+    // Notify teacher that a student has started the exam
+    try {
+      await notificationService.sendNotification(req.io, exam.teacher, {
+        type: 'exam',
+        title: 'Exam Started',
+        message: `Student ${req.user.fullName || req.user.id} has started the exam '${exam.title}'.`,
+        relatedModel: 'Exam',
+        relatedId: exam._id
+      });
+    } catch (notifyErr) {
+      logger.error('Error notifying teacher exam start', { error: notifyErr.message, userId: req.user.id, examId });
+    }
 
     const timeRemaining = calculateTimeRemaining(submission, exam);
 
@@ -260,43 +273,80 @@ submissionController.startExam = async (req, res) => {
       answers: []
     });
   } catch (error) {
+    // Log and propagate error with proper status code if available
     logger.error('startExam error', { error: error.message, stack: error.stack, userId: req.user.id });
-    res.status(500).json({ success: false, message: 'Server error occurred while starting exam' });
+    const status = error.statusCode && Number.isInteger(error.statusCode) ? error.statusCode : 500;
+    return res.status(status).json({ success: false, message: error.message || 'Server error occurred while starting exam' });
   }
 };
 
 // Internal auto-submit function
-submissionController.autoSubmitExamInternal = async (submission, exam, reasonType, details = '') => {
-  submission.status = 'auto-submitted';
-  submission.submittedAt = new Date();
-  submission.violationLogs.push({
-    type: reasonType,
-    details,
-    timestamp: new Date()
-  });
-
-  // Auto-grade multiple-choice questions
-  let totalScore = 0;
-  submission.answers = submission.answers.map(answer => {
-    const question = exam.questions.id(answer.questionId);
-    if (question && ['multiple-choice', 'true-false'].includes(question.type)) {
-      const isCorrect = answer.answer === question.correctAnswer;
-      answer.score = isCorrect ? question.maxScore : 0;
-      answer.graded = isCorrect;
-      totalScore += answer.score;
+// io must be passed as the fifth argument to send socket notifications
+submissionController.autoSubmitExamInternal = async (submission, exam, reasonType, details = '', io) => {
+  try {
+    // Ensure full exam (questions) if only partial was populated
+    if (!exam.questions || typeof exam.questions.id !== 'function') {
+      exam = await Exam.findById(exam._id || exam).lean();
     }
-    return answer;
-  });
 
-  submission.totalScore = totalScore;
-  submission.percentage = exam.totalPoints ? (totalScore / exam.totalPoints) * 100 : 0;
-  submission.gradeLetter = calculateGradeLetter(submission.percentage);
+    submission.status = 'auto-submitted';
+    submission.submittedAt = new Date();
+  // Normalize violation type to allowed enums
+  const allowedTypes = ['tab-switch', 'hidden-tab', 'copy-attempt'];
+  const logType = allowedTypes.includes(reasonType) ? reasonType : 'other';
+  submission.violationLogs.push({ type: logType, details, timestamp: new Date() });
 
-  await submission.save();
+    // Auto-grade objective questions
+    let totalScore = 0;
+    if (exam && exam.questions) {
+      submission.answers = submission.answers.map(answer => {
+        const question = exam.questions.find(q => q._id.toString() === answer.questionId.toString());
+        if (question && ['multiple-choice', 'true-false'].includes(question.type)) {
+          const isCorrect = answer.answer === question.correctAnswer;
+          answer.score = isCorrect ? question.maxScore : 0;
+          answer.graded = isCorrect;
+          totalScore += answer.score;
+        }
+        return answer;
+      });
+    }
 
-  // Notify student and teacher
-  notificationService.notifyStudentExamAutoSubmitted(submission.student, exam._id, reasonType);
-  notificationService.notifyTeacherSubmissionReceived(exam.teacher, submission.student, exam._id);
+    submission.totalScore = totalScore;
+    const divisor = (exam && exam.totalPoints) ? exam.totalPoints : (exam && exam.totalScore) ? exam.totalScore : 0;
+    submission.percentage = divisor > 0 ? (totalScore / divisor) * 100 : 0;
+    submission.gradeLetter = calculateGradeLetter(submission.percentage);
+
+    await submission.save();
+
+    if (io) {
+      // Notify student
+      try {
+        await notificationService.sendNotification(io, submission.student, {
+          type: 'exam',
+          title: 'Exam Auto-Submitted',
+          message: `Your exam '${exam.title}' was auto-submitted due to ${reasonType === 'time_expired' ? 'time expiration' : reasonType === 'violation_limit' ? 'excessive violations' : 'system action'}.`,
+          relatedModel: 'Submission',
+          relatedId: submission._id
+        });
+      } catch (err) {
+        logger.error('Notify student auto-submit failed', { error: err.message, submissionId: submission._id });
+      }
+      // Notify teacher
+      try {
+        await notificationService.sendNotification(io, exam.teacher, {
+          type: 'exam',
+          title: 'Submission Auto-Submitted',
+          message: `Student ${submission.student} exam '${exam.title}' was auto-submitted.`,
+          relatedModel: 'Submission',
+          relatedId: submission._id
+        });
+      } catch (err) {
+        logger.error('Notify teacher auto-submit failed', { error: err.message, submissionId: submission._id });
+      }
+    }
+  } catch (e) {
+    logger.error('autoSubmitExamInternal failure', { error: e.message, submissionId: submission._id });
+  }
 };
 
 // Save answers
@@ -327,7 +377,7 @@ submissionController.saveAnswers = async (req, res) => {
 
     const timeRemaining = calculateTimeRemaining(submission, exam);
     if (timeRemaining === 0) {
-      await submissionController.autoSubmitExamInternal(submission, exam, 'time_expired');
+  await submissionController.autoSubmitExamInternal(submission, exam, 'time_expired', '', req.io);
       return res.status(400).json({ success: false, message: 'Exam time has expired' });
     }
 
@@ -366,7 +416,7 @@ submissionController.submitExam = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { submissionId, answers } = req.body;
+    const { submissionId, answers, schoolId } = req.body;
 
     const submission = await Submission.findOne({
       _id: submissionId,
@@ -385,7 +435,7 @@ submissionController.submitExam = async (req, res) => {
 
     const timeRemaining = calculateTimeRemaining(submission, exam);
     if (timeRemaining === 0) {
-      await submissionController.autoSubmitExamInternal(submission, exam, 'time_expired');
+  await submissionController.autoSubmitExamInternal(submission, exam, 'time_expired', '', req.io);
       return res.status(400).json({ success: false, message: 'Exam time has expired' });
     }
 
@@ -400,7 +450,61 @@ submissionController.submitExam = async (req, res) => {
     }
 
     submission.submittedAt = new Date();
-    await autoGradeObjectiveQuestions(submission, submission.exam);
+    // Auto-grade objective questions (multiple-choice and true-false)
+    let totalScore = 0;
+    if (submission.answers && submission.answers.length) {
+      submission.answers = submission.answers.map(answer => {
+        const question = submission.exam.questions.id
+          ? submission.exam.questions.id(answer.questionId)
+          : submission.exam.questions.find(q => q._id.toString() === answer.questionId.toString());
+        if (question && ['multiple-choice', 'true-false'].includes(question.type)) {
+          let earnedScore = 0;
+          if (question.type === 'multiple-choice') {
+            // Support multi-select: question.correctAnswer can be array of correct option texts
+            const correctArray = Array.isArray(question.correctAnswer)
+              ? question.correctAnswer.map(c => c.toString())
+              : [question.correctAnswer];
+            const nCorrect = correctArray.filter(c => c !== undefined && c !== null && c !== '').length || 1;
+            const perOption = question.maxScore / nCorrect;
+            // Student answer may be JSON array string or comma/semicolon separated string
+            let studentSelections = [];
+            if (Array.isArray(answer.answer)) studentSelections = answer.answer.map(a => a.toString());
+            else if (typeof answer.answer === 'string') {
+              const trimmed = answer.answer.trim();
+              if (trimmed.startsWith('[')) {
+                try { studentSelections = JSON.parse(trimmed); } catch { studentSelections = [answer.answer]; }
+              } else if (trimmed.includes('|')) studentSelections = trimmed.split('|');
+              else if (trimmed.includes(';')) studentSelections = trimmed.split(';');
+              else if (trimmed.includes(',')) studentSelections = trimmed.split(',');
+              else studentSelections = [trimmed];
+            }
+            studentSelections = studentSelections.map(s => s.toString().trim()).filter(s => s.length > 0);
+            const correctChosen = studentSelections.filter(sel => correctArray.includes(sel));
+            earnedScore = perOption * correctChosen.length;
+            // Cap at maxScore in case of over-selection
+            if (earnedScore > question.maxScore) earnedScore = question.maxScore;
+          } else if (question.type === 'true-false') {
+            const studentAns = (answer.answer || '').toString().trim().toLowerCase();
+            const correctAns = (question.correctAnswer || '').toString().trim().toLowerCase();
+            earnedScore = studentAns === correctAns ? question.maxScore : 0;
+          }
+          // Round to two decimals to avoid floating artifacts
+          answer.score = Math.round((earnedScore + Number.EPSILON) * 100) / 100;
+          answer.graded = true; // objective
+          totalScore += answer.score;
+        }
+        return answer;
+      });
+    }
+    submission.totalScore = totalScore;
+    // Calculate percentage based on exam totalPoints
+    const examTotal = submission.exam.totalPoints || (submission.exam.questions.reduce((sum, q) => sum + (q.maxScore || 0), 0));
+    submission.percentage = examTotal > 0 ? (totalScore / examTotal) * 100 : 0;
+    // Mark as graded if all answers are graded
+    if (submission.answers.every(a => a.graded)) {
+      submission.status = 'graded';
+      submission.gradedAt = new Date();
+    }
     await submission.save();
 
     await logAudit(
@@ -528,7 +632,7 @@ submissionController.autoSubmitExam = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You are not authorized to auto-submit this exam' });
     }
 
-    await submissionController.autoSubmitExamInternal(submission, exam, reason.type || 'auto_submit', reason.details || '');
+  await submissionController.autoSubmitExamInternal(submission, exam, reason.type || 'auto_submit', reason.details || '', req.io);
 
     if (reason.answers && reason.answers.length > 0) {
       reason.answers.forEach(answer => {
@@ -588,9 +692,15 @@ submissionController.logViolation = async (req, res) => {
     });
     submission.violations += 1;
 
+    // If threshold reached, auto-submit
+    if (submission.status === 'in-progress' && submission.violations >= MAX_VIOLATIONS) {
+      await submissionController.autoSubmitExamInternal(submission, submission.exam, 'violation_limit', 'Violation threshold reached', req.io);
+      return res.json({ success: true, message: 'Violation limit reached – exam auto-submitted' });
+    }
+
     await submission.save();
 
-    // Notify teacher
+    // Notify teacher (only if not auto-submitted above)
     notificationService.notifyTeacherViolationLogged(submission.exam.teacher, req.user.id, submissionId, violationType);
 
     res.json({ success: true, message: 'Violation logged successfully' });
@@ -746,7 +856,7 @@ submissionController.gradeOpenQuestions = async (req, res) => {
 
     const submission = await Submission.findOne({
       _id: submissionId
-    }).populate('exam', 'questions totalPoints teacher school');
+    }).populate('exam', 'questions totalPoints teacher school title');
 
     if (!submission) {
       return res.status(404).json({ success: false, message: 'Submission not found' });
@@ -759,6 +869,14 @@ submissionController.gradeOpenQuestions = async (req, res) => {
     if (submission.exam.school.toString() !== req.user.school.toString()) {
       return res.status(403).json({ success: false, message: 'Submission does not belong to your school' });
     }
+
+    // Preserve previous answers snapshot for audit
+    const previousAnswers = submission.answers.map(a => ({
+      questionId: a.questionId,
+      score: a.score,
+      feedback: a.feedback,
+      graded: a.graded
+    }));
 
     let totalScore = submission.totalScore || 0;
     grades.forEach(grade => {
@@ -785,21 +903,23 @@ submissionController.gradeOpenQuestions = async (req, res) => {
 
     await submission.save();
 
+    const schoolId = submission.exam.school; // for audit context
     await logAudit(
       'submission',
       submission._id,
       'grade',
       req.user.id,
-      { answers: previousAnswers, status: submission.status !== 'graded' ? 'partially_graded' : null },
-      { totalScore, percentage: submission.percentage, status: 'graded', school: schoolId }
+      { answers: previousAnswers },
+      { totalScore, percentage: submission.percentage, status: submission.status, school: schoolId }
     );
 
     if (submission.status === 'graded') {
-      await notificationService.sendGradeNotification(req.io, submission.student, submission);
+  await notificationService.sendGradeNotification(req.io, submission.student, submission);
 
       // Real-time notification for submission graded
       try {
-        SocketNotificationService.notifySubmissionGraded(submission, exam);
+  const exam = submission.exam; // ensure exam reference
+  SocketNotificationService.notifySubmissionGraded(submission, exam);
       } catch (socketError) {
         logger.error('Failed to send socket notification for graded submission', {
           submissionId: submission._id,
@@ -936,8 +1056,20 @@ submissionController.updateSubmissionGrades = async (req, res) => {
 
     await submission.save();
 
-    // Notify student
-    notificationService.notifyStudentSubmissionGraded(submission.student, submission.exam._id, submission.totalScore, submission.percentage);
+    // Custom regrade notification
+    try {
+      const examTitle = submission.exam?.title || 'exam';
+      const max = submission.exam?.totalPoints || 0;
+      await notificationService.sendNotification(req.io, submission.student, {
+        type: 'grade', // enum allowed: grade, exam, system, message
+        title: 'exam regraded',
+        message: `exam ${examTitle} regraded – you now have ${submission.totalScore}/${max}`,
+        relatedModel: 'Submission',
+        relatedId: submission._id
+      });
+    } catch (notifyErr) {
+      logger.warn('Failed sending regrade notification', { error: notifyErr.message, submissionId: submission._id });
+    }
 
     res.json({ success: true, message: 'Grades updated successfully' });
   } catch (error) {

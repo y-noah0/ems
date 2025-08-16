@@ -7,6 +7,7 @@ const DynamicTable = ({
   onEdit,
   onDelete,
   onView,
+  onRowClick, // new: row click handler
   showActions = true,
   className = '',
   emptyMessage = 'No data available',
@@ -130,7 +131,8 @@ const DynamicTable = ({
           {paginatedData.map((item, index) => (
             <tr
               key={item.id || index}
-              className="hover:bg-indigo-50 transition-colors duration-200 animate-fade-in"
+              className={`hover:bg-indigo-50 transition-colors duration-200 animate-fade-in ${onRowClick ? 'cursor-pointer' : ''}`}
+              onClick={onRowClick ? () => onRowClick(item) : undefined}
             >
               {columns.map((column) => (
                 <td

@@ -1,53 +1,67 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-// Question Schema
+// Question Schema (reduced & renamed types)
 const QuestionSchema = new Schema({
   type: {
     type: String,
-    enum: ['multiple-choice', 'true-false', 'true-false-labeled', 'true-false-statements', 'short-answer', 'essay'],
-    required: true,
+    enum: ['true-false', 'multiple-choice', 'short-answer', 'essay'],
+    required: true
   },
   text: {
     type: String,
     required: true,
-    trim: true,
+    trim: true
   },
   options: {
     type: [{ text: String, isCorrect: Boolean }],
     required: function () {
-      return this.type === 'multiple-choice';
-    },
-    validate: {
-      validator: function (v) {
-        return this.type !== 'multiple-choice' || (v && v.length >= 2);
-      },
-      message: 'Multiple-choice questions must have at least 2 options',
-    },
-  },
-  correctAnswer: {
-    type: [String], // now stores an array of strings
-    required: function () {
+      // multiple-choice requires options; true-false has fixed options True/False enforced elsewhere
       return this.type === 'multiple-choice' || this.type === 'true-false';
     },
     validate: {
       validator: function (v) {
         if (this.type === 'multiple-choice') {
-          return Array.isArray(v) && v.length > 0;
+          return Array.isArray(v) && v.length >= 2 && v.every(o => o.text && o.text.trim() !== '');
         }
         if (this.type === 'true-false') {
-          return v.length === 1 && (v[0] === 'true' || v[0] === 'false');
+          return Array.isArray(v) && v.length === 2 && v[0].text === 'True' && v[1].text === 'False';
         }
-        return true; // For other types, no validation needed
+        return true;
       },
-      message: 'Correct answer must be valid for the question type',
+      message: 'Invalid options for question type'
+    }
+  },
+  correctAnswer: {
+    type: Schema.Types.Mixed,
+    required: function () {
+    return ['true-false', 'multiple-choice'].includes(this.type); // short-answer now optional
     },
+    validate: {
+      validator: function (v) {
+        if (this.type === 'true-false') {
+          return typeof v === 'string' && ['True', 'False'].includes(v);
+        }
+        if (this.type === 'multiple-choice') {
+          return Array.isArray(v) && v.length > 0 && v.every(ans => typeof ans === 'string' && ans.trim() !== '');
+        }
+        if (this.type === 'short-answer') {
+      if (v === undefined || v === null || v === '') return true; // optional
+      return typeof v === 'string' && v.trim().length <= 200;
+        }
+        if (this.type === 'essay') {
+          return !v || (typeof v === 'string' && v.length <= 2000);
+        }
+        return true;
+      },
+      message: 'Correct answer invalid for question type'
+    }
   },
   maxScore: {
     type: Number,
     required: true,
-    min: 1,
-  },
+    min: 1
+  }
 });
 
 const ExamSchema = new Schema(

@@ -159,8 +159,36 @@ SubmissionSchema.pre('save', async function (next) {
       this.answers.forEach(answer => {
         const question = exam.questions.id(answer.questionId);
         if (!question) return;
-        if (['multiple-choice', 'true-false'].includes(question.type) && answer.answer === question.correctAnswer) {
-          answer.score = question.maxScore;
+        if (['multiple-choice', 'true-false'].includes(question.type)) {
+          if (question.type === 'true-false') {
+            if ((answer.answer || '').toString() === question.correctAnswer) {
+              answer.score = question.maxScore;
+            } else {
+              answer.score = 0;
+            }
+          } else if (question.type === 'multiple-choice') {
+            const correctArray = Array.isArray(question.correctAnswer)
+              ? question.correctAnswer.map(c => c.toString())
+              : [question.correctAnswer];
+            const nCorrect = correctArray.filter(c => c !== undefined && c !== null && c !== '').length || 1;
+            const perOption = question.maxScore / nCorrect;
+            let studentSelections = [];
+            if (Array.isArray(answer.answer)) studentSelections = answer.answer.map(a => a.toString());
+            else if (typeof answer.answer === 'string') {
+              const trimmed = answer.answer.trim();
+              if (trimmed.startsWith('[')) {
+                try { studentSelections = JSON.parse(trimmed); } catch { studentSelections = [answer.answer]; }
+              } else if (trimmed.includes('|')) studentSelections = trimmed.split('|');
+              else if (trimmed.includes(';')) studentSelections = trimmed.split(';');
+              else if (trimmed.includes(',')) studentSelections = trimmed.split(',');
+              else studentSelections = [trimmed];
+            }
+            studentSelections = studentSelections.map(s => s.toString().trim()).filter(s => s.length > 0);
+            const correctChosen = studentSelections.filter(sel => correctArray.includes(sel));
+            let earned = perOption * correctChosen.length;
+            if (earned > question.maxScore) earned = question.maxScore;
+            answer.score = Math.round((earned + Number.EPSILON) * 100) / 100;
+          }
           answer.graded = true;
         } else if (['short-answer', 'essay'].includes(question.type) && answer.score > 0) {
           answer.graded = true;

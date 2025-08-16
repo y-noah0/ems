@@ -40,23 +40,23 @@ const PerformanceChart = () => {
 
             <div className="flex flex-col lg:flex-row gap-12">
                 {/* Line Chart: Exams Created Over Months */}
-                <div className="flex-1">
-                    <h3 className="text-lg font-medium text-gray-700 mb-3">
+                <div className="flex-1 container">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">
                         Exams Created Per Month
                     </h3>
                     <ResponsiveContainer width="100%" height={250}>
                         <LineChart data={examsCreatedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="month" />
-                            <YAxis allowDecimals={false} />
-                            <Tooltip />
+                            <XAxis dataKey="month" tick={{ fontSize: 14 }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 14 }} />
+                            <Tooltip contentStyle={{ fontSize: 14 }} />
                             <Line type="monotone" dataKey="examsCreated" stroke="#4f46e5" strokeWidth={3} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
 
                 {/* Pie Chart: Exam Status Distribution */}
-                <div className="flex-1">
+                <div className="flex-1 container">
                     <h3 className="text-lg font-medium text-gray-700 mb-3">Exam Status Distribution</h3>
                     <ResponsiveContainer width="100%" height={250}>
                         <PieChart>
@@ -67,14 +67,14 @@ const PerformanceChart = () => {
                                 outerRadius={80}
                                 fill="#8884d8"
                                 dataKey="value"
-                                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                                label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`} labelLine={false} style={{ fontSize: 14 }}
                             >
                                 {examStatusData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Legend verticalAlign="bottom" height={36} />
-                            <Tooltip />
+                            <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 14 }} />
+                            <Tooltip contentStyle={{ fontSize: 14 }} />
                         </PieChart>
                     </ResponsiveContainer>
                 </div>

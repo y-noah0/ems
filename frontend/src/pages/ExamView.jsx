@@ -1,686 +1,919 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { toast } from 'react-toastify';
-import { useAuth } from '../context/AuthContext';
-import Layout from '../components/layout/Layout';
-import Card from '../components/ui/Card';
-import Button from '../components/ui/Button';
-import examService from '../services/examService';
-import {
-  FaBook,
-  FaUsers,
-  FaCalendar,
-  FaPlayCircle,
-  FaCheckCircle,
-  FaTrash,
-  FaEdit,
-  FaEye,
-  FaArrowLeft,
-  FaQuestionCircle,
-  FaSpinner,
-  FaCheck,
-  FaPlus,
-} from 'react-icons/fa';
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { useAuth } from "../context/AuthContext";
+import Layout from "../components/layout/Layout";
+import Button from "../components/ui/Button";
+import ExamCard from "../components/ui/ExamCard";
+import examService from "../services/examService";
+import { FaChevronLeft, FaSpinner } from "react-icons/fa";
+import submissionService from "../services/submissionService";
+import DynamicTable from "../components/class/DynamicTable";
 
 const ExamView = () => {
-const { examId } = useParams();
-const navigate = useNavigate();
-const { currentUser } = useAuth();
-const [exam, setExam] = useState(null);
-const [subjects, setSubjects] = useState([]);
-const [classes, setClasses] = useState([]);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState(null);
+    const { examId } = useParams();
+    const navigate = useNavigate();
+    const { currentUser } = useAuth();
+    const [exam, setExam] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState("exam"); // 'exam' | 'submissions' | 'submission'
+    const [submissions, setSubmissions] = useState([]);
+    const [submissionsLoading, setSubmissionsLoading] = useState(false);
+    const [submissionsError, setSubmissionsError] = useState(null);
+    const [submissionFilter, setSubmissionFilter] = useState("all"); // all | completed | auto | pending | graded
+    const [selectedSubmission, setSelectedSubmission] = useState(null); // full detail
+    const [submissionDetailLoading, setSubmissionDetailLoading] =
+        useState(false);
+    const [submissionDetailError, setSubmissionDetailError] = useState(null);
+    // Grading state (for open-ended questions only)
+    const [gradeMode, setGradeMode] = useState(false);
+    const [regradeMode, setRegradeMode] = useState(false);
+    const [gradeScores, setGradeScores] = useState({}); // questionId => score
+    const [gradeSaving, setGradeSaving] = useState(false);
+    const [gradeError, setGradeError] = useState(null);
+    const [gradeSuccess, setGradeSuccess] = useState(false);
+    const [gradeFeedback, setGradeFeedback] = useState("");
 
-useEffect(() => {
-  const fetchData = async () => {
-    if (!currentUser?.school) {
-      setError('No school associated with your account. Please log in again.');
-      setLoading(false);
-      return;
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!currentUser?.school) {
+                setError("No school associated with your account.");
+                setLoading(false);
+                return;
+            }
+            try {
+                setLoading(true);
+                const examData = await examService.getExamById(
+                    examId,
+                    currentUser.school
+                );
+                setExam(examData);
+            } catch (err) {
+                setError(err.message || "Failed to load exam.");
+                toast.error(err.message || "Failed to load exam.");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [examId, currentUser]);
+
+    // Fetch submissions only when submissions tab activated
+    useEffect(() => {
+        const fetchSubs = async () => {
+            if (activeTab !== "submissions") return;
+            if (!currentUser?.school) return;
+            if (submissions.length > 0 || submissionsLoading) return;
+            try {
+                setSubmissionsLoading(true);
+                const subs = await examService.getExamSubmissions(
+                    examId,
+                    currentUser.school
+                );
+                setSubmissions(Array.isArray(subs) ? subs : []);
+            } catch (err) {
+                setSubmissionsError(
+                    err.message || "Failed to load submissions"
+                );
+                toast.error(err.message || "Failed to load submissions");
+            } finally {
+                setSubmissionsLoading(false);
+            }
+        };
+        fetchSubs();
+    }, [
+        activeTab,
+        examId,
+        currentUser,
+        submissions.length,
+        submissionsLoading,
+    ]);
+
+    // Placeholder actions (activate/complete) could be re-added if needed in this compact view
+
+    const totalPoints = useMemo(() => {
+        return Array.isArray(exam?.questions)
+            ? exam.questions.reduce(
+                  (sum, q) => sum + (parseInt(q.maxScore) || 0),
+                  0
+              )
+            : 0;
+    }, [exam]);
+
+    const timeProgress = useMemo(() => {
+        if (!exam?.schedule?.start || !exam?.schedule?.end) return 0;
+        const start = new Date(exam.schedule.start).getTime();
+        const end = new Date(exam.schedule.end).getTime();
+        const now = Date.now();
+        if (now <= start) return 0;
+        if (now >= end) return 100;
+        return Math.min(
+            100,
+            Math.max(0, ((now - start) / (end - start)) * 100)
+        );
+    }, [exam]);
+
+    // Animation variants removed (simplified static layout)
+
+    if (loading) {
+        return (
+            <Layout>
+                <div className="flex justify-center items-center py-32">
+                    <FaSpinner className="h-12 w-12 text-blue-600 animate-spin" />
+                </div>
+            </Layout>
+        );
     }
-    try {
-      setLoading(true);
-      const [examData, subjectsData, classesData] = await Promise.all([
-        examService.getExamById(examId, currentUser.school),
-        examService.getTeacherSubjects(currentUser.school),
-        examService.getClassesForTeacher(currentUser.school),
-      ]);
-      setExam(examData);
-      setSubjects(Array.isArray(subjectsData) ? subjectsData : []);
-      setClasses(Array.isArray(classesData) ? classesData : []);
-      setLoading(false);
-    } catch (err) {
-      setError(err.message || 'Failed to load exam data. Please try again.');
-      setLoading(false);
-      toast.error(err.message || 'Failed to load exam data.');
+
+    if (error || !exam) {
+        return (
+            <Layout>
+                <div className="p-10 text-center text-sm text-red-600">
+                    {error || "Exam not found"}
+                </div>
+            </Layout>
+        );
     }
-  };
-  fetchData();
-}, [examId, currentUser]);
 
-const handleActivateExam = async () => {
-  if (!currentUser?.school) {
-    toast.error('No school associated with your account.');
-    return;
-  }
-  try {
-    const updatedExam = await examService.activateExam(examId, currentUser.school);
-    setExam(updatedExam);
-    toast.success('Exam activated successfully!');
-  } catch (err) {
-    setError(err.message || 'Failed to activate exam. Please try again.');
-    toast.error(err.message || 'Failed to activate exam.');
-  }
-};
-
-const handleCompleteExam = async () => {
-  if (!currentUser?.school) {
-    toast.error('No school associated with your account.');
-    return;
-  }
-  try {
-    const updatedExam = await examService.completeExam(examId, currentUser.school);
-    setExam(updatedExam);
-    toast.success('Exam completed successfully!');
-  } catch (err) {
-    setError(err.message || 'Failed to complete exam. Please try again.');
-    toast.error(err.message || 'Failed to complete exam.');
-  }
-};
-
-const handleUpdateExam = async (e) => {
-  e.preventDefault();
-  if (!currentUser?.school) {
-    toast.error('No school associated with your account.');
-    return;
-  }
-  try {
-    const updatedData = {
-      subjectId: exam.subject?._id || '',
-      classIds: exam.classes?.map((cls) => cls._id) || [],
-    };
-    const updatedExam = await examService.updateExam(examId, updatedData, currentUser.school);
-    setExam(updatedExam);
-    setError(null);
-    toast.success('Exam updated successfully!');
-  } catch (err) {
-    setError(err.message || 'Failed to update exam.');
-    toast.error(err.message || 'Failed to update exam.');
-  }
-};
-
-const handleDeleteExam = async () => {
-  if (!currentUser?.school) {
-    toast.error('No school associated with your account.');
-    return;
-  }
-  if (!window.confirm('Are you sure you want to delete this exam?')) return;
-  try {
-    await examService.deleteExam(examId, currentUser.school);
-    toast.success('Exam deleted successfully!');
-    navigate('/teacher/dashboard');
-  } catch (err) {
-    setError(err.message || 'Failed to delete exam.');
-    toast.error(err.message || 'Failed to delete exam.');
-  }
-};
-
-const totalPoints = useMemo(() => {
-  return Array.isArray(exam?.questions)
-    ? exam.questions.reduce((sum, q) => sum + (parseInt(q.maxScore) || 0), 0)
-    : 0;
-}, [exam]);
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { duration: 0.5, staggerChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
-
-if (loading) {
-  return (
-    <Layout>
-      <motion.div
-        className="flex justify-center items-center h-screen"
-        variants={itemVariants}
-      >
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        >
-          <FaSpinner className="h-12 w-12 text-indigo-600" aria-hidden="true" />
-        </motion.div>
-      </motion.div>
-    </Layout>
-  );
-}
-
-if (error) {
-  return (
-    <Layout>
-      <motion.div variants={itemVariants}>
-        <Card className="mx-auto my-8 max-w-2xl bg-gray-50 border-indigo-200">
-          <div className="p-8 text-center">
-            <motion.div
-              className="text-5xl text-red-500 mb-4"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse' }}
-            >
-              ⚠️
-            </motion.div>
-            <div className="text-red-600 text-xl mb-6" aria-live="assertive">{error}</div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                onClick={() => navigate('/teacher/exams')}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-2 shadow-md"
-                aria-label="Return to exam management"
-              >
-                <FaArrowLeft className="h-4 w-4" />
-                Return to Exam Management
-              </Button>
-            </motion.div>
-          </div>
-        </Card>
-      </motion.div>
-    </Layout>
-  );
-}
-
-if (!exam) {
-  return (
-    <Layout>
-      <motion.div variants={itemVariants}>
-        <Card className="mx-auto my-8 max-w-2xl bg-gray-50 border-indigo-200">
-          <div className="p-8 text-center">
-            <motion.div
-              className="text-5xl mb-4"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse' }}
-            >
-              📚
-            </motion.div>
-            <div className="text-xl text-gray-900 mb-6">Exam not found</div>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                onClick={() => navigate('/teacher/exams')}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-2 shadow-md"
-                aria-label="Return to exam management"
-              >
-                <FaArrowLeft className="h-4 w-4" />
-                Return to Exam Management
-              </Button>
-            </motion.div>
-          </div>
-        </Card>
-      </motion.div>
-    </Layout>
-  );
-}
-
-return (
-  <Layout>
-    <motion.div
-      className="container mx-auto px-4 py-8 max-w-7xl"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <motion.div className="flex justify-between items-center mb-8" variants={itemVariants}>
-        <div className="flex items-center gap-4">
-          <FaBook className="h-8 w-8 text-indigo-600" aria-hidden="true" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{exam.title || 'Untitled Exam'}</h1>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-gray-600">Status:</span>
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium capitalize ${
-                  exam.status === 'draft'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : exam.status === 'scheduled'
-                    ? 'bg-blue-100 text-blue-800'
-                    : exam.status === 'active'
-                    ? 'bg-green-100 text-green-800'
-                    : exam.status === 'completed'
-                    ? 'bg-gray-100 text-gray-800'
-                    : 'bg-gray-100 text-gray-800'
-                }`}
-              >
-                {exam.status || 'unknown'}
-              </span>
-            </div>
-          </div>
-        </div>
-        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-          <Button
-            onClick={() => navigate('/teacher/exams')}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-6 py-2 shadow-md"
-            aria-label="Back to exam management"
-          >
-            <FaArrowLeft className="h-4 w-4" />
-            Exam Management
-          </Button>
-        </motion.div>
-      </motion.div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <motion.div variants={itemVariants}>
-            <Card className="bg-gray-50 border-indigo-200 hover:border-indigo-300 transition-all duration-200">
-              <div className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <FaBook className="h-5 w-5 text-indigo-600" />
-                  <h2 className="text-xl font-semibold text-indigo-600">Exam Details</h2>
-                </div>
-                <form onSubmit={handleUpdateExam}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-indigo-600 mb-1">
-                          Subject
-                        </label>
-                        <select
-                          value={exam.subject?._id || ''}
-                          onChange={(e) =>
-                            setExam({
-                              ...exam,
-                              subject: {
-                                _id: e.target.value,
-                                name: subjects.find((s) => s._id === e.target.value)?.name || '',
-                              },
-                            })
-                          }
-                          className={`w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 transition duration-200 ${
-                            exam.status !== 'draft' ? 'bg-gray-100 cursor-not-allowed' : ''
-                          }`}
-                          disabled={exam.status !== 'draft'}
-                          aria-label="Select subject"
-                        >
-                          <option value="">Select Subject</option>
-                          {subjects.map((subject) => (
-                            <option key={subject._id} value={subject._id}>
-                              {subject.name || 'Unnamed Subject'}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-indigo-600 mb-1">
-                          Classes
-                        </label>
-                        <select
-                          multiple
-                          value={exam.classes?.map((cls) => cls._id) || []}
-                          onChange={(e) => {
-                            const selectedIds = Array.from(e.target.selectedOptions).map(
-                              (opt) => opt.value
-                            );
-                            setExam({
-                              ...exam,
-                              classes: selectedIds.map((id) =>
-                                classes.find((cls) => cls._id === id) || { _id: id }
-                              ),
-                            });
-                          }}
-                          className={`w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500 transition duration-200 h-24 ${
-                            exam.status !== 'draft' ? 'bg-gray-100 cursor-not-allowed' : ''
-                          }`}
-                          disabled={exam.status !== 'draft'}
-                          aria-label="Select classes"
-                        >
-                          {classes.map((cls) => (
-                            <option key={cls._id} value={cls._id}>
-                              {cls.className ||
-                                `${cls.level || ''}${cls.trade?.code || ''}` ||
-                                'Unnamed Class'}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-indigo-600 mb-1">
-                          Type
-                        </label>
-                        <p className="px-3 py-2 bg-gray-100 border border-indigo-300 rounded-md text-gray-700">
-                          {(exam.type || 'quiz').charAt(0).toUpperCase() +
-                            (exam.type || 'quiz').slice(1)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-indigo-600 mb-1">
-                          Questions
-                        </label>
-                        <p className="px-3 py-2 bg-gray-100 border border-indigo-300 rounded-md text-gray-700">
-                          {exam.questions?.length || 0}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-indigo-600 mb-1">
-                          Total Points
-                        </label>
-                        <p className="px-3 py-2 bg-gray-100 border border-indigo-300 rounded-md text-gray-700">
-                          {totalPoints}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-indigo-600 mb-1">
-                          Created
-                        </label>
-                        <p className="px-3 py-2 bg-gray-100 border border-indigo-300 rounded-md text-gray-700">
-                          {exam.createdAt
-                            ? new Date(exam.createdAt).toLocaleDateString('en-US', {
-                                dateStyle: 'medium',
-                              })
-                            : 'Unknown'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  {exam.status === 'draft' && (
-                    <motion.div className="mt-6" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        type="submit"
-                        className="flex items-center gap-2 w-full justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2 shadow-md"
-                        aria-label="Update exam"
-                      >
-                        <FaEdit className="h-4 w-4" />
-                        Update Exam
-                      </Button>
-                    </motion.div>
-                  )}
-                </form>
-              </div>
-            </Card>
-          </motion.div>
-
-          {exam.schedule && (
-            <motion.div variants={itemVariants}>
-              <Card className="bg-gray-50 border-indigo-200 hover:border-indigo-300 transition-all duration-200">
-                <div className="p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <FaCalendar className="h-5 w-5 text-indigo-600" />
-                    <h2 className="text-xl font-semibold text-indigo-600">Schedule</h2>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-indigo-600 mb-1">
-                        Start Date
-                      </label>
-                      <p className="px-3 py-2 bg-gray-100 border border-indigo-300 rounded-md text-gray-700">
-                        {exam.schedule.start
-                          ? new Date(exam.schedule.start).toLocaleString('en-US', {
-                              dateStyle: 'medium',
-                              timeStyle: 'short',
-                            })
-                          : 'Not scheduled'}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-indigo-600 mb-1">
-                        Duration
-                      </label>
-                      <p className="px-3 py-2 bg-gray-100 border border-indigo-300 rounded-md text-gray-700">
-                        {exam.schedule.duration ? `${exam.schedule.duration} minutes` : 'Not set'}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-indigo-600 mb-1">
-                        End Date
-                      </label>
-                      <p className="px-3 py-2 bg-gray-100 border border-indigo-300 rounded-md text-gray-700">
-                        {exam.schedule.start && exam.schedule.duration
-                          ? new Date(
-                              new Date(exam.schedule.start).getTime() +
-                                exam.schedule.duration * 60000
-                            ).toLocaleString('en-US', {
-                              dateStyle: 'medium',
-                              timeStyle: 'short',
-                            })
-                          : 'Not scheduled'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          )}
-
-          <motion.div variants={itemVariants}>
-            <Card className="bg-gray-50 border-indigo-200 hover:border-indigo-300 transition-all duration-200">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <div className="flex items-center gap-2">
-                    <FaQuestionCircle className="h-5 w-5 text-indigo-600" />
-                    <h2 className="text-xl font-semibold text-indigo-600">Questions</h2>
-                  </div>
-                  {exam.status === 'draft' && (
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={() => navigate(`/teacher/exams/${examId}/edit`)}
-                        className="flex items-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-600 rounded-md px-4 py-2"
-                        aria-label="Edit questions"
-                      >
-                        <FaEdit className="h-4 w-4" />
-                        Edit Questions
-                      </Button>
-                    </motion.div>
-                  )}
-                </div>
-
-                {exam.questions?.length === 0 ? (
-                  <div className="text-center py-8">
-                    <motion.div
-                      className="text-5xl mb-4"
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse' }}
-                    >
-                      📝
-                    </motion.div>
-                    <p className="text-gray-600 mb-4">No questions added to this exam yet.</p>
-                    {exam.status === 'draft' && (
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+    return (
+        <Layout>
+            <div className="m-0 py-4 bg-white">
+                {/* Tabs */}
+                <div className="flex justify-between">
+                    <div className="flex items-center gap-3">
                         <Button
-                          onClick={() => navigate(`/teacher/exams/${examId}/edit`)}
-                          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2 shadow-md"
-                          aria-label="Add questions"
+                            size="sm"
+                            variant={
+                                activeTab === "exam" ? "primary" : "outline"
+                            }
+                            onClick={() => setActiveTab("exam")}
+                            aria-pressed={activeTab === "exam"}
                         >
-                          <FaPlus className="h-4 w-4" />
-                          Add Questions
+                            Exam
                         </Button>
-                      </motion.div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {exam.questions?.map((question, index) => (
-                      <motion.div
-                        key={question._id || index}
-                        className="border border-indigo-200 rounded-md p-4 bg-white hover:bg-indigo-50 transition-all duration-200"
-                        variants={itemVariants}
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-indigo-600 text-white text-sm font-medium">
-                              {index + 1}
-                            </span>
-                            <h3 className="font-medium text-gray-900">
-                              Question {index + 1} (
-                              {(question.type || 'unknown')
-                                .replace('-', ' ')
-                                .replace(/\b\w/g, (c) => c.toUpperCase())}
-                              )
-                            </h3>
-                          </div>
-                          <span className="text-gray-600 text-sm">
-                            {question.maxScore || question.points || 0} pts
-                          </span>
-                        </div>
-                        <p className="text-gray-800 mt-1">{question.text || 'No question text'}</p>
-                        {(question.type === 'multiple-choice' ||
-                          question.type === 'true-false' ||
-                          question.type === 'true-false-labeled' ||
-                          question.type === 'true-false-statements') &&
-                          Array.isArray(question.options) &&
-                          question.options.length > 0 && (
-                            <div className="mt-3">
-                              <ul className="space-y-2">
-                                {question.options.map((option, optIdx) => (
-                                  <li
-                                    key={optIdx}
-                                    className={`flex items-center gap-2 pl-2 text-sm ${
-                                      option.isCorrect
-                                        ? 'bg-green-100 text-green-800 font-medium rounded-md p-2'
-                                        : 'text-gray-700'
-                                    }`}
-                                  >
-                                    {option.isCorrect && <FaCheck className="h-4 w-4 text-green-600" />}
-                                    {option.text || 'No option text'}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        {(question.type === 'short-answer' || question.type === 'essay') &&
-                          question.correctAnswer && (
-                            <div className="mt-3">
-                              <p className="text-sm text-gray-600">
-                                <span className="font-medium">Answer:</span>{' '}
-                                {question.correctAnswer}
-                              </p>
-                            </div>
-                          )}
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Card>
-          </motion.div>
-        </div>
-
-        <motion.div variants={itemVariants}>
-          <Card className="bg-gray-50 border-indigo-200 hover:border-indigo-300 transition-all duration-200">
-            <div className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <FaPlayCircle className="h-5 w-5 text-indigo-600" />
-                <h2 className="text-xl font-semibold text-indigo-600">Actions</h2>
-              </div>
-              <div className="space-y-3">
-                {exam.status === 'draft' && (
-                  <>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={() => navigate(`/teacher/exams/${examId}/edit`)}
-                        className="flex items-center gap-2 w-full justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2 shadow-md"
-                        aria-label="Edit exam"
-                      >
-                        <FaEdit className="h-4 w-4" />
-                        Edit Exam
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={() => navigate(`/teacher/exams/${examId}/schedule`)}
-                        className="flex items-center gap-2 w-full justify-center bg-indigo-100 hover:bg-indigo-200 text-indigo-600 rounded-md px-4 py-2"
-                        aria-label="Schedule exam"
-                      >
-                        <FaCalendar className="h-4 w-4" />
-                        Schedule Exam
-                      </Button>
-                    </motion.div>
-                  </>
-                )}
-                {exam.status === 'scheduled' && (
-                  <>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={handleActivateExam}
-                        className="flex items-center gap-2 w-full justify-center bg-green-600 hover:bg-green-700 text-white rounded-md px-4 py-2 shadow-md"
-                        aria-label="Activate exam"
-                      >
-                        <FaPlayCircle className="h-4 w-4" />
-                        Activate Exam
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={() => navigate(`/teacher/exams/${examId}/schedule`)}
-                        className="flex items-center gap-2 w-full justify-center bg-indigo-100 hover:bg-indigo-200 text-indigo-600 rounded-md px-4 py-2"
-                        aria-label="Change schedule"
-                      >
-                        <FaCalendar className="h-4 w-4" />
-                        Change Schedule
-                      </Button>
-                    </motion.div>
-                  </>
-                )}
-                {exam.status === 'active' && (
-                  <>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={handleCompleteExam}
-                        className="flex items-center gap-2 w-full justify-center bg-amber-600 hover:bg-amber-700 text-white rounded-md px-4 py-2 shadow-md"
-                        aria-label="Complete exam"
-                      >
-                        <FaCheckCircle className="h-4 w-4" />
-                        Complete Exam
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        onClick={() => navigate(`/teacher/exams/${examId}/submissions`)}
-                        className="flex items-center gap-2 w-full justify-center bg-indigo-100 hover:bg-indigo-200 text-indigo-600 rounded-md px-4 py-2"
-                        aria-label="View submissions"
-                      >
-                        <FaEye className="h-4 w-4" />
-                        View Submissions
-                      </Button>
-                    </motion.div>
-                  </>
-                )}
-                {exam.status === 'completed' && (
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                            size="sm"
+                            variant={
+                                activeTab === "submissions"
+                                    ? "primary"
+                                    : "outline"
+                            }
+                            onClick={() => setActiveTab("submissions")}
+                            aria-pressed={activeTab === "submissions"}
+                        >
+                            Submissions
+                        </Button>
+                        {activeTab === "submission" && (
+                            <Button size="sm" variant="primary" aria-pressed>
+                                Submission
+                            </Button>
+                        )}
+                    </div>
                     <Button
-                      onClick={() => navigate(`/teacher/exams/${examId}/submissions`)}
-                      className="flex items-center gap-2 w-full justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-4 py-2 shadow-md"
-                      aria-label="View and grade submissions"
+                        size="sm"
+                        variant="outline"
+                        className="flex gap-2"
+                        onClick={() => navigate(-1)}
                     >
-                      <FaEye className="h-4 w-4" />
-                      View & Grade Submissions
+                        <FaChevronLeft />
+                        Back
                     </Button>
-                  </motion.div>
-                )}
-                <div className="border-t border-indigo-200 pt-3 mt-3">
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button
-                      onClick={handleDeleteExam}
-                      className="flex items-center gap-2 w-full justify-center bg-gray-600 hover:bg-gray-700 text-white rounded-md px-4 py-2 shadow-md"
-                      aria-label="Delete exam"
-                    >
-                      <FaTrash className="h-4 w-4" />
-                      Delete Exam
-                    </Button>
-                  </motion.div>
                 </div>
-              </div>
+                {(activeTab === "exam" || activeTab === "submissions") && (
+                    <div className="flex flex-col lg:flex-row gap-8 my-5">
+                        {/* Left panel: questions or submissions */}
+                        <div className="w-full lg:w-[550px] shrink-0  rounded-xl border border-black/10 p-6 min-h-[520px] overflow-y-auto">
+                            {activeTab === "exam" ? (
+                                exam.questions?.length ? (
+                                    <ol className="space-y-8 list-decimal list-inside">
+                                        {exam.questions.map((q, idx) => (
+                                            <li
+                                                key={q._id || idx}
+                                                className="text-sm leading-relaxed text-gray-800"
+                                            >
+                                                <div className="mb-3 font-medium">
+                                                    {q.text || "Question text"}
+                                                </div>
+                                                {Array.isArray(q.options) &&
+                                                    q.options.length > 0 && (
+                                                        <div className="border border-black/10 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                            {q.options
+                                                                .slice(0, 4)
+                                                                .map(
+                                                                    (
+                                                                        opt,
+                                                                        oIdx
+                                                                    ) => (
+                                                                        <label
+                                                                            key={
+                                                                                oIdx
+                                                                            }
+                                                                            className="flex items-center gap-2 text-gray-700 text-sm"
+                                                                        >
+                                                                            <span className="inline-block w-3 h-3 rounded-full border border-gray-400" />
+                                                                            <span className="truncate">
+                                                                                {opt.text ||
+                                                                                    "Option"}
+                                                                            </span>
+                                                                        </label>
+                                                                    )
+                                                                )}
+                                                        </div>
+                                                    )}
+                                            </li>
+                                        ))}
+                                    </ol>
+                                ) : (
+                                    <div className="text-sm text-gray-500">
+                                        No questions added.
+                                    </div>
+                                )
+                            ) : (
+                                <div className="flex flex-col h-full">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <p className="text-sm font-medium text-gray-700">
+                                            Submitted:{" "}
+                                            {
+                                                submissions.filter(
+                                                    (s) =>
+                                                        (
+                                                            s.status ||
+                                                            "pending"
+                                                        ).toLowerCase() !==
+                                                        "pending"
+                                                ).length
+                                            }
+                                            /
+                                            {submissions.length ||
+                                                submissions.length}
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-xs text-gray-500">
+                                                Filter:
+                                            </label>
+                                            <select
+                                                value={submissionFilter}
+                                                onChange={(e) =>
+                                                    setSubmissionFilter(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className="border border-gray-300 rounded-md text-xs px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                            >
+                                                <option value="all">All</option>
+                                                <option value="graded">
+                                                    Graded
+                                                </option>
+                                                <option value="completed">
+                                                    Completed
+                                                </option>
+                                                <option value="auto">
+                                                    Auto submit
+                                                </option>
+                                                <option value="pending">
+                                                    Pending
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {submissionsLoading && (
+                                        <div className="flex items-center gap-3 text-sm text-gray-600">
+                                            <FaSpinner className="h-4 w-4 animate-spin" />{" "}
+                                            Loading submissions...
+                                        </div>
+                                    )}
+                                    {submissionsError && (
+                                        <div className="text-sm text-red-600">
+                                            {submissionsError}
+                                        </div>
+                                    )}
+                                    {!submissionsLoading &&
+                                        !submissionsError &&
+                                        submissions.length === 0 && (
+                                            <div className="text-sm text-gray-500">
+                                                No submissions yet.
+                                            </div>
+                                        )}
+                                    {!submissionsLoading &&
+                                        submissions.length > 0 && (
+                                            <DynamicTable
+                                                data={submissions.filter(
+                                                    (s) => {
+                                                        if (
+                                                            submissionFilter ===
+                                                            "all"
+                                                        )
+                                                            return true;
+                                                        const status = (
+                                                            s.status ||
+                                                            "pending"
+                                                        ).toLowerCase();
+                                                        if (
+                                                            submissionFilter ===
+                                                            "auto"
+                                                        )
+                                                            return status.includes(
+                                                                "auto"
+                                                            );
+                                                        if (
+                                                            submissionFilter ===
+                                                            "graded"
+                                                        )
+                                                            return (
+                                                                status ===
+                                                                "graded"
+                                                            );
+                                                        return (
+                                                            status ===
+                                                            submissionFilter
+                                                        ); // completed | pending
+                                                    }
+                                                )}
+                                                onRowClick={async (row) => {
+                                                    const id =
+                                                        row._id || row.id;
+                                                    if (
+                                                        !id ||
+                                                        !currentUser?.school
+                                                    )
+                                                        return;
+                                                    setSubmissionDetailError(
+                                                        null
+                                                    );
+                                                    setSubmissionDetailLoading(
+                                                        true
+                                                    );
+                                                    setGradeMode(false);
+                                                    setGradeScores({});
+                                                    setGradeError(null);
+                                                    try {
+                                                        const detail =
+                                                            await examService.getSubmissionById(
+                                                                id,
+                                                                currentUser.school
+                                                            );
+                                                        setSelectedSubmission(
+                                                            detail
+                                                        );
+                                                        setActiveTab(
+                                                            "submission"
+                                                        );
+                                                    } catch (e) {
+                                                        setSubmissionDetailError(
+                                                            e.message ||
+                                                                "Failed to load submission"
+                                                        );
+                                                    } finally {
+                                                        setSubmissionDetailLoading(
+                                                            false
+                                                        );
+                                                    }
+                                                }}
+                                                columns={[
+                                                    {
+                                                        key: "student",
+                                                        title: "Student",
+                                                        width: "40%",
+                                                        render: (val, row) => {
+                                                            const dateTxt =
+                                                                row.submittedAt
+                                                                    ? new Date(
+                                                                          row.submittedAt
+                                                                      )
+                                                                    : null;
+                                                            return (
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-gray-800 font-medium">
+                                                                        {row
+                                                                            .student
+                                                                            ?.name ||
+                                                                            row
+                                                                                .student
+                                                                                ?.fullName ||
+                                                                            "Unknown"}
+                                                                    </span>
+                                                                    <span className="text-[11px] text-gray-500">
+                                                                        Submitted:{" "}
+                                                                        {dateTxt
+                                                                            ? `${dateTxt.toLocaleDateString(
+                                                                                  undefined,
+                                                                                  {
+                                                                                      day: "2-digit",
+                                                                                      month: "2-digit",
+                                                                                      year: "numeric",
+                                                                                  }
+                                                                              )}  ${dateTxt.toLocaleTimeString(
+                                                                                  [],
+                                                                                  {
+                                                                                      hour: "2-digit",
+                                                                                      minute: "2-digit",
+                                                                                  }
+                                                                              )}`
+                                                                            : "--/--/----  --:--"}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        },
+                                                    },
+                                                    {
+                                                        key: "score",
+                                                        title: "Score",
+                                                        width: "15%",
+                                                        render: (val, row) => (
+                                                            <span className="text-gray-700">
+                                                                {row.totalScore ??
+                                                                    row.score ??
+                                                                    "--"}{" "}
+                                                                / {totalPoints}
+                                                            </span>
+                                                        ),
+                                                    },
+                                                    {
+                                                        key: "violations",
+                                                        title: "Violations",
+                                                        width: "15%",
+                                                        render: (val, row) => {
+                                                            const count =
+                                                                row.violations ??
+                                                                (Array.isArray(
+                                                                    row.violationLogs
+                                                                )
+                                                                    ? row
+                                                                          .violationLogs
+                                                                          .length
+                                                                    : 0);
+                                                            const color =
+                                                                count > 0
+                                                                    ? "bg-red-100 text-red-600"
+                                                                    : "bg-gray-100 text-gray-500";
+                                                            return (
+                                                                <span
+                                                                    className={`px-2 py-1 rounded-full text-[11px] font-medium ${color}`}
+                                                                >
+                                                                    {count}
+                                                                </span>
+                                                            );
+                                                        },
+                                                    },
+                                                    {
+                                                        key: "status",
+                                                        title: "Status",
+                                                        width: "30%",
+                                                        render: (val, row) => {
+                                                            const raw = (
+                                                                row.status ||
+                                                                "pending"
+                                                            ).toLowerCase();
+                                                            const label =
+                                                                raw === "graded"
+                                                                    ? "Graded"
+                                                                    : raw.includes(
+                                                                          "auto"
+                                                                      )
+                                                                    ? "Auto submit"
+                                                                    : raw ===
+                                                                      "completed"
+                                                                    ? "Completed"
+                                                                    : "Pending";
+                                                            const styles =
+                                                                label ===
+                                                                    "Completed" ||
+                                                                label ===
+                                                                    "Graded"
+                                                                    ? "bg-green-100 text-green-700"
+                                                                    : label ===
+                                                                      "Auto submit"
+                                                                    ? "bg-pink-100 text-pink-700"
+                                                                    : "bg-yellow-100 text-yellow-700";
+                                                            const dotColor =
+                                                                label ===
+                                                                    "Completed" ||
+                                                                label ===
+                                                                    "Graded"
+                                                                    ? "bg-green-500"
+                                                                    : label ===
+                                                                      "Auto submit"
+                                                                    ? "bg-pink-500"
+                                                                    : "bg-yellow-500";
+                                                            return (
+                                                                <span
+                                                                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-medium ${styles}`}
+                                                                >
+                                                                    <span
+                                                                        className={`w-2 h-2 rounded-full ${dotColor}`}
+                                                                    ></span>
+                                                                    {label}
+                                                                </span>
+                                                            );
+                                                        },
+                                                    },
+                                                ]}
+                                                showActions={false}
+                                                containerHeight="100%"
+                                                itemsPerPage={8}
+                                            />
+                                        )}
+                                </div>
+                            )}
+                        </div>
+                        {/* Right: Exam summary / placeholder */}
+                        <div className="w-full lg:w-[460px]">
+                            {activeTab === "exam" && (
+                                <div className="relative">
+                                    <ExamCard
+                                        examId={exam._id}
+                                        title={exam.title}
+                                        subject={exam.subject}
+                                        classCode={
+                                            exam.classes?.[0]?.className || ""
+                                        }
+                                        description={
+                                            exam.description ||
+                                            exam.instructions
+                                        }
+                                        status={exam.status}
+                                        startTime={exam.schedule?.start}
+                                        endTime={exam.schedule?.end}
+                                        questions={exam.questions}
+                                        totalPoints={totalPoints}
+                                        progress={timeProgress}
+                                        teacher={exam.teacher}
+                                        type={exam.type}
+                                        instructions={exam.instructions}
+                                        schedule={exam.schedule}
+                                    />
+                                    
+                                </div>
+                            )}
+                            {activeTab === "submissions" && (
+                                <div className="rounded-xl border border-black/10 p-6 text-xs text-gray-500">
+                                    Select a submission to view details.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+                {activeTab === "submission" && selectedSubmission && (
+                    <div className="flex flex-col lg:flex-row gap-8 my-5">
+                        <div className="flex-1 shrink-0  rounded-lg border border-black/10 px-6 py-8 min-h-[520px] overflow-y-auto">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-semibold text-gray-800">
+                                    Submission
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
+                                        {gradeSuccess && (
+                                            <span className="text-[11px] text-green-600">
+                                                Saved
+                                            </span>
+                                        )}
+                                        {gradeError && (
+                                            <span className="text-[11px] text-red-600">
+                                                {gradeError}
+                                            </span>
+                                        )}
+                                                                                {gradeMode || regradeMode ? (
+                                            <>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                                                                        disabled={gradeSaving}
+                                                    onClick={() => {
+                                                                                                                setGradeMode(false);
+                                                                                                                setRegradeMode(false);
+                                                        setGradeScores({});
+                                                        setGradeError(null);
+                                                        setGradeFeedback("");
+                                                    }}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    disabled={gradeSaving}
+                                                    onClick={async () => {
+                                                        if (
+                                                            !currentUser?.school ||
+                                                            !selectedSubmission?._id
+                                                        )
+                                                            return;
+                                                        setGradeSaving(true);
+                                                        setGradeError(null);
+                                                        setGradeSuccess(
+                                                            false
+                                                        );
+                                                        try {
+                                                            // Build grades payload: only open-ended questions
+                                                            const grades = Object.entries(gradeScores).map(([questionId, score]) => ({
+                                                                questionId,
+                                                                score: parseFloat(score) || 0
+                                                            }));
+                                                            if (grades.length === 0) {
+                                                                                                                                setGradeMode(false);
+                                                                                                                                setRegradeMode(false);
+                                                                return;
+                                                            }
+                                                                                                                        if (gradeMode) {
+                                                                                                                            await submissionService.gradeOpenQuestions(
+                                                                                                                                selectedSubmission._id,
+                                                                                                                                grades,
+                                                                                                                                currentUser.school,
+                                                                                                                                gradeFeedback
+                                                                                                                            );
+                                                                                                                            toast.success('Graded successfully');
+                                                                                                                        } else if (regradeMode) {
+                                                                                                                            await examService.regradeSubmission(
+                                                                                                                                selectedSubmission._id,
+                                                                                                                                grades,
+                                                                                                                                currentUser.school
+                                                                                                                            );
+                                                                                                                            toast.success('Regraded successfully');
+                                                                                                                        }
+                                                            setGradeSuccess(true);
+                                                                                                                        setGradeMode(false);
+                                                                                                                        setRegradeMode(false);
+                                                            setGradeScores({});
+                                                            // Refresh submission detail
+                                                            try {
+                                                                const detail = await examService.getSubmissionById(selectedSubmission._id, currentUser.school);
+                                                                setSelectedSubmission(detail);
+                                                            } catch {
+                                                                // ignore refresh error
+                                                            }
+                                                        } catch (e) {
+                                                            setGradeError(
+                                                                e.message ||
+                                                                    "Save failed"
+                                                            );
+                                                        } finally {
+                                                            setGradeSaving(
+                                                                false
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    {gradeSaving
+                                                                                                                ? "Saving..."
+                                                                                                                : (gradeMode ? "Save grade" : "Update grades")}
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            (() => {
+                                                const hasOpen = exam?.questions?.some(q => ['short-answer','essay'].includes(q.type));
+                                                const alreadyGraded = selectedSubmission?.status === 'graded';
+                                                                                                if (hasOpen && !alreadyGraded) {
+                                                                                                    return (
+                                                                                                        <Button
+                                                                                                            size="sm"
+                                                                                                            variant="outline"
+                                                                                                            onClick={() => {
+                                                                                                                setGradeMode(true);
+                                                                                                                setGradeSuccess(false);
+                                                                                                            }}
+                                                                                                        >Grade</Button>
+                                                                                                    );
+                                                                                                }
+                                                                        if (hasOpen && alreadyGraded) {
+                                                                                                    return (
+                                                                                                        <Button
+                                                                                                            size="sm"
+                                                                                                            variant="outline"
+                                                                                                            onClick={() => {
+                                                                                                                // preload existing scores for regrade
+                                                                                                                const preload = {};
+                                                                                                                selectedSubmission.answers.forEach(ans => {
+                                                                                                                    const q = exam.questions.find(q => (q._id || q.id) === (ans.questionId || ans.question?._id));
+                                                                                                                    if (q && ['short-answer','essay'].includes(q.type)) {
+                                                                                                                        preload[q._id] = ans.score || 0;
+                                                                                                                    }
+                                                                                                                });
+                                                                                                                setGradeScores(preload);
+                                                                            setGradeFeedback(selectedSubmission.feedback || '');
+                                                                                                                setRegradeMode(true);
+                                                                                                                setGradeSuccess(false);
+                                                                                                            }}
+                                                                                                        >Regrade</Button>
+                                                                                                    );
+                                                                                                }
+                                                                                                return null;
+                                            })()
+                                        )}
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                            setActiveTab("submissions");
+                                            setSelectedSubmission(null);
+                                        }}
+                                    >
+                                        Back
+                                    </Button>
+                                </div>
+                            </div>
+                            {submissionDetailLoading && (
+                                <div className="flex items-center gap-3 text-sm text-gray-600">
+                                    <FaSpinner className="h-4 w-4 animate-spin" />{" "}
+                                    Loading submission...
+                                </div>
+                            )}
+                            {submissionDetailError && (
+                                <div className="text-sm text-red-600">
+                                    {submissionDetailError}
+                                </div>
+                            )}
+                            {!submissionDetailLoading && !submissionDetailError && selectedSubmission.answers && selectedSubmission.answers.length > 0 && (
+                                <ol className="space-y-3 list-decimal list-inside">
+                                    {selectedSubmission.answers.map((ans, idx) => {
+                                        const answerId = ans._id || ans.id || String(idx);
+                                        const question = exam?.questions?.find(q => (q._id || q.id) === (ans.questionId || ans.question?._id)) || {};
+                                        const maxScore = parseInt(question.maxScore || ans.maxScore || ans.points || ans.score || 0) || 0;
+                                        const existingScore = ans.score ?? ans.points ?? 0;
+                                        const isObjective = ['multiple-choice','true-false'].includes(question.type);
+                                        const bg = isObjective ? (existingScore === maxScore && maxScore>0 ? 'bg-main-green/10' : 'bg-main-red/10') : 'bg-gray-50';
+                                        return (
+                                            <li key={answerId} className={`p-4 rounded-lg border border-black/5 ${bg}`}>
+                                                <div className="text-[13px] font-medium text-gray-800 mb-2">Q{idx + 1}. {question.text || ans.questionText || 'Question'}</div>
+                                                {ans.answer && typeof ans.answer === 'string' && ans.answer.trim() !== '' && (
+                                                    <div className="text-[12px] text-gray-700 mb-1 break-words">Answer: {ans.answer}</div>
+                                                )}
+                                                {Array.isArray(ans.selectedOptions) && ans.selectedOptions.length > 0 && (
+                                                    <div className="text-[12px] text-gray-700 mb-1">Selected: {ans.selectedOptions.join(', ')}</div>
+                                                )}
+                                                <div className="flex items-center gap-2 text-[11px] text-gray-600">
+                                                    <span>
+                                                        Points:{' '}
+                                                        {(gradeMode || regradeMode) && !isObjective ? (
+                                                            <input
+                                                                type="number"
+                                                                className="w-20 px-2 py-1 border border-gray-300 rounded-md text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                                min={0}
+                                                                max={maxScore || undefined}
+                                                                step="0.5"
+                                                                value={gradeScores[question._id] ?? existingScore}
+                                                                onChange={(e) => setGradeScores(prev => ({ ...prev, [question._id]: e.target.value }))}
+                                                            />
+                                                        ) : (
+                                                            <strong className="text-gray-800">{existingScore}</strong>
+                                                        )} {' / '}{maxScore || '--'}
+                                                    </span>
+                                                    {question.correctAnswer && (
+                                                        <span className="ml-2">Correct: {question.correctAnswer}</span>
+                                                    )}
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ol>
+                            )}
+                            {!submissionDetailLoading &&
+                                !submissionDetailError &&
+                                (!selectedSubmission.answers ||
+                                    selectedSubmission.answers.length ===
+                                        0) && (
+                                    <p className="text-xs text-gray-500">
+                                        No answers recorded.
+                                    </p>
+                                )}
+                        </div>
+                        <div className=" space-y-4">
+                            <div className="rounded-xl border border-black/10 p-5">
+                                <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                                    Student
+                                </h4>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
+                                    <div className="col-span-2">
+                                        <span className="text-gray-500">
+                                            Name:
+                                        </span>{" "}
+                                        <span className="font-medium text-gray-800">
+                                            {selectedSubmission.student?.name ||
+                                                selectedSubmission.student
+                                                    ?.fullName ||
+                                                "Unknown"}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">
+                                            Status:
+                                        </span>{" "}
+                                        <span className="capitalize">
+                                            {selectedSubmission.status}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">
+                                            Score:
+                                        </span>{" "}
+                                        {selectedSubmission.totalScore ??
+                                            selectedSubmission.score ??
+                                            "--"}{" "}
+                                        / {totalPoints}
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">
+                                            Violations:
+                                        </span>{" "}
+                                        {selectedSubmission.violations ??
+                                            (selectedSubmission.violationLogs
+                                                ?.length ||
+                                                0)}
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">
+                                            Started:
+                                        </span>{" "}
+                                        {selectedSubmission.startedAt
+                                            ? new Date(
+                                                  selectedSubmission.startedAt
+                                              ).toLocaleTimeString([], {
+                                                  hour: "2-digit",
+                                                  minute: "2-digit",
+                                              })
+                                            : "--"}
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500">
+                                            Submitted:
+                                        </span>{" "}
+                                        {selectedSubmission.submittedAt
+                                            ? new Date(
+                                                  selectedSubmission.submittedAt
+                                              ).toLocaleTimeString([], {
+                                                  hour: "2-digit",
+                                                  minute: "2-digit",
+                                              })
+                                            : "--"}
+                                    </div>
+                                    {selectedSubmission.gradedAt && (
+                                        <div>
+                                            <span className="text-gray-500">
+                                                Graded:
+                                            </span>{" "}
+                                            {new Date(
+                                                selectedSubmission.gradedAt
+                                            ).toLocaleTimeString([], {
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            {Array.isArray(selectedSubmission.violationLogs) &&
+                                selectedSubmission.violationLogs.length > 0 && (
+                                    <div className="rounded-xl border border-red-200 p-5">
+                                        <h4 className="text-sm font-semibold text-red-700 mb-3">
+                                            Violations
+                                        </h4>
+                                        <ul className="space-y-2 max-h-48 overflow-y-auto pr-1 text-[12px]">
+                                            {selectedSubmission.violationLogs.map(
+                                                (v, i) => (
+                                                    <li
+                                                        key={v._id || i}
+                                                        className="flex justify-between gap-4 p-2 bg-red-50 rounded"
+                                                    >
+                                                        <span className="text-red-700 truncate">
+                                                            {v.type ||
+                                                                "Violation"}
+                                                        </span>
+                                                        <span className="text-gray-500 ml-auto">
+                                                            {v.time
+                                                                ? new Date(
+                                                                      v.time
+                                                                  ).toLocaleTimeString(
+                                                                      [],
+                                                                      {
+                                                                          hour: "2-digit",
+                                                                          minute: "2-digit",
+                                                                      }
+                                                                  )
+                                                                : ""}
+                                                        </span>
+                                                    </li>
+                                                )
+                                            )}
+                                        </ul>
+                                    </div>
+                                )}
+                            {(gradeMode || regradeMode) && (
+                                <div className="rounded-xl border border-black/10 p-5">
+                                    <h4 className="text-sm font-semibold text-gray-800 mb-2">Feedback (optional)</h4>
+                                    <textarea
+                                        className="w-full text-[12px] border border-gray-300 rounded-md p-2 h-24 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        placeholder="Enter overall feedback for the student"
+                                        value={gradeFeedback}
+                                        onChange={(e) => setGradeFeedback(e.target.value)}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
-          </Card>
-        </motion.div>
-      </div>
-    </motion.div>
-  </Layout>
-);
+        </Layout>
+    );
 };
 
 export default ExamView;

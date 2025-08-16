@@ -274,6 +274,22 @@ class SocketNotificationService {
                 classCount: classIds.length
             }
         });
+
+        // Notify school leadership
+        if (exam.school) {
+            this.emitToRole('dean', 'exam:scheduled', {
+                type: 'exam_scheduled_overview',
+                message: `Exam scheduled: ${exam.title}`,
+                title: 'Exam Scheduled',
+                data: { examId: exam._id, examTitle: exam.title, scheduledAt: exam.schedule.start }
+            });
+            this.emitToRole('headmaster', 'exam:scheduled', {
+                type: 'exam_scheduled_overview',
+                message: `Exam scheduled: ${exam.title}`,
+                title: 'Exam Scheduled',
+                data: { examId: exam._id, examTitle: exam.title, scheduledAt: exam.schedule.start }
+            });
+        }
     }
 
     /**
