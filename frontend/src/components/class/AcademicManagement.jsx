@@ -6,18 +6,18 @@ import {
   AcademicCapIcon, 
   UserGroupIcon, 
   CogIcon, 
-  DocumentTextIcon, 
   ChartBarIcon,
   PlusIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
   CheckBadgeIcon,
-  ClockIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import DynamicTable from '../class/DynamicTable';
 import Layout from '../layout/Layout';
+import enrollmentService from '../../services/enrollmentService';
+import { useAuth } from '../../context/AuthContext';
 
 // Integrated EmptyState Component
 const EmptyState = ({ icon, title, description, actionText, onAction }) => (
@@ -193,7 +193,6 @@ const CalendarWidget = ({ events }) => {
 
 const AcademicManagement = () => {
   const [tabIndex, setTabIndex] = useState(0);
-  const [curriculumData, setCurriculumData] = useState([]);
   const [enrollmentData, setEnrollmentData] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
   const [resourceData, setResourceData] = useState([]);
@@ -202,79 +201,169 @@ const AcademicManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const { currentUser } = useAuth();
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0
+  });
+  const [statusFilter, setStatusFilter] = useState('');
 
-  // Mock data initialization with more realistic data
+  // Fetch enrollments from backend
+  const fetchEnrollments = async (schoolId) => {
+    if (!schoolId) {
+      setError("School ID is required to fetch enrollments");
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await enrollmentService.getEnrollments({
+        school: schoolId,
+        page: pagination.page,
+        limit: pagination.limit,
+        search: searchQuery,
+        status: statusFilter
+      });
+
+      console.log("API Response:", response);
+
+      const responseData = response?.data || response;
+      
+      if (!responseData) {
+        throw new Error('No data received from server');
+      }
+
+      const enrollmentsArray = Array.isArray(responseData) 
+        ? responseData 
+        : responseData.data || [];
+
+      const formattedEnrollments = enrollmentsArray.map(enrollment => {
+        const termValue = enrollment.term && typeof enrollment.term === 'object' 
+          ? enrollment.term.name || enrollment.term.termNumber || 'N/A'
+          : 'N/A';
+
+        const yearValue = enrollment.term && typeof enrollment.term === 'object'
+          ? enrollment.term.academicYear 
+          : enrollment.academicYear || 'N/A';
+
+        return {
+          id: enrollment._id,
+          student: enrollment.student?.fullName || 'N/A',
+          studentId: enrollment.student?.registrationNumber || 'N/A',
+          class: enrollment.class?.level || 'N/A',
+          term: termValue,
+          year: yearValue,
+          status: enrollment.promotionStatus || 'pending',
+          isActive: enrollment.isActive,
+          enrollmentDate: enrollment.createdAt || new Date().toISOString()
+        };
+      });
+
+      setEnrollmentData(formattedEnrollments);
+      setPagination(prev => ({
+        ...prev,
+        total: responseData.total || response.total || formattedEnrollments.length
+      }));
+      setError(null);
+    } catch (err) {
+      console.error('Fetch enrollments error:', err);
+      setError(err.response?.data?.message || err.message || 'Failed to load enrollments');
+      setEnrollmentData([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Placeholder for handleDeleteEnrollment
+  const handleDeleteEnrollment = async (id) => {
+    try {
+      // Implement your deletion logic here, e.g., call enrollmentService.deleteEnrollment(id)
+      console.log(`Deleting enrollment with id: ${id}`);
+      // After deletion, refresh the enrollments
+      await fetchEnrollments(currentUser?.school);
+    } catch (err) {
+      console.error('Delete enrollment error:', err);
+      setError(err.message || 'Failed to delete enrollment');
+    }
+  };
+
+  // Placeholder for handlePageChange
+  const handlePageChange = (newPage) => {
+    setPagination(prev => ({
+      ...prev,
+      page: newPage
+    }));
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-        
-        const mockCurriculum = [
-          { id: 1, name: 'Core Mathematics L3', subjects: 5, levels: 'L3-L4', status: 'Active', lastUpdated: '2025-08-10' },
-          { id: 2, name: 'Trade SOD Curriculum', subjects: 8, levels: 'L3', status: 'Draft', lastUpdated: '2025-07-15' },
-          { id: 3, name: 'Science Foundation', subjects: 6, levels: 'L2-L3', status: 'Active', lastUpdated: '2025-06-20' },
-          { id: 4, name: 'Arts Specialization', subjects: 7, levels: 'L4', status: 'Archived', lastUpdated: '2025-05-05' },
-        ];
-        
-        const mockEnrollments = [
-          { id: 1, student: 'John Doe', studentId: 'STD2025001', class: 'L3 SOD', term: 'Term 1', year: '2025-2026', status: 'Enrolled' },
-          { id: 2, student: 'Jane Smith', studentId: 'STD2025002', class: 'L4 Arts', term: 'Term 1', year: '2025-2026', status: 'Enrolled' },
-          { id: 3, student: 'Robert Johnson', studentId: 'STD2025003', class: 'L3 Math', term: 'Term 1', year: '2025-2026', status: 'Pending' },
-          { id: 4, student: 'Emily Davis', studentId: 'STD2025004', class: 'L2 Science', term: 'Term 1', year: '2025-2026', status: 'Withdrawn' },
-        ];
-        
-        const mockCalendarEvents = [
-          { id: 1, date: '2025-09-01', event: 'Term 1 Start', type: 'academic', importance: 'high' },
-          { id: 2, date: '2025-10-15', event: 'Mid-Term Exams', type: 'exam', importance: 'critical' },
-          { id: 3, date: '2025-11-20', event: 'Parent-Teacher Meeting', type: 'meeting', importance: 'medium' },
-          { id: 4, date: '2025-12-15', event: 'Term 1 Ends', type: 'academic', importance: 'high' },
-        ];
-        
-        const mockResources = [
-          { id: 1, teacher: 'Dr. Sarah Johnson', subjects: 'Mathematics, Physics', load: '80%', status: 'active' },
-          { id: 2, teacher: 'Prof. Michael Brown', subjects: 'Literature, History', load: '65%', status: 'active' },
-          { id: 3, teacher: 'Dr. Lisa Chen', subjects: 'Biology, Chemistry', load: '90%', status: 'overloaded' },
-          { id: 4, teacher: 'Mr. David Wilson', subjects: 'Computer Science', load: '50%', status: 'available' },
-        ];
-        
-        const mockCompliance = [
-          { id: 1, standard: 'National Competency Framework', compliance: '95%', issues: 2, status: 'compliant' },
-          { id: 2, standard: 'Accreditation Requirements', compliance: '78%', issues: 5, status: 'partial' },
-          { id: 3, standard: 'Safety Protocols', compliance: '100%', issues: 0, status: 'compliant' },
-          { id: 4, standard: 'Accessibility Standards', compliance: '60%', issues: 8, status: 'non-compliant' },
-        ];
-        
-        const mockAnalytics = [
-          { name: 'Enrollment Rate', value: 85, target: 90, trend: 'up' },
-          { name: 'Promotion Rate', value: 92, target: 95, trend: 'up' },
-          { name: 'Attendance', value: 88, target: 95, trend: 'down' },
-          { name: 'Teacher Satisfaction', value: 78, target: 85, trend: 'neutral' },
-        ];
+    let isMounted = true;
 
-        setCurriculumData(mockCurriculum);
-        setEnrollmentData(mockEnrollments);
-        setCalendarEvents(mockCalendarEvents);
-        setResourceData(mockResources);
-        setComplianceData(mockCompliance);
-        setAnalyticsData(mockAnalytics);
+    const fetchInitialData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        if (!currentUser?.school) {
+          throw new Error('School information not available');
+        }
+
+        await fetchEnrollments(currentUser.school);
+        await fetchMockData();
+        
       } catch (err) {
-        setError('Failed to load live data. Using cached information.');
-        console.error('API Error:', err);
+        if (isMounted) {
+          console.error('Initial data loading error:', err);
+          setError(err.message || 'Failed to load initial data. Using cached information.');
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
-    
-    fetchData();
-  }, []);
 
-  // Filter data based on search query
-  const filteredCurriculum = curriculumData.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.levels.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    const fetchMockData = async () => {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const mockData = {
+          calendarEvents: [
+            { id: 1, date: '2025-09-01', event: 'Term 1 Start', type: 'academic', importance: 'high' },
+            { id: 2, date: '2025-10-15', event: 'Mid-Term Exams', type: 'exam', importance: 'critical' },
+          ],
+          resources: [
+            { id: 1, teacher: 'Dr. Sarah Johnson', subjects: 'Mathematics, Physics', load: '80%', status: 'active' },
+            { id: 2, teacher: 'Prof. Michael Brown', subjects: 'Literature, History', load: '65%', status: 'active' },
+          ],
+          compliance: [
+            { id: 1, standard: 'National Competency Framework', compliance: '95%', issues: 2, status: 'compliant' },
+            { id: 2, standard: 'Accreditation Requirements', compliance: '78%', issues: 5, status: 'partial' },
+          ],
+          analytics: [
+            { name: 'Enrollment Rate', value: 85, target: 90, trend: 'up' },
+            { name: 'Promotion Rate', value: 92, target: 95, trend: 'up' },
+          ]
+        };
+
+        if (isMounted) {
+          setCalendarEvents(mockData.calendarEvents);
+          setResourceData(mockData.resources);
+          setComplianceData(mockData.compliance);
+          setAnalyticsData(mockData.analytics);
+        }
+      } catch (err) {
+        console.error('Error loading mock data:', err);
+      }
+    };
+
+    fetchInitialData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pagination.page, pagination.limit, searchQuery, statusFilter, currentUser?.school]);
 
   const filteredEnrollments = enrollmentData.filter(item =>
     item.student.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -344,7 +433,7 @@ const AcademicManagement = () => {
                 Academic Management
               </h1>
               <p className="text-gray-600 mt-2">
-                Manage curriculum, enrollment, resources, and academic analytics
+                Manage enrollment, resources, and academic analytics
               </p>
             </div>
             
@@ -356,20 +445,7 @@ const AcademicManagement = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <svg
-                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
             </div>
           </div>
         </motion.div>
@@ -379,15 +455,8 @@ const AcademicManagement = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8"
         >
-          <StatsCard 
-            title="Active Curricula" 
-            value={curriculumData.filter(c => c.status === 'Active').length} 
-            icon={<DocumentTextIcon className="w-6 h-6" />}
-            trend="up"
-            color="blue"
-          />
           <StatsCard 
             title="Total Enrollments" 
             value={enrollmentData.length} 
@@ -404,7 +473,7 @@ const AcademicManagement = () => {
           />
           <StatsCard 
             title="Compliance Rate" 
-            value={`${Math.round(complianceData.reduce((acc, curr) => acc + parseInt(curr.compliance), 0) / complianceData.length)}%`} 
+            value={`${Math.round(complianceData.reduce((acc, curr) => acc + parseInt(curr.compliance), 0) / (complianceData.length || 1))}%`} 
             icon={<CheckBadgeIcon className="w-6 h-6" />}
             trend="down"
             color="orange"
@@ -419,7 +488,6 @@ const AcademicManagement = () => {
         >
           <TabList className="flex overflow-x-auto scrollbar-hide border-b border-gray-200">
             {[
-              { icon: <DocumentTextIcon className="w-5 h-5 mr-2" />, label: "Curriculum" },
               { icon: <CalendarIcon className="w-5 h-5 mr-2" />, label: "Calendar" },
               { icon: <UserGroupIcon className="w-5 h-5 mr-2" />, label: "Enrollment" },
               { icon: <CogIcon className="w-5 h-5 mr-2" />, label: "Resources" },
@@ -441,108 +509,6 @@ const AcademicManagement = () => {
           </TabList>
 
           <div className="p-6">
-            {/* Curriculum & Subjects Tab */}
-            <TabPanel>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-6"
-              >
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-800">Curriculum Management</h2>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
-                  >
-                    <PlusIcon className="w-5 h-5 mr-2" />
-                    New Curriculum
-                  </motion.button>
-                </div>
-
-                {filteredCurriculum.length > 0 ? (
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <DynamicTable
-                      data={filteredCurriculum}
-                      columns={[
-                        { key: 'name', title: 'Curriculum Name', width: '30%' },
-                        { key: 'subjects', title: 'Subjects', width: '15%' },
-                        { key: 'levels', title: 'Levels', width: '15%' },
-                        { 
-                          key: 'status', 
-                          title: 'Status', 
-                          width: '15%',
-                          render: (value) => (
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              value === 'Active' ? 'bg-green-100 text-green-800' :
-                              value === 'Draft' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {value}
-                            </span>
-                          )
-                        },
-                        { key: 'lastUpdated', title: 'Last Updated', width: '15%' },
-                      ]}
-                      showActions={true}
-                      renderCustomActions={(item) => (
-                        <div className="flex space-x-2">
-                          <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
-                          <button className="text-gray-600 hover:text-gray-800 text-sm font-medium">View</button>
-                        </div>
-                      )}
-                    />
-                  </div>
-                ) : (
-                  <EmptyState
-                    icon={<DocumentTextIcon className="w-12 h-12 text-gray-400" />}
-                    title="No matching curricula found"
-                    description="Try adjusting your search query or create a new curriculum"
-                    actionText="Create Curriculum"
-                    onAction={() => setTabIndex(0)}
-                  />
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white p-5 rounded-lg border border-gray-200">
-                    <h3 className="font-medium text-gray-800 mb-3 flex items-center">
-                      <ClockIcon className="w-5 h-5 text-gray-500 mr-2" />
-                      Recent Updates
-                    </h3>
-                    <ul className="space-y-3">
-                      {curriculumData
-                        .sort((a, b) => new Date(b.lastUpdated) - new Date(a.lastUpdated))
-                        .slice(0, 3)
-                        .map((item) => (
-                          <li key={item.id} className="flex justify-between items-center">
-                            <span className="text-sm font-medium">{item.name}</span>
-                            <span className="text-xs text-gray-500">{item.lastUpdated}</span>
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                  <div className="bg-white p-5 rounded-lg border border-gray-200">
-                    <h3 className="font-medium text-gray-800 mb-3">Quick Actions</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button className="p-3 bg-blue-50 rounded-lg text-blue-600 hover:bg-blue-100 text-sm font-medium">
-                        Import Curriculum
-                      </button>
-                      <button className="p-3 bg-green-50 rounded-lg text-green-600 hover:bg-green-100 text-sm font-medium">
-                        Generate Report
-                      </button>
-                      <button className="p-3 bg-purple-50 rounded-lg text-purple-600 hover:bg-purple-100 text-sm font-medium">
-                        View Templates
-                      </button>
-                      <button className="p-3 bg-orange-50 rounded-lg text-orange-600 hover:bg-orange-100 text-sm font-medium">
-                        Archive Old
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </TabPanel>
-
             {/* Calendar & Scheduling Tab */}
             <TabPanel>
               <motion.div
@@ -620,11 +586,15 @@ const AcademicManagement = () => {
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-800">Student Enrollment</h2>
                   <div className="flex space-x-3">
-                    <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500">
-                      <option>All Statuses</option>
-                      <option>Enrolled</option>
-                      <option>Pending</option>
-                      <option>Withdrawn</option>
+                    <select 
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="active">Active</option>
+                      <option value="pending">Pending</option>
+                      <option value="withdrawn">Withdrawn</option>
                     </select>
                     <motion.button
                       whileHover={{ scale: 1.03 }}
@@ -642,8 +612,22 @@ const AcademicManagement = () => {
                     <DynamicTable
                       data={filteredEnrollments}
                       columns={[
-                        { key: 'student', title: 'Student', width: '25%' },
-                        { key: 'studentId', title: 'Student ID', width: '15%' },
+                        { 
+                          key: 'student', 
+                          title: 'Student', 
+                          width: '25%',
+                          render: (value, row) => (
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                <UserGroupIcon className="h-6 w-6 text-gray-500" />
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{value}</div>
+                                <div className="text-sm text-gray-500">{row.studentId}</div>
+                              </div>
+                            </div>
+                          )
+                        },
                         { key: 'class', title: 'Class', width: '15%' },
                         { key: 'term', title: 'Term', width: '10%' },
                         { key: 'year', title: 'Year', width: '10%' },
@@ -653,31 +637,104 @@ const AcademicManagement = () => {
                           width: '15%',
                           render: (value) => (
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              value === 'Enrolled' ? 'bg-green-100 text-green-800' :
-                              value === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                              value === 'active' ? 'bg-green-100 text-green-800' :
+                              value === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-gray-100 text-gray-800'
                             }`}>
-                              {value}
+                              {value.charAt(0).toUpperCase() + value.slice(1)}
                             </span>
                           )
+                        },
+                        { 
+                          key: 'enrollmentDate', 
+                          title: 'Enrollment Date', 
+                          width: '15%',
+                          render: (value) => new Date(value).toLocaleDateString()
                         },
                       ]}
                       showActions={true}
                       renderCustomActions={(item) => (
                         <div className="flex space-x-2">
-                          <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Manage</button>
-                          <button className="text-gray-600 hover:text-gray-800 text-sm font-medium">Profile</button>
+                          <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                          <button 
+                            className="text-red-600 hover:text-red-800 text-sm font-medium"
+                            onClick={() => handleDeleteEnrollment(item.id)}
+                          >
+                            Remove
+                          </button>
                         </div>
                       )}
                     />
+
+                    {/* Pagination Controls */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-t border-gray-200">
+                      <div className="flex-1 flex justify-between sm:hidden">
+                        <button
+                          onClick={() => handlePageChange(Math.max(1, pagination.page - 1))}
+                          disabled={pagination.page === 1}
+                          className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          onClick={() => handlePageChange(pagination.page + 1)}
+                          disabled={pagination.page * pagination.limit >= pagination.total}
+                          className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                          Next
+                        </button>
+                      </div>
+                      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-gray-700">
+                            Showing <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
+                            <span className="font-medium">
+                              {Math.min(pagination.page * pagination.limit, pagination.total)}
+                            </span>{' '}
+                            of <span className="font-medium">{pagination.total}</span> enrollments
+                          </p>
+                        </div>
+                        <div>
+                          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                            <button
+                              onClick={() => handlePageChange(Math.max(1, pagination.page - 1))}
+                              disabled={pagination.page === 1}
+                              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                            >
+                              <ArrowPathIcon className="h-5 w-5 transform rotate-180" />
+                            </button>
+                            {[...Array(Math.ceil(pagination.total / pagination.limit)).keys()].map(num => (
+                              <button
+                                key={num}
+                                onClick={() => handlePageChange(num + 1)}
+                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                  pagination.page === num + 1
+                                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                }`}
+                              >
+                                {num + 1}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => handlePageChange(pagination.page + 1)}
+                              disabled={pagination.page * pagination.limit >= pagination.total}
+                              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                            >
+                              <ArrowPathIcon className="h-5 w-5" />
+                            </button>
+                          </nav>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <EmptyState
                     icon={<UserGroupIcon className="w-12 h-12 text-gray-400" />}
-                    title="No matching enrollments found"
-                    description="Try adjusting your search or filters"
-                    actionText="Enroll New Student"
-                    onAction={() => setTabIndex(2)}
+                    title="No enrollments found"
+                    description="Try adjusting your search or create a new enrollment"
+                    actionText="Create Enrollment"
+                    onAction={() => setTabIndex(1)}
                   />
                 )}
 
@@ -687,24 +744,27 @@ const AcademicManagement = () => {
                     <div className="space-y-4">
                       <div>
                         <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Enrolled</span>
-                          <span className="text-sm font-medium">85%</span>
+                          <span className="text-sm font-medium">Active</span>
+                          <span className="text-sm font-medium">
+                            {enrollmentData.length > 0 ? Math.round(enrollmentData.filter(e => e.status === 'active').length / enrollmentData.length * 100) : 0}%
+                          </span>
                         </div>
-                        <ProgressBar value={85} color="green" />
+                        <ProgressBar 
+                          value={enrollmentData.length > 0 ? Math.round(enrollmentData.filter(e => e.status === 'active').length / enrollmentData.length * 100) : 0} 
+                          color="green" 
+                        />
                       </div>
                       <div>
                         <div className="flex justify-between mb-1">
                           <span className="text-sm font-medium">Pending</span>
-                          <span className="text-sm font-medium">10%</span>
+                          <span className="text-sm font-medium">
+                            {enrollmentData.length > 0 ? Math.round(enrollmentData.filter(e => e.status === 'pending').length / enrollmentData.length * 100) : 0}%
+                          </span>
                         </div>
-                        <ProgressBar value={10} color="yellow" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">Withdrawn</span>
-                          <span className="text-sm font-medium">5%</span>
-                        </div>
-                        <ProgressBar value={5} color="red" />
+                        <ProgressBar 
+                          value={enrollmentData.length > 0 ? Math.round(enrollmentData.filter(e => e.status === 'pending').length / enrollmentData.length * 100) : 0} 
+                          color="yellow" 
+                        />
                       </div>
                     </div>
                   </div>
@@ -718,10 +778,6 @@ const AcademicManagement = () => {
                       <button className="w-full p-3 bg-green-50 rounded-lg text-green-600 hover:bg-green-100 text-sm font-medium flex items-center justify-center">
                         <PlusIcon className="w-4 h-4 mr-2" />
                         Bulk Import
-                      </button>
-                      <button className="w-full p-3 bg-purple-50 rounded-lg text-purple-600 hover:bg-purple-100 text-sm font-medium flex items-center justify-center">
-                        <ArrowPathIcon className="w-4 h-4 mr-2" />
-                        Sync with SIS
                       </button>
                     </div>
                   </div>
@@ -921,7 +977,7 @@ const AcademicManagement = () => {
                       <button className="p-3 bg-purple-50 rounded-lg text-purple-600 hover:bg-purple-100 text-sm font-medium">
                         Export Report
                       </button>
-                      <button className="p-3 bg-orange-50 rounded-lg text-orange-600 hover:bg-orange-100 text-sm font-medium">
+                      <button className="p-3 bg-orange-50 rounded-lg text-orange-600 hover:bg-blue-100 text-sm font-medium">
                         Request Review
                       </button>
                     </div>
@@ -1023,11 +1079,11 @@ const AcademicManagement = () => {
                         Academic Performance
                         <ArrowPathIcon className="w-4 h-4" />
                       </button>
-                      <button className="w-full p-3 bg-purple-50 rounded-lg text-purple-600 hover:bg-purple-100 text-sm font-medium flex items-center justify-between">
+                      <button className="w-full p-3 bg-purple-50 rounded-lg text-purple-600 hover:bg-blue-100 text-sm font-medium flex items-center justify-between">
                         Teacher Workload
                         <ArrowPathIcon className="w-4 h-4" />
                       </button>
-                      <button className="w-full p-3 bg-orange-50 rounded-lg text-orange-600 hover:bg-orange-100 text-sm font-medium flex items-center justify-between">
+                      <button className="w-full p-3 bg-orange-50 rounded-lg text-orange-600 hover:bg-blue-100 text-sm font-medium flex items-center justify-between">
                         Compliance Summary
                         <ArrowPathIcon className="w-4 h-4" />
                       </button>
