@@ -287,6 +287,20 @@ router.post(
   submissionController.updateSubmissionGrades
 );
 
+// @route   POST api/submissions/:submissionId/request-review
+// @desc    Student requests review of specific questions
+// @access  Students
+router.post(
+  '/:submissionId/request-review',
+  authMiddleware.isStudent,
+  [
+    check('schoolId', 'Please provide a valid school ID').isMongoId(),
+    check('submissionId', 'Please provide a valid submission ID').isMongoId(),
+    check('questionIds', 'questionIds must be an array').isArray({ min: 1 })
+  ],
+  submissionController.requestReview
+);
+
 // @route   GET api/submissions/my-marks
 // @desc    Get marks for the logged-in student
 // @access  Students

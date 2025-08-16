@@ -219,6 +219,18 @@ const submissionService = {
     }
   },
 
+  requestReview: async (submissionId, questionIds, schoolId) => {
+    try {
+      const response = await api.post(`/submissions/${submissionId}/request-review`, { questionIds }, { schoolId });
+      toast.success('Review request sent');
+      return response.data;
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Failed to send review request';
+      toast.error(msg);
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
+
   updateSubmissionGrades: async (submissionId, grades, schoolId) => {
     try {
       const response = await api.post(`/submissions/${submissionId}/update-grades`, { grades }, { schoolId });

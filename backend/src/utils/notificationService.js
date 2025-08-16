@@ -1,5 +1,6 @@
 // src/utils/notificationService.js
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 const winston = require('winston');
 
 // Logger setup - use your existing logger 
@@ -25,8 +26,16 @@ if (process.env.NODE_ENV !== 'production') {
 exports.sendNotification = async (io, userId, data) => {
   try {
     // Create notification in DB
+    let schoolId = data.school;
+    if (!schoolId) {
+      try {
+        const userDoc = await User.findById(userId).select('school');
+        schoolId = userDoc?.school;
+      } catch {/* ignore */}
+    }
     const notification = new Notification({
       user: userId,
+      school: schoolId,
       type: data.type,
       title: data.title,
       message: data.message,
@@ -37,7 +46,7 @@ exports.sendNotification = async (io, userId, data) => {
     await notification.save();
     
     // Send real-time notification (support both legacy room id and new namespaced pattern user:{id})
-    const payload = {
+  const payload = {
       id: notification._id,
       type: notification.type,
       title: notification.title,
@@ -58,10 +67,17 @@ exports.sendNotification = async (io, userId, data) => {
 
 // Send grade notification
 exports.sendGradeNotification = async (io, studentId, submission) => {
+  const examTitle = (submission.exam && submission.exam.title) || 'exam';
+  // Derive max score: prefer totalPoints, fallback to summing question maxScore
+  let maxScore = submission.exam && (submission.exam.totalPoints || submission.exam.totalScore);
+  if (!maxScore && submission.exam && submission.exam.questions) {
+    try { maxScore = submission.exam.questions.reduce((s, q) => s + (parseInt(q.maxScore) || 0), 0); } catch { maxScore = 0; }
+  }
+  const score = submission.totalScore || 0;
   return this.sendNotification(io, studentId, {
     type: 'grade',
     title: 'Exam Graded',
-    message: `Your ${(submission.exam && submission.exam.title) || 'exam'} exam has been graded.`,
+    message: `Your ${examTitle} exam has been graded: ${score}/${maxScore || 0}.`,
     relatedModel: 'Submission',
     relatedId: submission._id
   });

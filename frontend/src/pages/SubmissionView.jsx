@@ -7,6 +7,11 @@ import Button from '../components/ui/Button';
 import DynamicTable from '../components/class/DynamicTable';
 import examService from '../services/examService';
 import submissionService from '../services/submissionService';
+import "react-quill/dist/quill.snow.css";
+import 'katex/dist/katex.min.css';
+import 'highlight.js/styles/github.css';
+import katex from 'katex';
+import hljs from 'highlight.js';
 
 // Notification component for user feedback with fade-in animation
 const Notification = ({ message, type = 'success', onClose }) => {
@@ -109,7 +114,35 @@ const SubmissionView = () => {
 
   useEffect(() => {
     fetchSubmissionData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submissionId]);
+
+  // After submission / answers load or change, (re)render formulas & highlight code
+  useEffect(() => {
+    if (!submission) return;
+    try {
+      // Render any formula placeholders lacking a .katex child
+      const formulaNodes = document.querySelectorAll('.ql-formula');
+      formulaNodes.forEach(node => {
+        const hasKatex = node.querySelector('.katex');
+        const latex = node.getAttribute('data-value');
+        if (!hasKatex && latex) {
+          try {
+            katex.render(latex, node, { throwOnError: false, displayMode: false });
+          } catch {
+            // ignore individual render errors
+          }
+        }
+      });
+      // Highlight code blocks
+      const codeBlocks = document.querySelectorAll('pre.ql-syntax');
+      codeBlocks.forEach(block => {
+        try { hljs.highlightElement(block); } catch { /* ignore */ }
+      });
+    } catch {
+      // silent fail
+    }
+  }, [submission, editedAnswers]);
 
   // Handler for updating points for an answer
   const handlePointsChange = (index, points) => {
@@ -511,7 +544,7 @@ const SubmissionView = () => {
 
                           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                             <p className="font-medium text-sm text-gray-600">Student Answer:</p>
-                            <div className="mt-1 text-gray-800">{answer.answer || answer.text || 'No answer provided'}</div>
+                            <div className="mt-1 text-gray-800 answer-html prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: answer.answer || answer.text || 'No answer provided' }} />
                           </div>
 
                           {(exam?.questions[index]?.type === 'MCQ' || exam?.questions[index]?.type === 'multiple-choice') && (

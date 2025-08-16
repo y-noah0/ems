@@ -19,6 +19,7 @@ import UsersManagement from "./pages/UsersManagement";
 import ImportStudents from "./pages/ImportStudents";
 import StudentProfile from "./pages/StudentProfile";
 import StudentResults from "./pages/StudentResults";
+import StudentSubmissions from "./pages/StudentSubmissions";
 
 // Teacher Pages
 import TeacherDashboard from "./pages/TeacherDashboard";
@@ -27,7 +28,8 @@ import ExamEditor from "./pages/ExamEditor";
 import ExamResults from "./pages/ExamResults";
 import ExamSchedule from "./pages/ExamSchedule";
 import ExamsListPage from "./pages/ExamManagement";
-import SubmissionsListPage from "./pages/SubmissionsListPage";
+import TeacherDraftExams from "./pages/TeacherDraftExams";
+
 import SubmissionView from "./pages/SubmissionView";
 
 // Admin Pages
@@ -254,6 +256,14 @@ function App() {
                                 }
                             />
                             <Route
+                                path="/student/submissions"
+                                element={
+                                    <ProtectedRoute allowedRoles={["student"]}>
+                                        <StudentSubmissions />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
                                 path="/student/exams/:examId"
                                 element={
                                     <ProtectedRoute allowedRoles={["student"]}>
@@ -276,6 +286,14 @@ function App() {
                                 element={
                                     <ProtectedRoute allowedRoles={["teacher"]}>
                                         <ExamsListPage />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                                path="/teacher/drafts"
+                                element={
+                                    <ProtectedRoute allowedRoles={["teacher"]}>
+                                        <TeacherDraftExams />
                                     </ProtectedRoute>
                                 }
                             />
@@ -319,14 +337,7 @@ function App() {
                                     </ProtectedRoute>
                                 }
                             />
-                            <Route
-                                path="/teacher/submissions"
-                                element={
-                                    <ProtectedRoute allowedRoles={["teacher"]}>
-                                        <SubmissionsListPage />
-                                    </ProtectedRoute>
-                                }
-                            />
+                            
                             <Route
                                 path="/teacher/submissions/:submissionId/view"
                                 element={

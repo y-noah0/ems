@@ -102,15 +102,16 @@ const examService = {
           }
           if (question.type === 'multiple-choice' && question.options) {
             if (Array.isArray(question.options) && question.options.length > 0) {
-              const correctOption = question.options.find(o => o.isCorrect);
-              question.correctAnswer = correctOption ? correctOption.text : '';
+              // Collect all option texts flagged as correct
+              const correctOptions = question.options.filter(o => o.isCorrect).map(o => o.text).filter(t => t && t.trim() !== '');
+              question.correctAnswer = correctOptions;
               question.options = question.options.map(o => ({
                 text: o.text || '',
                 isCorrect: !!o.isCorrect
               }));
             } else {
               question.options = [];
-              question.correctAnswer = '';
+              question.correctAnswer = [];
             }
           }
           return question;
@@ -160,6 +161,19 @@ const examService = {
       const errorMsg = error.response?.data?.message || 'Failed to load class exams';
       toast.error(errorMsg);
       throw error.response ? error.response.data : { message: 'Failed to load class exams. Please try again.' };
+    }
+  },
+
+  // Get past (completed) exams for student (revision / completed list)
+  getPastExamsForStudent: async (schoolId, termId = null) => {
+    try {
+      const params = termId ? { termId } : {};
+      const response = await api.get('/exams/student/past', { schoolId, params });
+      return response.data.exams;
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Failed to load past exams';
+      toast.error(errorMsg);
+      throw error.response ? error.response.data : { message: 'Failed to load past exams. Please try again.' };
     }
   },
 

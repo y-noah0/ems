@@ -30,3 +30,59 @@
 * {
     font-family: 'Satoshi', sans-serif;
 }
+
+/* Utility: hide scrollbars but keep scroll (cross-browser) */
+.scrollbar-hide {
+    -ms-overflow-style: none; /* IE 10+ */
+    scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+
+/* Code & math answer rendering styles */
+@layer components {
+    /* Block code produced by Quill (pre.ql-syntax) inside answer-html containers */
+    .answer-html pre.ql-syntax {
+        background-color: #111827; /* gray-900 */
+        color: #f3f4f6; /* gray-100 */
+        border-radius: 0.375rem; /* rounded-md */
+        padding: 1rem; /* p-4 */
+        overflow-x: auto;
+        font-size: 12px; /* text-[12px] */
+        line-height: 1.25rem; /* leading-5 */
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        border: 1px solid #1f2937; /* gray-800 */
+        box-shadow: inset 0 2px 4px 0 rgb(0 0 0 / 0.06); /* shadow-inner */
+        tab-size: 4;
+    }
+    .answer-html pre.ql-syntax code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .answer-html code:not(.hljs) {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        background-color: #f3f4f6; /* gray-100 */
+        color: #1f2937; /* gray-800 */
+        padding: 0.125rem 0.25rem; /* py-0.5 px-1 approx */
+        border-radius: 0.25rem;
+        border: 1px solid #e5e7eb; /* gray-200 */
+    }
+    .answer-html .katex-display {
+        margin-top: 0.75rem; /* my-3 */
+        margin-bottom: 0.75rem;
+        overflow-x: auto;
+    }
+    .answer-html .katex-display > .katex { padding-left: 0.5rem; padding-right: 0.5rem; }
+    /* Scrollbar styling for code blocks (WebKit) */
+    .answer-html pre.ql-syntax::-webkit-scrollbar { height: 8px; }
+    .answer-html pre.ql-syntax::-webkit-scrollbar-track { background: transparent; }
+    .answer-html pre.ql-syntax::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+    .answer-html pre.ql-syntax::-webkit-scrollbar-thumb:hover { background: #374151; }
+    /* Highlight.js additional polish */
+    .answer-html pre.ql-syntax .hljs-comment { color: #9CA3AF; font-style: italic; }
+    .answer-html pre.ql-syntax .hljs-keyword { color: #93C5FD; }
+    .answer-html pre.ql-syntax .hljs-string { color: #6EE7B7; }
+    .answer-html pre.ql-syntax .hljs-number { color: #FCD34D; }
+    .answer-html pre.ql-syntax .hljs-function { color: #FCA5A5; }
+}

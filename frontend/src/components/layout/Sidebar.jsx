@@ -168,13 +168,7 @@ const Sidebar = ({ userRole = "student" }) => {
             active: location.pathname.includes("/headmaster/reports"),
             roles: ["headmaster"],
         },
-        {
-            title: "Submissions",
-            icon: FaFileAlt,
-            path: "/teacher/submissions",
-            active: location.pathname.includes("/teacher/submissions"),
-            roles: ["teacher"],
-        },
+
         {
             title: "Drafts",
             icon: FaFileAlt,

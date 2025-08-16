@@ -11,7 +11,7 @@ const Layout = ({ children }) => {
       <Sidebar userRole={currentUser?.role || 'student'} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopHeader currentUser={currentUser} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+        <main className="flex-1 px-10 py-5 overflow-x-hidden overflow-y-auto">
           {children}
         </main>
       </div>

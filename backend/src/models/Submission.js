@@ -184,7 +184,8 @@ SubmissionSchema.pre('save', async function (next) {
               else studentSelections = [trimmed];
             }
             studentSelections = studentSelections.map(s => s.toString().trim()).filter(s => s.length > 0);
-            const correctChosen = studentSelections.filter(sel => correctArray.includes(sel));
+            const limitedSelections = studentSelections.slice(0, nCorrect);
+            const correctChosen = limitedSelections.filter(sel => correctArray.includes(sel));
             let earned = perOption * correctChosen.length;
             if (earned > question.maxScore) earned = question.maxScore;
             answer.score = Math.round((earned + Number.EPSILON) * 100) / 100;

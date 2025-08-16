@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Layout from "../components/layout/Layout";
 import Card from "../components/ui/Card";
+import ExamCard from "../components/ui/ExamCard";
 import Button from "../components/ui/Button";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
@@ -77,14 +78,11 @@ const StudentDashboard = () => {
                 transition={{ duration: 0.5 }}
                 className="mb-10 select-none"
             >
-                <h1 className="text-4xl font-extrabold text-gray-900 flex items-center gap-3">
-                    <FiActivity className="text-blue-600" size={36} />
-                    Student Dashboard
+                
+                <h1 className="text-[16px] font-bold">
+                    Welcome back! <br />
+                    <span className="font-light text-[16px]">{currentUser?.fullName}</span>
                 </h1>
-                <p className="mt-3 text-xl text-gray-700">
-                    Welcome back,{" "}
-                    <span className="font-semibold text-blue-700">{currentUser?.fullName}</span>
-                </p>
             </motion.div>
 
             {/* Loading */}
@@ -131,70 +129,25 @@ const StudentDashboard = () => {
                         animate="visible"
                         custom={1}
                     >
-                        <Card title={<><FiCalendar className="inline text-blue-600 mr-2" size={22} />Upcoming Exams</>}>
+                        <Card className="" title={<><FiCalendar className="inline text-blue-600 mr-2" size={22} />Upcoming Exams</>}>
                             {upcomingExams.length === 0 ? (
-                                <p className="text-gray-500 italic select-none">
-                                    No upcoming exams scheduled.
-                                </p>
+                                <p className="text-gray-500 italic select-none">No upcoming exams scheduled.</p>
                             ) : (
-                                <div className="space-y-6">
+                                <div className="flex flex-wrap gap-6">
                                     {upcomingExams.map((exam) => (
-                                        <motion.div
-                                            key={exam._id}
-                                            whileHover={{ scale: 1.03, boxShadow: "0 10px 15px rgba(59,130,246,0.3)" }}
-                                            className="border border-gray-200 rounded-lg p-5 bg-white shadow cursor-pointer transition-transform duration-300"
-                                            onClick={() => window.location.assign(`/student/exams/${exam._id}`)}
-                                        >
-                                            <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                                                <FiBookOpen className="text-blue-500" /> {exam.title}
-                                            </h3>
-                                            <div className="mt-2 text-sm text-gray-600 space-y-1 select-none">
-                                                <p>
-                                                    <FiClipboard className="inline mr-1" />{" "}
-                                                    <strong>Subject:</strong> {exam.subject?.name || "N/A"}
-                                                </p>
-                                                <p>
-                                                    <FiCalendar className="inline mr-1" />{" "}
-                                                    <strong>Date:</strong>{" "}
-                                                    {exam.schedule?.start
-                                                        ? new Date(exam.schedule.start).toLocaleDateString(undefined, {
-                                                            weekday: "short",
-                                                            year: "numeric",
-                                                            month: "short",
-                                                            day: "numeric",
-                                                        })
-                                                        : "N/A"}
-                                                </p>
-                                                <p>
-                                                    <FiClock className="inline mr-1" />{" "}
-                                                    <strong>Time:</strong>{" "}
-                                                    {exam.schedule?.start
-                                                        ? new Date(exam.schedule.start).toLocaleTimeString([], {
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })
-                                                        : "N/A"}
-                                                </p>
-                                                <p>
-                                                    <FiClock className="inline mr-1" />{" "}
-                                                    <strong>Duration:</strong>{" "}
-                                                    {exam.schedule?.duration ? `${exam.schedule.duration} minutes` : "N/A"}
-                                                </p>
-                                                <p>
-                                                    <FiUser className="inline mr-1" />{" "}
-                                                    <strong>Teacher:</strong> {exam.teacher?.fullName || "N/A"}
-                                                </p>
-                                            </div>
-                                            <div className="mt-4 text-right">
-                                                <Button
-                                                    as={Link}
-                                                    to={`/student/exams/${exam._id}`}
-                                                    variant="primary"
-                                                    size="sm"
-                                                >
-                                                    View Details
-                                                </Button>
-                                            </div>
+                                        <motion.div key={exam._id} variants={fadeUp} initial="hidden" animate="visible">
+                                            <ExamCard
+                                                examId={exam._id}
+                                                title={exam.title}
+                                                subject={exam.subject}
+                                                status={exam.status}
+                                                schedule={exam.schedule}
+                                                questions={exam.questions}
+                                                totalPoints={exam.totalScore || exam.totalPoints}
+                                                teacher={exam.teacher}
+                                                type={exam.type}
+                                                instructions={exam.instructions}
+                                            />
                                         </motion.div>
                                     ))}
                                 </div>
@@ -219,57 +172,31 @@ const StudentDashboard = () => {
                             {recentSubmissions.length === 0 ? (
                                 <p className="text-gray-500 italic select-none">No recent exam submissions.</p>
                             ) : (
-                                <div className="space-y-5">
-                                    {recentSubmissions.map((submission) => (
-                                        <motion.div
-                                            key={submission._id}
-                                            whileHover={{ scale: 1.03, boxShadow: "0 10px 15px rgba(34,197,94,0.3)" }}
-                                            className="border border-gray-200 rounded-lg p-5 bg-white shadow cursor-pointer transition-transform duration-300"
-                                            onClick={() =>
-                                                submission.exam &&
-                                                window.location.assign(`/student/submissions/${submission._id}`)
-                                            }
-                                        >
-                                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                                                <FiClipboard className="text-green-600" />{" "}
-                                                {submission.exam ? submission.exam.title : "Exam Deleted"}
-                                            </h3>
-                                            <div className="mt-1 text-sm text-gray-600 space-y-1 select-none">
-                                                <p>
-                                                    <FiBookOpen className="inline mr-1" />{" "}
-                                                    <strong>Subject:</strong>{" "}
-                                                    {submission.exam?.subject?.name || "N/A"}
-                                                </p>
-                                                <p>
-                                                    <FiClock className="inline mr-1" />{" "}
-                                                    <strong>Submitted:</strong>{" "}
-                                                    {submission.submittedAt
-                                                        ? new Date(submission.submittedAt).toLocaleString()
-                                                        : "N/A"}
-                                                </p>
-                                                <p>
-                                                    <FiBarChart2 className="inline mr-1" />{" "}
-                                                    <strong>Score:</strong>{" "}
-                                                    {submission.status === "graded" &&
-                                                        submission.totalScore !== undefined &&
-                                                        submission.exam?.totalScore !== undefined
-                                                        ? `${submission.totalScore} / ${submission.exam.totalScore}`
-                                                        : "Pending"}
-                                                </p>
-                                            </div>
-                                            <div className="mt-4 text-right">
-                                                <Button
-                                                    as={Link}
-                                                    to={`/student/submissions/${submission._id}`}
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    disabled={!submission.exam}
-                                                >
-                                                    View Details
-                                                </Button>
-                                            </div>
-                                        </motion.div>
-                                    ))}
+                                <div className="flex flex-wrap gap-6">
+                                    {recentSubmissions.filter(s=>s.exam).map((submission) => {
+                                        const exam = submission.exam;
+                                        const progress = (submission.status === 'graded' && submission.totalScore && exam.totalScore)
+                                            ? Math.min(100, Math.round((submission.totalScore / exam.totalScore) * 100))
+                                            : 0;
+                                        return (
+                                            <motion.div key={submission._id} variants={fadeUp} initial="hidden" animate="visible">
+                                                <ExamCard
+                                                    examId={exam._id}
+                                                    title={exam.title}
+                                                    subject={exam.subject}
+                                                    status={exam.status}
+                                                    schedule={exam.schedule}
+                                                    questions={exam.questions}
+                                                    totalPoints={exam.totalScore || exam.totalPoints}
+                                                    teacher={exam.teacher}
+                                                    type={exam.type}
+                                                    instructions={exam.instructions}
+                                                    progress={progress}
+                                                    onClickOverride={() => window.location.assign(`/student/submissions/${submission._id}`)}
+                                                />
+                                            </motion.div>
+                                        );
+                                    })}
                                 </div>
                             )}
 

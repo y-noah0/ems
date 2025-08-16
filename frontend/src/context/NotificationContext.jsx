@@ -2,9 +2,11 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { ToastContext } from './ToastContext';
 import socketService from '../services/socketService';
 import { useAuth } from './AuthContext';
+import notificationService from '../services/notificationService';
 
 const NotificationContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (!context) {
@@ -21,15 +23,15 @@ export const NotificationProvider = ({ children }) => {
   const toastCtx = useContext(ToastContext); // optional toast integration
 
   // Mark notification as read
-  const markAsRead = useCallback((notificationId) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === notificationId
-          ? { ...notification, read: true }
-          : notification
-      )
-    );
-  }, []);
+  const markAsRead = useCallback(async (notificationId) => {
+    setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
+    try {
+      const schoolId = currentUser?.schoolId || currentUser?.school?.id || currentUser?.school?._id;
+      if (schoolId) await notificationService.markAsRead(notificationId, schoolId);
+    } catch (e) {
+      console.warn('Failed to persist markAsRead', e);
+    }
+  }, [currentUser]);
 
   // Route builder per notification type + user role
   const buildNotificationRoute = useCallback((notification, role) => {
@@ -37,6 +39,12 @@ export const NotificationProvider = ({ children }) => {
     const r = role || 'guest';
 
     const map = {
+      review_request: () => {
+        // Prefer submission detail route; fall back to exam if needed
+        if (n.submissionId) return `/teacher/exams/${n.examId || ''}/submissions/${n.submissionId}`.replace(/\/submissions\/$/, '/submissions');
+        if (n.examId) return `/teacher/exams/${n.examId}`;
+        return null;
+      },
       exam_scheduled: () => n.examId ? (r === 'teacher' ? `/teacher/exams/${n.examId}` : `/exams/${n.examId}`) : null,
       exam_updated: () => n.examId ? (r === 'teacher' ? `/teacher/exams/${n.examId}` : `/exams/${n.examId}`) : null,
       submission_graded: () => n.submissionId ? (r === 'student' ? `/results/${n.submissionId}` : `/grading/${n.submissionId}`) : null,
@@ -166,6 +174,11 @@ export const NotificationProvider = ({ children }) => {
         message: notification.message || '',
         icon: notification.icon || '📢',
         priority: notification.priority || 'medium',
+  // Preserve metadata for routing (examId, submissionId, studentId, questionIds)
+  examId: notification.examId || notification.relatedExamId || null,
+  submissionId: notification.submissionId || notification.relatedId || null,
+  studentId: notification.studentId || null,
+  questionIds: notification.questionIds || [],
         ...notification
       };
 
@@ -228,17 +241,25 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   // Additional functions
-  const markAllAsRead = useCallback(() => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    );
-  }, []);
+  const markAllAsRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    try {
+      const schoolId = currentUser?.schoolId || currentUser?.school?.id || currentUser?.school?._id;
+      if (schoolId) await notificationService.markAllAsRead(schoolId);
+    } catch (e) {
+      console.warn('Failed to persist markAllAsRead', e);
+    }
+  }, [currentUser]);
 
-  const removeNotification = useCallback((notificationId) => {
-    setNotifications(prev =>
-      prev.filter(notification => notification.id !== notificationId)
-    );
-  }, []);
+  const removeNotification = useCallback(async (notificationId) => {
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    try {
+      const schoolId = currentUser?.schoolId || currentUser?.school?.id || currentUser?.school?._id;
+      if (schoolId) await notificationService.deleteNotification(notificationId, schoolId);
+    } catch (e) {
+      console.warn('Failed to persist deleteNotification', e);
+    }
+  }, [currentUser]);
 
   const clearAllNotifications = useCallback(() => {
     setNotifications([]);
@@ -297,6 +318,41 @@ export const NotificationProvider = ({ children }) => {
   buildNotificationRoute,
   socketService
   };
+
+  // Initial fetch from backend (max 50) after auth & socket connect
+  useEffect(() => {
+    const load = async () => {
+      if (!isAuthenticated || !currentUser) return;
+      const schoolId = currentUser?.schoolId || currentUser?.school?.id || currentUser?.school?._id;
+      if (!schoolId) return;
+      try {
+        const serverNotifications = await notificationService.fetchNotifications(schoolId);
+        // Normalize to match in-memory shape
+        const normalized = serverNotifications.map(n => ({
+          id: n._id || n.id,
+          timestamp: n.createdAt,
+          read: n.isRead,
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          relatedId: n.relatedId,
+          relatedModel: n.relatedModel,
+        }));
+        setNotifications(prev => {
+          // Avoid duplicating by id
+            const existingIds = new Set(prev.map(p => p.id));
+            const merged = [...normalized.filter(n => !existingIds.has(n.id)), ...prev];
+            // Keep newest first
+            return merged
+              .sort((a,b)=> new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+              .slice(0, 100);
+        });
+      } catch (e) {
+        console.warn('Failed to fetch notifications', e);
+      }
+    };
+    load();
+  }, [isAuthenticated, currentUser]);
 
   // Debug helper (only in development)
   if (typeof window !== 'undefined' && !window.__notificationDebug) {

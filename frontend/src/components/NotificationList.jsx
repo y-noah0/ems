@@ -200,6 +200,11 @@ const NotificationList = () => {
                     <div className="notification-content">
                       <div className="notification-title">
                         {notification.title}
+                        {notification.type === 'review_request' && (
+                          <span className="ml-2 inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200 animate-pulse">
+                            REVIEW
+                          </span>
+                        )}
                       </div>
                       <div className="notification-message">
                         {notification.message}

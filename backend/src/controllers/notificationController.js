@@ -16,16 +16,50 @@ const notificationController = {};
 notificationController.getUserNotifications = async (req, res) => {
   try {
     const { schoolId } = req.query;
+    const MAX_NOTIFICATIONS = 50;
 
     if (!schoolId || !mongoose.Types.ObjectId.isValid(schoolId)) {
       return res.status(400).json({ success: false, message: 'Valid schoolId is required' });
     }
 
-    const notifications = await Notification.find({
+    // Fetch only needed fields sorted newest first limited to MAX
+    let notifications = await Notification.find({
       user: req.user.id,
       school: schoolId,
       isDeleted: false
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .limit(MAX_NOTIFICATIONS)
+      .lean();
+
+    // Backward compatibility: include legacy notifications missing school field if none found
+    if (!notifications.length) {
+      const legacy = await Notification.find({ user: req.user.id, school: { $exists: false }, isDeleted: false })
+        .sort({ createdAt: -1 })
+        .limit(MAX_NOTIFICATIONS)
+        .lean();
+      if (legacy.length) notifications = legacy;
+    }
+
+    // Count total to decide pruning
+    const totalCount = await Notification.countDocuments({ user: req.user.id, school: schoolId, isDeleted: false });
+    if (totalCount > MAX_NOTIFICATIONS) {
+      // Find ids to prune (oldest beyond limit)
+      const toPrune = await Notification.find({
+        user: req.user.id,
+        school: schoolId,
+        isDeleted: false
+      })
+        .sort({ createdAt: 1 }) // oldest first
+        .skip(0)
+        .limit(totalCount - MAX_NOTIFICATIONS)
+        .select('_id')
+        .lean();
+      const pruneIds = toPrune.map(d => d._id);
+      if (pruneIds.length) {
+        await Notification.updateMany({ _id: { $in: pruneIds } }, { $set: { isDeleted: true } });
+      }
+    }
 
     res.json({ success: true, notifications });
   } catch (error) {

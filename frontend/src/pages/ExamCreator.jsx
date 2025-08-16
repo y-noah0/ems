@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
-import { FaPlus, FaTrash, FaCheck, FaTimes, FaSpinner, FaBook, FaClock, FaQuestionCircle, FaCalendar } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaCheck, FaTimes, FaSpinner, FaBook, FaClock, FaQuestionCircle, FaCalendar, FaSave } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -25,6 +25,7 @@ const ExamCreator = () => {
   const [terms, setTerms] = useState([]);
   const [isDirty, setIsDirty] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   
   const initialFormData = {
@@ -108,6 +109,8 @@ const ExamCreator = () => {
 
   useEffect(() => {
     setIsDirty(JSON.stringify(formData) !== JSON.stringify(initialFormData));
+    // initialFormData is static (not mutated), safe to omit from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData]);
 
   const handleChange = (e) => {
@@ -484,7 +487,7 @@ const ExamCreator = () => {
         transition={{ duration: 0.5 }}
       >
         <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-          <FaBook className="mr-2 h-6 w-6 text-indigo-600" aria-hidden="true" />
+          <FaBook className="mr-2 h-6 w-6 text-main-blue" aria-hidden="true" />
           Create New Exam
         </h1>
       </motion.div>
@@ -495,7 +498,7 @@ const ExamCreator = () => {
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           >
-            <FaSpinner className="h-16 w-16 text-indigo-600" aria-hidden="true" />
+            <FaSpinner className="h-16 w-16 text-main-blue" aria-hidden="true" />
           </motion.div>
         </div>
       ) : (
@@ -509,8 +512,8 @@ const ExamCreator = () => {
           >
             <div className="space-y-6">
               <motion.div variants={itemVariants}>
-                <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
-                  <FaBook className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                <label className="flex text-sm font-medium text-main-blue mb-1 items-center">
+                  <FaBook className="mr-1 h-4 w-4 text-main-blue" aria-hidden="true" />
                   Exam Title
                 </label>
                 <Input
@@ -520,35 +523,35 @@ const ExamCreator = () => {
                   required
                   maxLength={100}
                   placeholder="Enter exam title"
-                  className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                  className="transition duration-200 focus:ring-2 focus:ring-main-blue border-main-blue/40"
                 />
               </motion.div>
 
               <motion.div variants={itemVariants}>
-                <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
-                  <FaBook className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                <label className="flex text-sm font-medium text-main-blue mb-1 items-center">
+                  <FaBook className="mr-1 h-4 w-4 text-main-blue" aria-hidden="true" />
                   Instructions
                 </label>
                 <ReactQuill
                   value={formData.instructions}
                   onChange={handleInstructionsChange}
                   modules={quillModules}
-                  className="bg-white border border-indigo-300 rounded-md shadow-sm focus-within:ring-2 focus-within:ring-indigo-500 transition duration-200"
+                  className="bg-white border border-main-blue/40 rounded-md shadow-sm focus-within:ring-2 focus-within:ring-main-blue transition duration-200"
                   placeholder="Enter exam instructions (optional)"
                 />
               </motion.div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
-                    <FaBook className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                  <label className="flex text-sm font-medium text-main-blue mb-1 items-center">
+                    <FaBook className="mr-1 h-4 w-4 text-main-blue" aria-hidden="true" />
                     Subject
                   </label>
                   <select
                     name="subjectId"
                     value={formData.subjectId}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                    className="w-full px-3 py-2 border border-main-blue/40 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-main-blue transition duration-200"
                     required
                   >
                     <option value="">Select a subject</option>
@@ -561,15 +564,15 @@ const ExamCreator = () => {
                 </motion.div>
 
                 <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
-                    <FaCalendar className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                  <label className="flex text-sm font-medium text-main-blue mb-1 items-center">
+                    <FaCalendar className="mr-1 h-4 w-4 text-main-blue" aria-hidden="true" />
                     Term
                   </label>
                   <select
                     name="termId"
                     value={formData.termId}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                    className="w-full px-3 py-2 border border-main-blue/40 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-main-blue transition duration-200"
                     required
                   >
                     <option value="">Select Term</option>
@@ -594,15 +597,15 @@ const ExamCreator = () => {
                 </motion.div>
 
                 <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
-                    <FaBook className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                  <label className="flex text-sm font-medium text-main-blue mb-1 items-center">
+                    <FaBook className="mr-1 h-4 w-4 text-main-blue" aria-hidden="true" />
                     Exam Type
                   </label>
                   <select
                     name="type"
                     value={formData.type}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                    className="w-full px-3 py-2 border border-main-blue/40 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-main-blue transition duration-200"
                     required
                   >
                     <option value="assessment1">Assessment 1</option>
@@ -616,8 +619,8 @@ const ExamCreator = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
-                    <FaClock className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                  <label className="flex text-sm font-medium text-main-blue mb-1 items-center">
+                    <FaClock className="mr-1 h-4 w-4 text-main-blue" aria-hidden="true" />
                     Duration (minutes)
                   </label>
                   <Input
@@ -628,13 +631,13 @@ const ExamCreator = () => {
                     required
                     min={5}
                     placeholder="Enter duration in minutes"
-                    className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                    className="transition duration-200 focus:ring-2 focus:ring-main-blue border-main-blue/40"
                   />
                 </motion.div>
 
                 <motion.div variants={itemVariants}>
-                  <label className="block text-sm font-medium text-indigo-600 mb-1 flex items-center">
-                    <FaClock className="mr-1 h-4 w-4 text-indigo-600" aria-hidden="true" />
+                  <label className="block text-sm font-medium text-main-blue mb-1 flex items-center">
+                    <FaClock className="mr-1 h-4 w-4 text-main-blue" aria-hidden="true" />
                     Start Time
                   </label>
                   <Input
@@ -644,14 +647,14 @@ const ExamCreator = () => {
                     onChange={handleChange}
                     required
                     placeholder="Select start time"
-                    className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                    className="transition duration-200 focus:ring-2 focus:ring-main-blue border-main-blue/40"
                   />
                 </motion.div>
               </div>
 
               <motion.div variants={itemVariants}>
-                <h3 className="text-lg font-medium text-indigo-600 mb-4 flex items-center">
-                  <FaQuestionCircle className="mr-2 h-5 w-5 text-indigo-600" aria-hidden="true" />
+                <h3 className="text-lg font-medium text-main-blue mb-4 flex items-center">
+                  <FaQuestionCircle className="mr-2 h-5 w-5 text-main-blue" aria-hidden="true" />
                   Questions
                 </h3>
                 {formData.questions.map((question, qIndex) => (
@@ -665,7 +668,7 @@ const ExamCreator = () => {
                     <Card className="p-4 bg-gray-50 shadow-lg rounded-lg">
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm font-medium text-indigo-600 mb-1">
+                          <label className="block text-sm font-medium text-main-blue mb-1">
                             Question {qIndex + 1}
                           </label>
                           <Input
@@ -674,17 +677,17 @@ const ExamCreator = () => {
                             required
                             maxLength={500}
                             placeholder="Enter question text"
-                            className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                            className="transition duration-200 focus:ring-2 focus:ring-main-blue border-main-blue/40"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-indigo-600 mb-1">
+                          <label className="block text-sm font-medium text-main-blue mb-1">
                             Question Type
                           </label>
                           <select
                             value={question.type}
                             onChange={(e) => handleQuestionChange(qIndex, 'type', e.target.value)}
-                            className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                            className="w-full px-3 py-2 border border-main-blue/40 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-main-blue transition duration-200"
                           >
                             <option value="multiple-choice">Multiple Choice (Select all that apply)</option>
                             <option value="true-false">True/False</option>
@@ -694,7 +697,7 @@ const ExamCreator = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-indigo-600 mb-1">
+                          <label className="block text-sm font-medium text-main-blue mb-1">
                             Max Score
                           </label>
                           <Input
@@ -704,12 +707,12 @@ const ExamCreator = () => {
                             required
                             min={1}
                             placeholder="Enter max score"
-                            className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                            className="transition duration-200 focus:ring-2 focus:ring-main-blue border-main-blue/40"
                           />
                         </div>
                         {(question.type === 'multiple-choice' || question.type === 'true-false') && (
                           <div>
-                            <h4 className="text-sm font-medium text-indigo-600 mb-2">
+                            <h4 className="text-sm font-medium text-main-blue mb-2">
                               {question.type === 'multiple-choice' ? 'Options (Select all that apply)' : 'Options (Select one correct)'}
                             </h4>
                             {question.options.map((option, oIndex) => (
@@ -726,7 +729,7 @@ const ExamCreator = () => {
                                   required
                                   maxLength={200}
                                   placeholder={`Option ${oIndex + 1}`}
-                                  className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                                  className="transition duration-200 focus:ring-2 focus:ring-main-blue border-main-blue/40"
                                   disabled={question.type === 'true-false'}
                                 />
                                 {question.type === 'true-false' ? (
@@ -735,7 +738,7 @@ const ExamCreator = () => {
                                     name={`correctAnswer-${qIndex}`}
                                     checked={option.isCorrect}
                                     onChange={(e) => handleOptionChange(qIndex, oIndex, 'isCorrect', e.target.checked)}
-                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-indigo-300 rounded"
+                                    className="h-4 w-4 text-main-blue focus:ring-main-blue border-main-blue/40 rounded"
                                     aria-label={`Mark ${option.text || `option ${oIndex + 1}`} as correct`}
                                   />
                                 ) : (
@@ -744,7 +747,7 @@ const ExamCreator = () => {
                                     name={`correctAnswer-${qIndex}-${oIndex}`}
                                     checked={option.isCorrect}
                                     onChange={(e) => handleOptionChange(qIndex, oIndex, 'isCorrect', e.target.checked)}
-                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-indigo-300 rounded"
+                                      className="h-4 w-4 text-main-blue focus:ring-main-blue border-main-blue/40 rounded"
                                     aria-label={`Toggle ${option.text || `option ${oIndex + 1}`} as correct`}
                                   />
                                 )}
@@ -769,7 +772,7 @@ const ExamCreator = () => {
                                   type="button"
                                   onClick={() => addOption(qIndex)}
                                   disabled={isAdding}
-                                  className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-3 py-1.5"
+                                  className="flex items-center bg-main-blue hover:bg-main-blue/90 text-white rounded-md px-3 py-1.5"
                                   aria-label='Add new option'
                                 >
                                   <FaPlus className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -781,24 +784,24 @@ const ExamCreator = () => {
                         )}
                         {question.type === 'short-answer' && (
                           <div>
-                            <h4 className="text-sm font-medium text-indigo-600 mb-2">Sample Correct Answer (Optional)</h4>
+                            <h4 className="text-sm font-medium text-main-blue mb-2">Sample Correct Answer (Optional)</h4>
                             <Input
                               value={question.correctAnswer || ''}
                               onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
                               maxLength={200}
                               placeholder="Enter sample correct answer (optional)"
-                              className="transition duration-200 focus:ring-2 focus:ring-indigo-500 border-indigo-300"
+                              className="transition duration-200 focus:ring-2 focus:ring-main-blue border-main-blue/40"
                             />
                           </div>
                         )}
                         {question.type === 'essay' && (
                           <div>
-                            <h4 className="text-sm font-medium text-indigo-600 mb-2">Expected Answer (Optional)</h4>
+                            <h4 className="text-sm font-medium text-main-blue mb-2">Expected Answer (Optional)</h4>
                             <textarea
                               value={question.correctAnswer}
                               onChange={(e) => handleQuestionChange(qIndex, 'correctAnswer', e.target.value)}
                               maxLength={2000}
-                              className="w-full px-3 py-2 border border-indigo-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200"
+                              className="w-full px-3 py-2 border border-main-blue/40 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-main-blue transition duration-200"
                               rows={4}
                               placeholder="Enter expected answer for grading guidance (optional)"
                             />
@@ -825,7 +828,7 @@ const ExamCreator = () => {
                     type="button"
                     onClick={addQuestion}
                     disabled={isAdding}
-                    className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-3 py-1.5"
+                    className="flex items-center bg-main-blue hover:bg-main-blue/90 text-white rounded-md px-3 py-1.5"
                     aria-label="Add new question"
                   >
                     <FaPlus className="h-4 w-4 mr-1" aria-hidden="true" />
@@ -849,11 +852,74 @@ const ExamCreator = () => {
                     Cancel
                   </Button>
                 </motion.div>
+                {/* Save Draft Button */}
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      if (savingDraft) return;
+                      setSavingDraft(true);
+                      try {
+                        // Light validation for draft
+                        if (!formData.title.trim()) throw new Error('Title required');
+                        if (!formData.subjectId) throw new Error('Select subject');
+                        if (!formData.classIds.length) throw new Error('Select at least one class');
+                        if (!formData.termId) throw new Error('Select term');
+                        // Ensure schedule present (backend validator requires it)
+                        if (!formData.schedule.start) throw new Error('Start time required (draft)');
+                        const examDataToSubmit = {
+                          title: formData.title,
+                          instructions: formData.instructions || undefined,
+                          subjectId: formData.subjectId,
+                          classIds: formData.classIds,
+                          termId: formData.termId,
+                          type: formData.type,
+                          teacherId: currentUser.id,
+                          schedule: {
+                            start: formData.schedule.start,
+                            duration: formData.schedule.duration || 60,
+                          },
+                          questions: (formData.questions || []).map(q => ({
+                            type: q.type,
+                            text: q.text || 'Untitled question',
+                            maxScore: q.maxScore || 1,
+                            options: q.options || [],
+                            correctAnswer: q.type === 'true-false'
+                              ? (Array.isArray(q.correctAnswer) ? (q.correctAnswer[0] || '') : q.correctAnswer)
+                              : q.correctAnswer,
+                          })),
+                        };
+                        await examService.createExam(examDataToSubmit, currentUser.school);
+                        toast.success('Draft saved');
+                      } catch (e) {
+                        toast.error(e.message || 'Failed saving draft');
+                      } finally {
+                        setSavingDraft(false);
+                      }
+                    }}
+                    disabled={savingDraft || loading}
+                    className="flex items-center bg-main-blue/10 text-main-blue hover:bg-main-blue/20 rounded-md px-3 py-1.5 border border-main-blue/40"
+                    aria-label="Save draft"
+                  >
+                    {savingDraft ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="mr-1"
+                      >
+                        <FaSpinner className="h-4 w-4" aria-hidden="true" />
+                      </motion.div>
+                    ) : (
+                      <FaSave className="h-4 w-4 mr-1" aria-hidden="true" />
+                    )}
+                    {savingDraft ? 'Saving...' : 'Save Draft'}
+                  </Button>
+                </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-md px-3 py-1.5"
+                    className="flex items-center bg-main-blue hover:bg-main-blue/90 text-white rounded-md px-3 py-1.5"
                     aria-label="Create exam"
                   >
                     {loading ? (

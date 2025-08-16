@@ -8,9 +8,16 @@ const NotificationSchema = new Schema({
     ref: 'User',
     required: true
   },
+  school: {
+    type: Schema.Types.ObjectId,
+    ref: 'School',
+    required: false,
+    index: true
+  },
   type: {
     type: String,
-    enum: ['grade', 'exam', 'system', 'message'],
+    // Added 'review_request' for student -> teacher review notifications
+    enum: ['grade', 'exam', 'system', 'message', 'review_request'],
     required: true
   },
   title: {

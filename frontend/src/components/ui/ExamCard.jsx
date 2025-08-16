@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import Button from "./Button";
@@ -14,16 +14,16 @@ if (exam.status === "draft") {
     return { label: "Draft", color: "gray" };
 } else if (exam.status === "scheduled") {
     if (!start || start > now) {
-        return { label: "Upcoming", color: "blue" };
+        return { label: "Upcoming", color: "yellow" };
     } else if (start <= now && end >= now) {
         return { label: "In Progress", color: "green" };
     } else {
         return { label: "Past", color: "gray" };
     }
 } else if (exam.status === "active") {
-    return { label: "Active", color: "green" };
+    return { label: "Active", color: "blue" };
 } else if (exam.status === "completed") {
-    return { label: "Completed", color: "purple" };
+    return { label: "Completed", color: "green" };
 }
 return { label: "Unknown", color: "gray" };
 };
@@ -41,16 +41,39 @@ const ExamCard = ({
     endTime,
     questions = [],
     totalPoints,
-    progress = 0,
+    progress, // if provided externally, overrides auto progress
     teacher,
     type,
     instructions,
     schedule,
+    onClickOverride,
+    autoProgress = true, // allow disabling internal time-based progress
+    tickIntervalMs = 1000, // customizable for tests
 }) => {
     const { currentUser } = useAuth();
     const userRole = currentUser.role;
     const { pathname } = useLocation();
     const navigate = useNavigate();
+    const [now, setNow] = useState(() => new Date());
+    const intervalRef = useRef(null);
+
+// Derive start & end using schedule (model stores start + duration only) memoized
+const derivedStart = useMemo(() => schedule?.start || startTime, [schedule?.start, startTime]);
+const derivedDurationMinutes = useMemo(() => {
+    if (schedule?.duration) return schedule.duration;
+    if (schedule?.end && derivedStart) {
+        return Math.max(1, Math.round((new Date(schedule.end) - new Date(derivedStart)) / 60000));
+    }
+    return null;
+}, [schedule?.duration, schedule?.end, derivedStart]);
+const derivedEnd = useMemo(() => {
+    if (schedule?.end) return schedule.end;
+    if (endTime) return endTime;
+    if (derivedStart && derivedDurationMinutes) {
+        return new Date(new Date(derivedStart).getTime() + derivedDurationMinutes * 60000);
+    }
+    return null;
+}, [schedule?.end, endTime, derivedStart, derivedDurationMinutes]);
 
 const exam = {
     _id: examId,
@@ -59,8 +82,8 @@ const exam = {
     classCode,
     description,
     status,
-    startTime,
-    endTime,
+    startTime: derivedStart,
+    endTime: derivedEnd,
     questions,
     totalPoints,
     progress,
@@ -68,13 +91,74 @@ const exam = {
     type,
     instructions,
     schedule: schedule || {
-        start: startTime,
-        end: endTime,
-        duration: schedule?.duration || "-",
+        start: derivedStart,
+        end: derivedEnd,
+        duration: derivedDurationMinutes || schedule?.duration || "-",
     },
 };
 
 const statusInfo = getStatusInfo(exam);
+
+// Live timer + auto progress
+const [autoProgressPct, setAutoProgressPct] = useState(0);
+const [countdownLabel, setCountdownLabel] = useState("--:--");
+
+useEffect(() => {
+    if (!autoProgress) return; // skip if disabled
+    // Clear existing
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+        setNow(new Date());
+    }, tickIntervalMs);
+    return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+}, [autoProgress, tickIntervalMs, derivedStart, derivedEnd, status]);
+
+useEffect(() => {
+    if (!autoProgress) return;
+    const startDate = derivedStart ? new Date(derivedStart) : null;
+    const endDate = derivedEnd ? new Date(derivedEnd) : (startDate && derivedDurationMinutes ? new Date(startDate.getTime() + derivedDurationMinutes * 60000) : null);
+    if (!startDate) {
+        setCountdownLabel("No schedule");
+        setAutoProgressPct(0);
+        return;
+    }
+    const nowTs = now.getTime();
+    const startTs = startDate.getTime();
+    const endTs = endDate ? endDate.getTime() : startTs; // fallback
+
+    if (nowTs < startTs) {
+        // Starts in
+        const diff = startTs - nowTs;
+        setCountdownLabel(`Starts in ${formatDuration(diff)}`);
+        setAutoProgressPct(0);
+    } else if (nowTs >= startTs && nowTs <= endTs) {
+        const total = endTs - startTs;
+        const elapsed = nowTs - startTs;
+        const pct = total > 0 ? (elapsed / total) * 100 : 0;
+        setAutoProgressPct(Math.min(100, Math.max(0, pct)));
+        const remaining = endTs - nowTs;
+        setCountdownLabel(`Time left ${formatDuration(remaining)}`);
+    } else {
+        setAutoProgressPct(100);
+        setCountdownLabel("Completed");
+    }
+}, [now, autoProgress, derivedStart, derivedEnd, derivedDurationMinutes]);
+
+// Format ms -> HH:MM:SS (omit hours if zero)
+function formatDuration(ms) {
+    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    return `${pad(m)}:${pad(s)}`;
+}
+
+// Decide which progress value to render
+const progressToRender = progress !== undefined && progress !== null ? progress : autoProgressPct;
 
 const handleViewClick = (e) => {
     e.stopPropagation();
@@ -83,6 +167,7 @@ const handleViewClick = (e) => {
     } else if (userRole === "dean") {
         navigate(`/dean/exams/${examId}`);
     } else {
+        // Use existing plural route defined in App.jsx
         navigate(`/student/exams/${examId}`);
     }
 };
@@ -92,15 +177,17 @@ const displayStatusLabel = statusInfo.label === "Upcoming" ? "Pending" : statusI
 
 // Tinted background for status using existing status color
 const statusColorMap = {
-    green: { bg: "#22c55e1A", dot: "#22c55e", text: "#166534" },
-    blue: { bg: "#3b82f61A", dot: "#1e40af", text: "#1e3a8a" },
-    purple: { bg: "#a855f71A", dot: "#7c3aed", text: "#6d28d9" },
-    gray: { bg: "#6b72801A", dot: "#6b7280", text: "#374151" },
+    // Completed -> main-green palette
+    green: { bg: "rgba(1,102,48,0.10)", dot: "#016630", text: "#016630" },
+    // Active -> main-blue palette
+    blue: { bg: "rgba(21,93,252,0.10)", dot: "#155DFC", text: "#155DFC" },
+    yellow: {},
+    gray: { bg: "rgba(107,114,128,0.10)", dot: "#6b7280", text: "#374151" },
 };
 const statusColors = statusColorMap[statusInfo.color] || statusColorMap.gray;
 
 // Gold color specified for Pending (ECBE3F)
-if (displayStatusLabel === "Pending") {
+if (displayStatusLabel === "scheduled") {
     statusColors.bg = "#ECBE3F1A"; // /10
     statusColors.dot = "#ECBE3F";
     statusColors.text = "#B38700";
@@ -110,7 +197,7 @@ return (
     <div
         className="bg-white flex flex-col cursor-pointer transition container"
         style={{
-            width: 440,
+            width: 420,
             height: 240,
             border: "1px solid rgba(0,0,0,0.1)",
             borderRadius: 10,
@@ -118,7 +205,7 @@ return (
         }}
         tabIndex={0}
         role="button"
-        onClick={handleViewClick}
+    onClick={onClickOverride ? (e)=>{ e.stopPropagation(); onClickOverride(exam);} : handleViewClick}
     >
         <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
@@ -130,7 +217,7 @@ return (
                 </div>
             </div>
             <div
-                className="flex items-center gap-2 px-3 py-1 rounded-full text-[12px] font-medium select-none"
+                className="flex items-center gap-2 px-4 py-0.5 rounded-full text-[12px] font-medium select-none"
                 style={{ backgroundColor: statusColors.bg, color: statusColors.text }}
             >
                 <span
@@ -170,10 +257,21 @@ return (
         </div>
 
         <div className="mt-4">
-            <div className="w-full h-1.5 bg-[#ECF2FD] rounded-full overflow-hidden">
+            <div
+                className="relative w-full h-[5px] border border-main-blue rounded-full select-none"
+                aria-label="exam progress bar"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(Math.min(100, Math.max(0, progressToRender)))}
+            >
                 <div
-                    className="h-full rounded-full"
-                    style={{ width: `${progress}%`, backgroundColor: "#2563eb", transition: "width .3s" }}
+                    className="absolute left-0 top-1/2 -translate-y-1/2 h-[4px] rounded-full"
+                    style={{
+                        width: `${Math.min(100, Math.max(0, progressToRender))}%`,
+                        background: '#155DFC',
+                        transition: 'width .5s linear',
+                    }}
                 />
             </div>
             <div className="flex items-center justify-between mt-3">
@@ -209,7 +307,7 @@ return (
                         ));
                     })()}
                 </div>
-                <span className="text-[12px] text-gray-500">--:--</span>
+                <span className="text-[12px] text-gray-500" aria-live="polite">{countdownLabel}</span>
             </div>
         </div>
     </div>

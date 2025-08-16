@@ -361,16 +361,18 @@ class SocketNotificationService {
      */
     static notifySubmissionGraded(submission, exam) {
         // Notify student
+        const maxScore = exam.totalPoints || exam.totalMarks || (exam.questions ? exam.questions.reduce((s,q)=>s+(parseInt(q.maxScore)||0),0) : 0);
         this.emitToUser(submission.student, 'submission:graded', {
             type: 'submission_graded',
-            message: `Your exam "${exam.title}" has been graded: ${submission.totalScore}/${exam.totalMarks}`,
+            message: `Your exam "${exam.title}" has been graded: ${submission.totalScore}/${maxScore}`,
             title: 'Exam Graded',
             data: {
                 submissionId: submission._id,
                 examId: exam._id,
                 examTitle: exam.title,
                 score: submission.totalScore,
-                totalMarks: exam.totalMarks,
+                totalMarks: maxScore, // keep legacy field
+                totalPoints: maxScore, // new explicit field
                 percentage: submission.percentage,
                 gradeLetter: submission.gradeLetter,
                 gradedAt: submission.gradedAt

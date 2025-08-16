@@ -296,17 +296,44 @@ submissionController.autoSubmitExamInternal = async (submission, exam, reasonTyp
   const logType = allowedTypes.includes(reasonType) ? reasonType : 'other';
   submission.violationLogs.push({ type: logType, details, timestamp: new Date() });
 
-    // Auto-grade objective questions
+    // Auto-grade objective questions (first-N rule for multi-select handled here as well, but pre-save hook will also enforce)
     let totalScore = 0;
     if (exam && exam.questions) {
       submission.answers = submission.answers.map(answer => {
         const question = exam.questions.find(q => q._id.toString() === answer.questionId.toString());
-        if (question && ['multiple-choice', 'true-false'].includes(question.type)) {
-          const isCorrect = answer.answer === question.correctAnswer;
+        if (!question || !['multiple-choice', 'true-false'].includes(question.type)) return answer;
+        if (question.type === 'true-false') {
+          const isCorrect = (answer.answer || '').toString() === question.correctAnswer;
           answer.score = isCorrect ? question.maxScore : 0;
-          answer.graded = isCorrect;
+          answer.graded = true;
           totalScore += answer.score;
+          return answer;
         }
+        // multiple-choice multi-select with first-N rule
+        const correctArray = Array.isArray(question.correctAnswer)
+          ? question.correctAnswer.map(c => c.toString())
+          : [question.correctAnswer];
+        const nCorrect = correctArray.filter(c => c !== undefined && c !== null && c !== '').length || 1;
+        const perOption = question.maxScore / nCorrect;
+        let studentSelections = [];
+        if (Array.isArray(answer.answer)) studentSelections = answer.answer.map(a => a.toString());
+        else if (typeof answer.answer === 'string') {
+          const trimmed = answer.answer.trim();
+          if (trimmed.startsWith('[')) {
+            try { studentSelections = JSON.parse(trimmed); } catch { studentSelections = [answer.answer]; }
+          } else if (trimmed.includes('|')) studentSelections = trimmed.split('|');
+          else if (trimmed.includes(';')) studentSelections = trimmed.split(';');
+          else if (trimmed.includes(',')) studentSelections = trimmed.split(',');
+          else studentSelections = [trimmed];
+        }
+        studentSelections = studentSelections.map(s => s.toString().trim()).filter(s => s.length > 0);
+        const limitedSelections = studentSelections.slice(0, nCorrect);
+        const correctChosen = limitedSelections.filter(sel => correctArray.includes(sel));
+        let earned = perOption * correctChosen.length;
+        if (earned > question.maxScore) earned = question.maxScore;
+        answer.score = Math.round((earned + Number.EPSILON) * 100) / 100;
+        answer.graded = true;
+        totalScore += answer.score;
         return answer;
       });
     }
@@ -457,42 +484,39 @@ submissionController.submitExam = async (req, res) => {
         const question = submission.exam.questions.id
           ? submission.exam.questions.id(answer.questionId)
           : submission.exam.questions.find(q => q._id.toString() === answer.questionId.toString());
-        if (question && ['multiple-choice', 'true-false'].includes(question.type)) {
-          let earnedScore = 0;
-          if (question.type === 'multiple-choice') {
-            // Support multi-select: question.correctAnswer can be array of correct option texts
-            const correctArray = Array.isArray(question.correctAnswer)
-              ? question.correctAnswer.map(c => c.toString())
-              : [question.correctAnswer];
-            const nCorrect = correctArray.filter(c => c !== undefined && c !== null && c !== '').length || 1;
-            const perOption = question.maxScore / nCorrect;
-            // Student answer may be JSON array string or comma/semicolon separated string
-            let studentSelections = [];
-            if (Array.isArray(answer.answer)) studentSelections = answer.answer.map(a => a.toString());
-            else if (typeof answer.answer === 'string') {
-              const trimmed = answer.answer.trim();
-              if (trimmed.startsWith('[')) {
-                try { studentSelections = JSON.parse(trimmed); } catch { studentSelections = [answer.answer]; }
-              } else if (trimmed.includes('|')) studentSelections = trimmed.split('|');
-              else if (trimmed.includes(';')) studentSelections = trimmed.split(';');
-              else if (trimmed.includes(',')) studentSelections = trimmed.split(',');
-              else studentSelections = [trimmed];
+            if (question && ['multiple-choice', 'true-false'].includes(question.type)) {
+              if (question.type === 'true-false') {
+                const isCorrect = (answer.answer || '').toString().trim().toLowerCase() === (question.correctAnswer || '').toString().trim().toLowerCase();
+                answer.score = isCorrect ? question.maxScore : 0;
+                answer.graded = true;
+                totalScore += answer.score;
+              } else {
+                const correctArray = Array.isArray(question.correctAnswer)
+                  ? question.correctAnswer.map(c => c.toString())
+                  : [question.correctAnswer];
+                const nCorrect = correctArray.filter(c => c !== undefined && c !== null && c !== '').length || 1;
+                const perOption = question.maxScore / nCorrect;
+                let studentSelections = [];
+                if (Array.isArray(answer.answer)) studentSelections = answer.answer.map(a => a.toString());
+                else if (typeof answer.answer === 'string') {
+                  const trimmed = answer.answer.trim();
+                  if (trimmed.startsWith('[')) {
+                    try { studentSelections = JSON.parse(trimmed); } catch { studentSelections = [answer.answer]; }
+                  } else if (trimmed.includes('|')) studentSelections = trimmed.split('|');
+                  else if (trimmed.includes(';')) studentSelections = trimmed.split(';');
+                  else if (trimmed.includes(',')) studentSelections = trimmed.split(',');
+                  else studentSelections = [trimmed];
+                }
+                studentSelections = studentSelections.map(s => s.toString().trim()).filter(s => s.length > 0);
+                const limitedSelections = studentSelections.slice(0, nCorrect);
+                const correctChosen = limitedSelections.filter(sel => correctArray.includes(sel));
+                let earnedScore = perOption * correctChosen.length;
+                if (earnedScore > question.maxScore) earnedScore = question.maxScore;
+                answer.score = Math.round((earnedScore + Number.EPSILON) * 100) / 100;
+                answer.graded = true;
+                totalScore += answer.score;
+              }
             }
-            studentSelections = studentSelections.map(s => s.toString().trim()).filter(s => s.length > 0);
-            const correctChosen = studentSelections.filter(sel => correctArray.includes(sel));
-            earnedScore = perOption * correctChosen.length;
-            // Cap at maxScore in case of over-selection
-            if (earnedScore > question.maxScore) earnedScore = question.maxScore;
-          } else if (question.type === 'true-false') {
-            const studentAns = (answer.answer || '').toString().trim().toLowerCase();
-            const correctAns = (question.correctAnswer || '').toString().trim().toLowerCase();
-            earnedScore = studentAns === correctAns ? question.maxScore : 0;
-          }
-          // Round to two decimals to avoid floating artifacts
-          answer.score = Math.round((earnedScore + Number.EPSILON) * 100) / 100;
-          answer.graded = true; // objective
-          totalScore += answer.score;
-        }
         return answer;
       });
     }
@@ -717,14 +741,17 @@ submissionController.getStudentSubmissions = async (req, res) => {
       student: req.user.id,
       isDeleted: false
     })
-      .populate('exam', 'title type subject classes totalPoints school')
+      .populate({
+        path: 'exam',
+        select: 'title type subject classes totalPoints school',
+        populate: { path: 'subject', select: 'name' }
+      })
       .populate('student', 'fullName registrationNumber')
       .populate('enrollment', 'class school')
       .sort({ submittedAt: -1 })
       .lean();
 
-    // Filter submissions to ensure exam.school matches user.school
-    const filteredSubmissions = submissions.filter(sub => sub.exam && sub.exam.school.toString() === req.user.school.toString());
+    const filteredSubmissions = submissions.filter(sub => sub.exam && sub.exam.school && sub.exam.school.toString() === req.user.school.toString());
 
     logger.info('Student submissions retrieved', { userId: req.user.id, count: filteredSubmissions.length });
     res.json({ success: true, submissions: filteredSubmissions });
@@ -977,7 +1004,11 @@ submissionController.getSubmissionDetails = async (req, res) => {
       _id: id,
       isDeleted: false
     })
-      .populate('exam', 'title type subject classes totalPoints questions school teacher')
+      .populate({
+        path: 'exam',
+        select: 'title type subject classes totalPoints questions school teacher',
+        populate: { path: 'subject', select: 'name' }
+      })
       .populate('student', 'fullName registrationNumber')
       .populate('enrollment', 'class school')
       .lean();
@@ -1002,6 +1033,52 @@ submissionController.getSubmissionDetails = async (req, res) => {
   } catch (error) {
     logger.error('getSubmissionDetails error', { error: error.message, stack: error.stack, userId: req.user.id });
     res.status(500).json({ success: false, message: 'Server error occurred while retrieving submission details' });
+  }
+};
+
+// Student requests review of specific questions
+submissionController.requestReview = async (req, res) => {
+  try {
+    const { submissionId } = req.params;
+    const { questionIds } = req.body;
+    if (!Array.isArray(questionIds) || questionIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'questionIds must be a non-empty array' });
+    }
+    const submission = await Submission.findOne({ _id: submissionId, student: req.user.id, isDeleted: false })
+      .populate({ path: 'exam', select: 'teacher title school questions' });
+    if (!submission) {
+      return res.status(404).json({ success: false, message: 'Submission not found' });
+    }
+    if (submission.exam.school.toString() !== req.user.school.toString()) {
+      return res.status(403).json({ success: false, message: 'Submission does not belong to your school' });
+    }
+    // Build human-readable question reference list (index positions if possible)
+    const questionRefs = questionIds.slice(0, 5).map(id => `Q:${id.substring(0,6)}`).join(', ');
+    const studentName = req.user.fullName || req.user.name || 'Student';
+    const examTitle = submission.exam.title || 'Exam';
+    const message = `${studentName} requested review on ${questionIds.length} question(s) [${questionRefs}${questionIds.length>5 ? '...' : ''}] for ${examTitle}`;
+    // Notify teacher with enriched metadata so frontend can deep-link
+    try {
+      await notificationService.sendNotification(req.io, submission.exam.teacher, {
+        type: 'review_request',
+        title: 'Review Request',
+        message,
+        relatedModel: 'Submission',
+        relatedId: submission._id,
+        // extra metadata (not stored in Notification schema but emitted via socket in payload)
+        examId: submission.exam._id,
+        submissionId: submission._id,
+        studentId: req.user.id,
+        questionIds
+      });
+    } catch (notifyErr) {
+      logger.error('requestReview notification error', { error: notifyErr.message });
+    }
+    logger.info('Review request submitted', { submissionId, studentId: req.user.id, questionCount: questionIds.length });
+    res.json({ success: true, message: 'Review request sent to teacher' });
+  } catch (error) {
+    logger.error('requestReview error', { error: error.message, stack: error.stack, userId: req.user.id });
+    res.status(500).json({ success: false, message: 'Server error occurred while requesting review' });
   }
 };
 
