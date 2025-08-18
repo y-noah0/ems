@@ -63,11 +63,14 @@ const enrollmentService = {
    */
   getEnrollments: async (filters = {}) => {
     try {
-      if (filters.school) validateId(filters.school, 'school ID');
+       if (filters.schoolId && !filters.school) {
+      filters.school = filters.schoolId;
+      delete filters.schoolId;
+    }
       if (filters.class) validateId(filters.class, 'class ID');
       if (filters.student) validateId(filters.student, 'student ID');
 
-      const response = await api.get('/enrollments', { params: filters });
+      const response = await api.get('/enrollment', { params: filters });
       return response.data;
     } catch (error) {
       const errorDetails = {
@@ -85,7 +88,7 @@ const enrollmentService = {
         validateId(classId, 'class ID');
         validateId(schoolId, 'school ID');
 
-        const response = await api.get('/enrollments', {
+        const response = await api.get('/enrollment', {
             params: {
                 class: classId,
                 school: schoolId, // Keep using 'school' to match model

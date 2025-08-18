@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const Subject = require('../models/Subject');
+const mongoose = require('mongoose');
 const { check, validationResult } = require('express-validator');
 const winston = require('winston');
 const { validateEntity } = require('../utils/entityValidator');
@@ -76,37 +78,51 @@ const validateToggleTeacherStatus = [
 
 // List all teachers for a given schoolId
 async function listTeachers(req, res) {
-    try {
-        const { schoolId } = req.body;
-
-        if (!schoolId) {
-            return res.status(400).json({ success: false, message: 'schoolId is required' });
-        }
-
-        const teachers = await User.find({
-            role: 'teacher',
-            school: schoolId,
-            isDeleted: false,
-        })
-            .select('fullName email phoneNumber profilePicture preferences lastLogin')
-            .lean()
-
-        res.json({
-            success: true,
-            teachers,
-            message: 'Teachers retrieved successfully',
-        });
-    } catch (error) {
-        logger.error('listTeachers error', {
-            error: error.message,
-            stack: error.stack,
-            schoolId: req.body.schoolId,
-        });
-        res.status(500).json({
-            success: false,
-            message: 'Server error occurred while retrieving teachers',
-        });
+  try {
+    const { schoolId } = req.body;
+    if (!schoolId) {
+      return res.status(400).json({ success: false, message: 'schoolId is required' });
     }
+
+    // Fetch all teachers first
+    const teachers = await User.find({
+      role: 'teacher',
+      school: mongoose.Types.ObjectId(schoolId),
+      isDeleted: false
+    })
+    .select('fullName email phoneNumber profilePicture preferences lastLogin isActive school')
+    .lean();
+
+    // Fetch subjects for these teachers
+    const teacherIds = teachers.map(t => t._id);
+    const subjects = await Subject.find({
+      teacher: { $in: teacherIds },
+      isDeleted: false
+    })
+    .select('name teacher')
+    .lean();
+
+    // Attach subjects to each teacher
+    const teachersWithSubjects = teachers.map(teacher => {
+      const teacherSubjects = subjects
+        .filter(sub => sub.teacher.toString() === teacher._id.toString())
+        .map(sub => sub.name);
+      return { ...teacher, subjects: teacherSubjects };
+    });
+
+    res.json({
+      success: true,
+      teachers: teachersWithSubjects,
+      message: 'Teachers retrieved successfully'
+    });
+
+  } catch (error) {
+    console.error('listTeachers error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error occurred while retrieving teachers'
+    });
+  }
 }
 
 

@@ -75,52 +75,94 @@ const createEnrollment = async (req, res) => {
     }
 };
 
-// Get all enrollments for a school
+
+// Get all enrollments for a school (with pagination, search, and status filters)
 const getEnrollments = async (req, res) => {
-    try {
-        const { school, schoolId, class: classId, isActive, populate } = req.query;
+  try {
+    const {
+      school,
+      schoolId,
+      class: classId,
+      isActive,
+      populate,
+      page = 1,
+      limit = 10,
+      search,
+      status
+    } = req.query;
 
-        const effectiveSchoolId = schoolId || school;
+    const effectiveSchoolId = schoolId || school;
 
-        if (!mongoose.Types.ObjectId.isValid(effectiveSchoolId)) {
-            return res.status(400).json({ success: false, message: 'Invalid school ID' });
-        }
-
-        const query = {
-            isDeleted: false,
-            school: effectiveSchoolId
-        };
-
-        if (classId) {
-            if (!mongoose.Types.ObjectId.isValid(classId)) {
-                return res.status(400).json({ success: false, message: 'Invalid class ID' });
-            }
-            query.class = classId;
-        }
-
-        if (isActive !== undefined) {
-            query.isActive = isActive === 'true';
-        }
-
-        const populateOptions = [];
-        if (populate) {
-            populate.split(',').forEach(field => {
-                populateOptions.push(field.trim());
-            });
-        }
-
-        const defaultPopulate = ['student', 'class', 'term'];
-        const finalPopulate = populateOptions.length > 0 ? populateOptions : defaultPopulate;
-
-        const enrollments = await Enrollment.find(query)
-            .populate(finalPopulate.join(' '));
-
-        res.json({ success: true, enrollments });
-    } catch (error) {
-        logger.error('Error in getEnrollments', { error: error.message, ip: req.ip });
-        res.status(500).json({ success: false, message: 'Server Error' });
+    if (!mongoose.Types.ObjectId.isValid(effectiveSchoolId)) {
+      return res.status(400).json({ success: false, message: 'Invalid school ID' });
     }
+
+    const query = {
+      isDeleted: false,
+      school: effectiveSchoolId
+    };
+
+    if (classId) {
+      if (!mongoose.Types.ObjectId.isValid(classId)) {
+        return res.status(400).json({ success: false, message: 'Invalid class ID' });
+      }
+      query.class = classId;
+    }
+
+    if (isActive !== undefined) {
+      query.isActive = isActive === 'true';
+    }
+
+    // 🔍 Status filter (promotionStatus field)
+    if (status) {
+      query.promotionStatus = status;
+    }
+
+    // 🔍 Search filter (student fullName or registrationNumber)
+    if (search) {
+      query.$or = [
+        { 'student.fullName': { $regex: search, $options: 'i' } },
+        { 'student.registrationNumber': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const populateOptions = [];
+    if (populate) {
+      populate.split(',').forEach(field => {
+        populateOptions.push(field.trim());
+      });
+    }
+
+    const defaultPopulate = ['student', 'class', 'term'];
+    const finalPopulate = populateOptions.length > 0 ? populateOptions : defaultPopulate;
+
+    // Pagination
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    const [enrollments, total] = await Promise.all([
+      Enrollment.find(query)
+        .populate(finalPopulate.join(' '))
+        .skip(skip)
+        .limit(limitNum),
+      Enrollment.countDocuments(query)
+    ]);
+
+    res.json({
+      success: true,
+      enrollments,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum)
+    });
+  } catch (error) {
+    logger.error('Error in getEnrollments', { error: error.message, ip: req.ip });
+    res.status(500).json({ success: false, message: 'Server Error' });
+  }
 };
+
 
 // Get enrollment by ID with school isolation
 const getEnrollmentById = async (req, res) => {
