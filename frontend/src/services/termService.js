@@ -7,7 +7,6 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 });
 
-// Attach token to requests
 api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token');
@@ -18,7 +17,6 @@ api.interceptors.request.use(
   },
   error => Promise.reject(error)
 );
-
 
 // Get terms
 export const getTerms = async (schoolId) => {
@@ -32,6 +30,24 @@ export const getTerms = async (schoolId) => {
                     error.response?.data?.message ||
                     'Failed to fetch terms';
     throw new Error(message);
-    }
+  }
 };
 
+// Create term
+export const createTerm = async (termData) => {
+  try {
+    const res = await api.post('/terms', termData);
+    return res.data;
+  } catch (error) {
+    const message = error.response?.data?.errors?.[0]?.msg ||
+                    error.response?.data?.message ||
+                    'Failed to create term';
+    throw new Error(message);
+  }
+};
+
+// 👇 add default export object
+export default {
+  getTerms,
+  createTerm,
+};

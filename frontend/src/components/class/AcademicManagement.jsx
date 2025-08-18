@@ -1,23 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
-import { 
-  CalendarIcon, 
-  AcademicCapIcon, 
-  UserGroupIcon, 
-  CogIcon, 
-  ChartBarIcon,
-  PlusIcon,
-  ArrowPathIcon,
-  ExclamationTriangleIcon,
-  CheckBadgeIcon,
-  MagnifyingGlassIcon
-} from '@heroicons/react/24/outline';
-import { motion } from 'framer-motion';
+import { CalendarIcon, AcademicCapIcon, UserGroupIcon, CogIcon, ChartBarIcon, PlusIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckBadgeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import DynamicTable from '../class/DynamicTable';
 import Layout from '../layout/Layout';
 import enrollmentService from '../../services/enrollmentService';
 import { useAuth } from '../../context/AuthContext';
+import teacherServices from '../../services/teacherService';
+import AddTermModel from './AddTermModel';
+
+
+import termService from '../../services/termService'; 
+
+
+
 
 // Integrated EmptyState Component
 const EmptyState = ({ icon, title, description, actionText, onAction }) => (
@@ -114,88 +111,67 @@ const ProgressBar = ({ value, color }) => {
 // Integrated CalendarWidget Component
 const CalendarWidget = ({ events }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  
   const daysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
-  
+
   const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
-  
-  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July","August","September","October","November","December"];
+  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
   const renderDays = () => {
     const days = [];
     const totalDays = daysInMonth(currentDate.getMonth(), currentDate.getFullYear());
     const today = new Date();
-    
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(<div key={`empty-${i}`} className="h-10"></div>);
-    }
-    
-    // Add cells for each day of the month
+
+    for (let i = 0; i < firstDayOfMonth; i++) days.push(<div key={`empty-${i}`} className="h-10"></div>);
+
     for (let day = 1; day <= totalDays; day++) {
-      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const dayEvents = events.filter(event => event.date === dateStr);
-      const isToday = today.getDate() === day && 
-                     today.getMonth() === currentDate.getMonth() && 
-                     today.getFullYear() === currentDate.getFullYear();
-      
+      const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), day).toISOString().split('T')[0];
+      const dayEvents = events.filter(event => {
+        const start = event.date.split('T')[0];
+        const end = event.endDate ? event.endDate.split('T')[0] : start;
+        return dateStr >= start && dateStr <= end;
+      });
+
+      const isToday = today.getDate() === day && today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
+
       days.push(
-        <div 
-          key={`day-${day}`} 
-          className={`h-10 border border-gray-100 flex flex-col items-center justify-start p-1 ${
-            isToday ? 'bg-blue-50 border-blue-200' : ''
-          }`}
-        >
-          <span className={`text-xs ${
-            isToday ? 'font-bold text-blue-600' : 'text-gray-600'
-          }`}>{day}</span>
-          {dayEvents.length > 0 && (
-            <span className="w-2 h-2 rounded-full bg-blue-500 mt-1"></span>
-          )}
+        <div key={`day-${day}`} className={`h-10 border border-gray-100 flex flex-col items-center justify-start p-1 ${isToday ? 'bg-blue-50 border-blue-200' : ''}`}>
+          <span className={`text-xs ${isToday ? 'font-bold text-blue-600' : 'text-gray-600'}`}>{day}</span>
+          {dayEvents.map(e => (
+            <span key={e.id} className={`w-2 h-2 rounded-full mt-1 ${e.type === 'Inactive' ? 'bg-red-500' : 'bg-blue-500'}`}></span>
+          ))}
         </div>
       );
     }
-    
+
     return days;
   };
-  
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <div className="flex items-center justify-between p-4 bg-gray-50 border-b">
-        <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-200">
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h3 className="font-medium">
-          {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-        </h3>
-        <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-200">
-          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+        <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-200">◀</button>
+        <h3 className="font-medium">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
+        <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-200">▶</button>
       </div>
       <div className="grid grid-cols-7 gap-px bg-gray-200">
-        {dayNames.map(day => (
-          <div key={day} className="bg-gray-50 py-2 text-center text-xs font-medium text-gray-500">
-            {day}
-          </div>
-        ))}
+        {dayNames.map(day => <div key={day} className="bg-gray-50 py-2 text-center text-xs font-medium text-gray-500">{day}</div>)}
         {renderDays()}
       </div>
     </div>
   );
 };
 
+
 const AcademicManagement = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [enrollmentData, setEnrollmentData] = useState([]);
   const [calendarEvents, setCalendarEvents] = useState([]);
-  const [resourceData, setResourceData] = useState([]);
+  const [terms, setTerms] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [complianceData, setComplianceData] = useState([]);
   const [analyticsData, setAnalyticsData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -207,87 +183,163 @@ const AcademicManagement = () => {
     limit: 10,
     total: 0
   });
+  const [showAddTerm, setShowAddTerm] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
 
-  // Fetch enrollments from backend
-  const fetchEnrollments = async (schoolId) => {
-    if (!schoolId) {
-      setError("School ID is required to fetch enrollments");
-      setIsLoading(false);
-      return;
-    }
 
-    setIsLoading(true);
+
+  useEffect(() => {
+  const fetchTerms = async () => {
+    if (!currentUser?.school) return;
     try {
-      const response = await enrollmentService.getEnrollments({
-        school: schoolId,
-        page: pagination.page,
-        limit: pagination.limit,
-        search: searchQuery,
-        status: statusFilter
-      });
-
-      console.log("API Response:", response);
-
-      const responseData = response?.data || response;
-      
-      if (!responseData) {
-        throw new Error('No data received from server');
-      }
-
-      const enrollmentsArray = Array.isArray(responseData) 
-        ? responseData 
-        : responseData.data || [];
-
-      const formattedEnrollments = enrollmentsArray.map(enrollment => {
-        const termValue = enrollment.term && typeof enrollment.term === 'object' 
-          ? enrollment.term.name || enrollment.term.termNumber || 'N/A'
-          : 'N/A';
-
-        const yearValue = enrollment.term && typeof enrollment.term === 'object'
-          ? enrollment.term.academicYear 
-          : enrollment.academicYear || 'N/A';
-
-        return {
-          id: enrollment._id,
-          student: enrollment.student?.fullName || 'N/A',
-          studentId: enrollment.student?.registrationNumber || 'N/A',
-          class: enrollment.class?.level || 'N/A',
-          term: termValue,
-          year: yearValue,
-          status: enrollment.promotionStatus || 'pending',
-          isActive: enrollment.isActive,
-          enrollmentDate: enrollment.createdAt || new Date().toISOString()
-        };
-      });
-
-      setEnrollmentData(formattedEnrollments);
-      setPagination(prev => ({
-        ...prev,
-        total: responseData.total || response.total || formattedEnrollments.length
-      }));
-      setError(null);
-    } catch (err) {
-      console.error('Fetch enrollments error:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to load enrollments');
-      setEnrollmentData([]);
-    } finally {
-      setIsLoading(false);
+      const data = await termService.getTerms(currentUser.school);
+      setTerms(data.terms || []);
+    } catch (error) {
+      console.error('Error fetching terms:', error);
     }
   };
 
-  // Placeholder for handleDeleteEnrollment
-  const handleDeleteEnrollment = async (id) => {
-    try {
-      // Implement your deletion logic here, e.g., call enrollmentService.deleteEnrollment(id)
-      console.log(`Deleting enrollment with id: ${id}`);
-      // After deletion, refresh the enrollments
-      await fetchEnrollments(currentUser?.school);
-    } catch (err) {
-      console.error('Delete enrollment error:', err);
-      setError(err.message || 'Failed to delete enrollment');
+  fetchTerms();
+}, [currentUser]);
+
+const termEvents = terms.map(term => ({
+  id: term._id,
+  title: `Term ${term.termNumber}`,
+  date: term.startDate,       // mark the start date
+  endDate: term.endDate,      // optional: could be used for multi-day events
+  type: term.isDeleted ? 'Inactive' : 'Active'
+}));
+
+
+ // Fetch enrollments from backend
+const fetchEnrollments = async (schoolId) => {
+  if (!schoolId) {
+    setError("School ID is required to fetch enrollments");
+    setIsLoading(false);
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const response = await enrollmentService.getEnrollments({
+      school: schoolId,
+      page: pagination.page,
+      limit: pagination.limit,
+      search: searchQuery,
+      status: statusFilter
+    });
+
+    console.log("API Response:", response);
+
+    // controller returns { success, enrollments }
+    const responseData = response?.enrollments || [];
+
+    if (!Array.isArray(responseData)) {
+      throw new Error("Invalid data format from server");
     }
+
+    const formattedEnrollments = responseData.map((enrollment) => {
+      const termValue =
+        enrollment.term && typeof enrollment.term === "object"
+          ? enrollment.term.name || enrollment.term.termNumber || "N/A"
+          : "N/A";
+
+      const yearValue =
+        enrollment.term && typeof enrollment.term === "object"
+          ? enrollment.term.academicYear
+          : enrollment.academicYear || "N/A";
+
+      return {
+        id: enrollment._id,
+        student: enrollment.student?.fullName || "N/A",
+        studentId: enrollment.student?.registrationNumber || "N/A",
+        class: enrollment.class?.level || "N/A",
+        term: termValue,
+        year: yearValue,
+        status: enrollment.promotionStatus || "pending",
+        isActive: enrollment.isActive,
+        enrollmentDate: enrollment.createdAt || new Date().toISOString(),
+      };
+    });
+
+    setEnrollmentData(formattedEnrollments);
+    setPagination((prev) => ({
+      ...prev,
+      total: response.total || formattedEnrollments.length,
+    }));
+    setError(null);
+  } catch (err) {
+    console.error("Fetch enrollments error:", err);
+    setError(
+      err.response?.data?.message ||
+        err.message ||
+        "Failed to load enrollments"
+    );
+    setEnrollmentData([]);
+  } finally {
+    setIsLoading(false);
+  }
   };
+  
+const fetchTeachers = async (schoolId) => {
+  if (!schoolId) {
+    setError("School ID is required to fetch teachers");
+    setIsLoading(false);
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const response = await teacherServices.fetchTeachers(schoolId);
+
+    console.log("API Response:", response);
+
+    // Ensure response is an array
+    const responseData = Array.isArray(response) ? response : [];
+
+const formattedTeachers = responseData.map((teacher) => {
+  let subjectsList = "N/A";
+
+  if (Array.isArray(teacher.subjects) && teacher.subjects.length > 0) {
+    // Handle both populated objects and plain strings
+    subjectsList = teacher.subjects
+      .map((s) => (typeof s === "string" ? s : s.name || "N/A"))
+      .join(", ");
+  }
+
+  return {
+    id: teacher._id,
+    teacher: teacher.fullName || "N/A",
+    email: teacher.email || "N/A",
+    phoneNumber: teacher.phoneNumber || "N/A",
+    subjects: subjectsList,
+    status: teacher.isActive ? "active" : "inactive",
+    school: teacher.school?.name || "N/A",
+  };
+});
+
+
+    setTeachers(formattedTeachers);
+    setPagination((prev) => ({
+      ...prev,
+      total: formattedTeachers.length,
+    }));
+    setError(null);
+  } catch (err) {
+    console.error("Fetch teachers error:", err);
+    setError(err.response?.data?.message || err.message || "Failed to load teachers");
+    setTeachers([]);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+  useEffect(() => {
+    if (currentUser?.school) {
+      fetchTeachers(currentUser.school);
+    }
+  }, [currentUser?.school]);
 
   // Placeholder for handlePageChange
   const handlePageChange = (newPage) => {
@@ -333,10 +385,6 @@ const AcademicManagement = () => {
             { id: 1, date: '2025-09-01', event: 'Term 1 Start', type: 'academic', importance: 'high' },
             { id: 2, date: '2025-10-15', event: 'Mid-Term Exams', type: 'exam', importance: 'critical' },
           ],
-          resources: [
-            { id: 1, teacher: 'Dr. Sarah Johnson', subjects: 'Mathematics, Physics', load: '80%', status: 'active' },
-            { id: 2, teacher: 'Prof. Michael Brown', subjects: 'Literature, History', load: '65%', status: 'active' },
-          ],
           compliance: [
             { id: 1, standard: 'National Competency Framework', compliance: '95%', issues: 2, status: 'compliant' },
             { id: 2, standard: 'Accreditation Requirements', compliance: '78%', issues: 5, status: 'partial' },
@@ -349,7 +397,6 @@ const AcademicManagement = () => {
 
         if (isMounted) {
           setCalendarEvents(mockData.calendarEvents);
-          setResourceData(mockData.resources);
           setComplianceData(mockData.compliance);
           setAnalyticsData(mockData.analytics);
         }
@@ -365,11 +412,12 @@ const AcademicManagement = () => {
     };
   }, [pagination.page, pagination.limit, searchQuery, statusFilter, currentUser?.school]);
 
-  const filteredEnrollments = enrollmentData.filter(item =>
-    item.student.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.class.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.studentId.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+ const filteredEnrollments = enrollmentData.filter(item =>
+  (item.student?.fullName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+  (item.class?.level?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+  (item.student?.registrationNumber?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+);
+
 
   if (isLoading) {
     return (
@@ -415,6 +463,13 @@ const AcademicManagement = () => {
       </Layout>
     );
   }
+
+
+  const handleAddTerm = () => {
+    setShowAddTerm(true);
+  };
+
+
 
   return (
     <Layout>
@@ -533,45 +588,49 @@ const AcademicManagement = () => {
                       <PlusIcon className="w-5 h-5 mr-2" />
                       Add Event
                     </motion.button>
+                    <motion.button  whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
+                      onClick={handleAddTerm}>
+                    <PlusIcon className="w-5 h-5 mr-2" />
+                      Add Term
+                    </motion.button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
-                    <CalendarWidget events={calendarEvents} />
-                  </div>
-                  <div className="bg-white p-5 rounded-lg border border-gray-200">
-                    <h3 className="font-medium text-gray-800 mb-3">Upcoming Events</h3>
-                    <ul className="space-y-3">
-                      {calendarEvents
-                        .sort((a, b) => new Date(a.date) - new Date(b.date))
-                        .slice(0, 5)
-                        .map((event) => (
-                          <li key={event.id} className="p-3 bg-gray-50 rounded-lg">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-medium">{event.event}</p>
-                                <p className="text-sm text-gray-500 mt-1">
-                                  {new Date(event.date).toLocaleDateString('en-US', {
-                                    weekday: 'short',
-                                    month: 'short',
-                                    day: 'numeric'
-                                  })}
-                                </p>
-                              </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                event.importance === 'critical' ? 'bg-red-100 text-red-800' :
-                                event.importance === 'high' ? 'bg-orange-100 text-orange-800' :
-                                'bg-blue-100 text-blue-800'
-                              }`}>
-                                {event.type}
-                              </span>
-                            </div>
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                </div>
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div className="lg:col-span-2">
+    <CalendarWidget events={termEvents} />
+  </div>
+  <div className="bg-white p-5 rounded-lg border border-gray-200">
+    <h3 className="font-medium text-gray-800 mb-3">Upcoming Terms</h3>
+    <ul className="space-y-3">
+      {terms
+        .sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+        .slice(0, 5)
+        .map(term => (
+          <li key={term._id} className="p-3 bg-gray-50 rounded-lg">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-medium">Term {term.termNumber}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Start: {new Date(term.startDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })} 
+                  – End: {new Date(term.endDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">Academic Year: {term.academicYear}</p>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                term.isDeleted ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {term.isDeleted ? 'Inactive' : 'Active'}
+              </span>
+            </div>
+          </li>
+        ))}
+    </ul>
+  </div>
+</div>
+
               </motion.div>
             </TabPanel>
 
@@ -658,7 +717,6 @@ const AcademicManagement = () => {
                           <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
                           <button 
                             className="text-red-600 hover:text-red-800 text-sm font-medium"
-                            onClick={() => handleDeleteEnrollment(item.id)}
                           >
                             Remove
                           </button>
@@ -793,69 +851,70 @@ const AcademicManagement = () => {
                 transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-800">Teacher Allocation</h2>
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
-                  >
-                    <PlusIcon className="w-5 h-5 mr-2" />
-                    Assign Teacher
-                  </motion.button>
-                </div>
+              <div className="flex justify-between items-center">
+  <h2 className="text-xl font-semibold text-gray-800">Teacher Allocation</h2>
+  <motion.button
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.98 }}
+    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
+  >
+    <PlusIcon className="w-5 h-5 mr-2" />
+    Assign Teacher
+  </motion.button>
+</div>
 
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <DynamicTable
-                    data={resourceData}
-                    columns={[
-                      { key: 'teacher', title: 'Teacher', width: '30%' },
-                      { key: 'subjects', title: 'Subjects', width: '40%' },
-                      { 
-                        key: 'load', 
-                        title: 'Workload', 
-                        width: '15%',
-                        render: (value) => (
-                          <div className="flex items-center">
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
-                              <div 
-                                className={`h-2.5 rounded-full ${
-                                  value === '90%' ? 'bg-red-500' :
-                                  value === '80%' ? 'bg-orange-500' :
-                                  value === '65%' ? 'bg-green-500' :
-                                  'bg-blue-500'
-                                }`} 
-                                style={{ width: value }}
-                              ></div>
-                            </div>
-                            <span className="text-sm font-medium">{value}</span>
-                          </div>
-                        )
-                      },
-                      { 
-                        key: 'status', 
-                        title: 'Status', 
-                        width: '15%',
-                        render: (value) => (
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            value === 'overloaded' ? 'bg-red-100 text-red-800' :
-                            value === 'active' ? 'bg-green-100 text-green-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {value}
-                          </span>
-                        )
-                      },
-                    ]}
-                    showActions={true}
-                    renderCustomActions={(item) => (
-                      <div className="flex space-x-2">
-                        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Reassign</button>
-                        <button className="text-gray-600 hover:text-gray-800 text-sm font-medium">Details</button>
-                      </div>
-                    )}
-                  />
-                </div>
+<div className="bg-white rounded-lg border border-gray-200 overflow-hidden mt-4">
+  <DynamicTable
+    data={teachers} // <-- replace resourceData with teachers from API
+    columns={[
+      { key: 'teacher', title: 'Teacher', width: '30%' },
+      { key: 'subjects', title: 'Subjects', width: '40%' },
+      { 
+        key: 'load', 
+        title: 'Workload', 
+        width: '15%',
+        render: (value) => (
+          <div className="flex items-center">
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+              <div 
+                className={`h-2.5 rounded-full ${
+                  value === '90%' ? 'bg-red-500' :
+                  value === '80%' ? 'bg-orange-500' :
+                  value === '65%' ? 'bg-green-500' :
+                  'bg-blue-500'
+                }`} 
+                style={{ width: value }}
+              ></div>
+            </div>
+            <span className="text-sm font-medium">{value}</span>
+          </div>
+        )
+      },
+      { 
+        key: 'status', 
+        title: 'Status', 
+        width: '15%',
+        render: (value) => (
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            value === 'overloaded' ? 'bg-red-100 text-red-800' :
+            value === 'active' ? 'bg-green-100 text-green-800' :
+            'bg-blue-100 text-blue-800'
+          }`}>
+            {value}
+          </span>
+        )
+      },
+    ]}
+    showActions={true}
+    renderCustomActions={(item) => (
+      <div className="flex space-x-2">
+        <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">Reassign</button>
+        <button className="text-gray-600 hover:text-gray-800 text-sm font-medium">Details</button>
+      </div>
+    )}
+  />
+</div>
+
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white p-5 rounded-lg border border-gray-200">
@@ -1094,9 +1153,11 @@ const AcademicManagement = () => {
             </TabPanel>
           </div>
         </Tabs>
+       {showAddTerm && (
+          <AddTermModel  onClose={() => setShowAddTerm(false)}/>
+        )}
       </div>
     </Layout>
   );
 };
-
 export default AcademicManagement;

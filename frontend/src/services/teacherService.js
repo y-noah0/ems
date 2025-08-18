@@ -53,17 +53,25 @@ const teacherService = {
         }
     },
 
-    fetchTeachers: async (schoolId) => {
-        try {
-            console.log('getting for, ', schoolId)
-            const response = await api.post('/teacher', { schoolId: schoolId });
-            
-            return response.data.teachers;
-        } catch (error) {
-            console.error('Fetch teachers error:', error.response?.data || error.message);
-            throw error.response ? error.response.data : { message: 'Network error' };
-        }
-    },
+  fetchTeachers: async (schoolId) => {
+  try {
+    console.log('Fetching teachers for school:', schoolId);
+
+    const response = await api.post('/teacher', { schoolId });
+
+    // Ensure each teacher has a subjects array
+    const teachers = response.data.teachers.map((teacher) => ({
+      ...teacher,
+      subjects: teacher.subjects || [] // fallback if subjects not populated
+    }));
+
+    return teachers;
+  } catch (error) {
+    console.error('Fetch teachers error:', error.response?.data || error.message);
+    throw error.response ? error.response.data : { message: 'Network error' };
+  }
+},
+
 
     fetchSchools: async () => {
         try {
