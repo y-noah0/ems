@@ -214,18 +214,18 @@ const TeacherManagementTableNew = () => {
     }, [notification]);
 
     return (
-        <div className="p-6 min-h-screen bg-gradient-to-br from-white to-gray-50">
+        <div className="p-4 sm:p-6 min-h-screen bg-gradient-to-br from-white to-blue-50">
             {notification && (
                 <div
-                    className={`fixed top-4 right-4 px-5 py-3 rounded-lg shadow-xl text-white animate-slide-in flex items-center gap-2 ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-                        }`}
+                    className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white flex items-center gap-2 text-sm z-50
+                    ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}
                 >
                     {notification.type === 'success' ? (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                         </svg>
                     ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     )}
@@ -236,31 +236,31 @@ const TeacherManagementTableNew = () => {
             {showCourseManagement ? (
                 <div>
                     <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-                        <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2">
                             <FiUser className="text-blue-500" /> Course Management
                         </h2>
                         <button
-                            className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-200 flex items-center gap-2"
+                            className="px-3 py-1.5 bg-blue-600 text-white text-xs sm:text-sm font-semibold rounded shadow hover:bg-blue-700 flex items-center gap-2 transition"
                             onClick={() => setShowCourseManagement(false)}
                         >
-                            <FiArrowLeft size={18} />
-                            Back to Teachers Control Room
+                            <FiArrowLeft size={16} />
+                            Back to Teachers
                         </button>
                     </div>
                     <CourseManagement />
                 </div>
             ) : (
                 <>
-                    <h2 className="text-3xl font-bold mb-6 text-gray-800 flex items-center gap-2">
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-800 flex items-center gap-2">
                         <FiUser className="text-blue-500" /> Teachers Control Room
                     </h2>
 
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                        <div className="flex flex-wrap gap-4 items-center">
+                        <div className="flex flex-wrap gap-3 items-center">
                             <select
                                 value={filters.course}
                                 onChange={(e) => handleFilterChange('course', e.target.value)}
-                                className="p-2 border rounded bg-white text-sm focus:ring-2 focus:ring-blue-400"
+                                className="p-2 border rounded bg-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-400"
                             >
                                 <option value="">All Courses</option>
                                 <option value="Math">Math</option>
@@ -270,26 +270,26 @@ const TeacherManagementTableNew = () => {
                             <select
                                 value={filters.access}
                                 onChange={(e) => handleFilterChange('access', e.target.value)}
-                                className="p-2 border rounded bg-white text-sm focus:ring-2 focus:ring-blue-400"
+                                className="p-2 border rounded bg-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-400"
                             >
                                 <option value="">All Access</option>
                                 <option value="true">Enabled</option>
                                 <option value="false">Disabled</option>
                             </select>
                         </div>
-                        <div className="flex gap-3 w-full sm:w-auto">
-                            <div className="relative w-full sm:w-64">
+                        <div className="flex gap-2 w-full sm:w-auto">
+                            <div className="relative w-full sm:w-56">
                                 <FiSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search Teachers..."
-                                    className="w-full pl-10 pr-4 py-2 border rounded bg-white text-sm focus:ring-2 focus:ring-blue-400"
+                                    className="w-full pl-9 pr-3 py-2 border rounded bg-white text-xs sm:text-sm focus:ring-2 focus:ring-blue-400"
                                 />
                             </div>
                             <button
-                                className="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-200"
+                                className="px-3 py-1.5 bg-blue-600 text-white text-xs sm:text-sm font-semibold rounded shadow hover:bg-blue-700 transition"
                                 onClick={() => setShowCourseManagement(true)}
                             >
                                 Course Management
@@ -299,21 +299,21 @@ const TeacherManagementTableNew = () => {
 
                     {loading ? (
                         <div className="flex justify-center items-center h-64">
-                            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-600"></div>
                         </div>
                     ) : filteredData.length === 0 ? (
-                        <p className="text-gray-500 italic text-center py-8 text-lg">
+                        <p className="text-gray-500 italic text-center py-8 text-base sm:text-lg">
                             No teachers match the current filters.
                         </p>
                     ) : (
-                        <div className="overflow-x-auto shadow-xl rounded-xl bg-white border border-gray-200">
-                            <table className="w-full min-w-[900px] table-fixed border-separate border-spacing-0">
+                        <div className="overflow-x-auto shadow-lg rounded-xl bg-white border border-gray-200">
+                            <table className="w-full min-w-[800px] table-fixed border-separate border-spacing-0">
                                 <thead className="bg-gray-100">
                                     <tr>
                                         {['Name', 'Email', 'Phone', 'Assigned', 'Last Login', 'Access', 'Actions'].map((header, index) => (
                                             <th
                                                 key={index}
-                                                className="p-4 text-left text-gray-600 text-sm font-semibold border-b border-r border-gray-300"
+                                                className="p-3 text-left text-gray-600 text-xs sm:text-sm font-semibold border-b border-r border-gray-200"
                                             >
                                                 {header}
                                             </th>
@@ -325,53 +325,55 @@ const TeacherManagementTableNew = () => {
                                         {filteredData.map((row, index) => (
                                             <motion.tr
                                                 key={row._id}
-                                                className="border-b border-gray-200 hover:bg-blue-50/30 transition-colors"
+                                                className="border-b border-gray-100 hover:bg-blue-50/40 transition-colors"
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 exit={{ opacity: 0, y: -10 }}
                                                 transition={{ duration: 0.2 }}
                                             >
-                                                <td className="p-4 text-left">
-                                                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                <td className="p-3 text-left">
+                                                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-700">
                                                         <FiUser className="text-blue-500" />
                                                         {row.names}
                                                     </div>
                                                 </td>
-                                                <td className="p-4 text-left text-sm text-gray-600">
+                                                <td className="p-3 text-left text-xs sm:text-sm text-gray-600">
                                                     <div className="flex items-center gap-2">
                                                         <FiMail className="text-purple-400" />
                                                         {row.email}
                                                     </div>
                                                 </td>
-                                                <td className="p-4 text-left text-sm text-gray-600">
+                                                <td className="p-3 text-left text-xs sm:text-sm text-gray-600">
                                                     <div className="flex items-center gap-2">
                                                         <FiPhoneCall className="text-green-400" />
                                                         {row.phone}
                                                     </div>
                                                 </td>
-                                                <td className="p-4 text-left text-sm text-gray-600">{row.assignedCourses || 'None'}</td>
-                                                <td className="p-4 text-left text-sm text-gray-600">{row.lastLogin}</td>
-                                                <td className="p-4 text-left">
+                                                <td className="p-3 text-left text-xs sm:text-sm text-gray-600">{row.assignedCourses || 'None'}</td>
+                                                <td className="p-3 text-left text-xs sm:text-sm text-gray-600">{row.lastLogin}</td>
+                                                <td className="p-3 text-left">
                                                     <button
                                                         onClick={() => handleToggle(index)}
-                                                        className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${!row.isDeleted ? 'bg-green-500' : 'bg-gray-300'
+                                                        className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 ${!row.isDeleted ? 'bg-green-500' : 'bg-gray-300'
                                                             } ${row.isDeleted ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                                         disabled={row.isDeleted}
+                                                        aria-label="Toggle access"
                                                     >
                                                         <motion.span
                                                             layout
-                                                            className="w-4 h-4 bg-white rounded-full shadow-md"
+                                                            className="w-4 h-4 bg-white rounded-full shadow"
                                                             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                                                            animate={{ x: !row.isDeleted ? 20 : 0 }}
+                                                            animate={{ x: !row.isDeleted ? 16 : 0 }}
                                                         />
                                                     </button>
                                                 </td>
-                                                <td className="p-4 text-left">
+                                                <td className="p-3 text-left">
                                                     <button
                                                         onClick={() => openModal(row)}
                                                         className="text-blue-500 hover:text-blue-700 transition-transform transform hover:scale-110"
+                                                        aria-label="Edit teacher"
                                                     >
-                                                        <FiEdit size={18} />
+                                                        <FiEdit size={16} />
                                                     </button>
                                                 </td>
                                             </motion.tr>
@@ -405,19 +407,19 @@ const TeacherManagementTableNew = () => {
                                     leaveFrom="opacity-100 translate-y-0 sm:scale-100"
                                     leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
                                 >
-                                    <Dialog.Panel className="w-full max-w-lg bg-white rounded-2xl shadow-2xl p-8 transform transition-all animate-slide-up">
-                                        <Dialog.Title className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                                            <FiUser className="text-blue-500 animate-pulse" size={24} />
+                                    <Dialog.Panel className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 sm:p-8 transform transition-all animate-slide-up">
+                                        <Dialog.Title className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                            <FiUser className="text-blue-500 animate-pulse" size={20} />
                                             Edit Teacher
                                         </Dialog.Title>
-                                        <form onSubmit={handleSubmit} className="space-y-6">
+                                        <form onSubmit={handleSubmit} className="space-y-4">
                                             <div className="relative group">
-                                                <div className="flex items-center gap-3">
-                                                    <FiUser className="text-blue-500 group-hover:scale-110 transition-transform duration-200" size={20} />
+                                                <div className="flex items-center gap-2">
+                                                    <FiUser className="text-blue-500" size={16} />
                                                     <input
                                                         type="text"
                                                         placeholder="Full Name"
-                                                        className={`w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md ${formErrors.names ? 'border-red-500' : ''
+                                                        className={`w-full px-3 py-2 rounded border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm ${formErrors.names ? 'border-red-500' : ''
                                                             }`}
                                                         value={formData.names}
                                                         onChange={(e) => setFormData({ ...formData, names: e.target.value })}
@@ -426,16 +428,16 @@ const TeacherManagementTableNew = () => {
                                                     />
                                                 </div>
                                                 {formErrors.names && (
-                                                    <p className="text-red-500 text-sm mt-1 pl-9 animate-fade-in">{formErrors.names}</p>
+                                                    <p className="text-red-500 text-xs mt-1 pl-7">{formErrors.names}</p>
                                                 )}
                                             </div>
                                             <div className="relative group">
-                                                <div className="flex items-center gap-3">
-                                                    <FiMail className="text-blue-500 group-hover:scale-110 transition-transform duration-200" size={20} />
+                                                <div className="flex items-center gap-2">
+                                                    <FiMail className="text-blue-500" size={16} />
                                                     <input
                                                         type="email"
                                                         placeholder="Email"
-                                                        className={`w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md ${formErrors.email ? 'border-red-500' : ''
+                                                        className={`w-full px-3 py-2 rounded border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm ${formErrors.email ? 'border-red-500' : ''
                                                             }`}
                                                         value={formData.email}
                                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -444,20 +446,20 @@ const TeacherManagementTableNew = () => {
                                                     />
                                                 </div>
                                                 {formErrors.email && (
-                                                    <p className="text-red-500 text-sm mt-1 pl-9 animate-fade-in">{formErrors.email}</p>
+                                                    <p className="text-red-500 text-xs mt-1 pl-7">{formErrors.email}</p>
                                                 )}
                                             </div>
                                             <div className="relative group">
-                                                <div className="flex items-center gap-3">
-                                                    <FiPhoneCall className="text-blue-500 group-hover:scale-110 transition-transform duration-200" size={20} />
+                                                <div className="flex items-center gap-2">
+                                                    <FiPhoneCall className="text-blue-500" size={16} />
                                                     <div className="flex w-full">
-                                                        <span className="inline-flex items-center px-4 py-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-700 text-sm font-medium">
+                                                        <span className="inline-flex items-center px-3 py-2 rounded-l border border-r-0 border-gray-300 bg-gray-100 text-gray-700 text-xs font-medium">
                                                             +250
                                                         </span>
                                                         <input
                                                             type="tel"
                                                             placeholder="78.....888"
-                                                            className={`w-full px-4 py-3 rounded-r-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md ${formErrors.phone ? 'border-red-500' : ''
+                                                            className={`w-full px-3 py-2 rounded-r border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm ${formErrors.phone ? 'border-red-500' : ''
                                                                 }`}
                                                             value={formData.phone.replace(/^\+250/, '')}
                                                             onChange={(e) => {
@@ -476,14 +478,14 @@ const TeacherManagementTableNew = () => {
                                                     </div>
                                                 </div>
                                                 {formErrors.phone && (
-                                                    <p className="text-red-500 text-sm mt-1 pl-9 animate-fade-in">{formErrors.phone}</p>
+                                                    <p className="text-red-500 text-xs mt-1 pl-7">{formErrors.phone}</p>
                                                 )}
                                             </div>
                                             <div className="relative group">
-                                                <div className="flex items-center gap-3">
-                                                    <FiUser className="text-blue-500 group-hover:scale-110 transition-transform duration-200" size={20} />
+                                                <div className="flex items-center gap-2">
+                                                    <FiUser className="text-blue-500" size={16} />
                                                     <select
-                                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md"
+                                                        className="w-full px-3 py-2 rounded border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                                                         value={formData.assignedCourses}
                                                         onChange={(e) => setFormData({ ...formData, assignedCourses: e.target.value })}
                                                         aria-label="Assigned courses"
@@ -496,12 +498,12 @@ const TeacherManagementTableNew = () => {
                                                 </div>
                                             </div>
                                             <div className="relative group">
-                                                <div className="flex items-center gap-3">
-                                                    <svg className="text-blue-500 group-hover:scale-110 transition-transform duration-200" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <div className="flex items-center gap-2">
+                                                    <svg className="text-blue-500" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                                                     </svg>
                                                     <select
-                                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md"
+                                                        className="w-full px-3 py-2 rounded border border-gray-300 bg-gray-50 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm"
                                                         value={formData.status}
                                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                                                         aria-label="Status"
@@ -511,21 +513,21 @@ const TeacherManagementTableNew = () => {
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div className="flex justify-end gap-3 mt-6">
+                                            <div className="flex justify-end gap-2 mt-4">
                                                 <button
                                                     type="button"
                                                     onClick={closeModal}
-                                                    className="px-5 py-3 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-300"
+                                                    className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium shadow-sm text-xs sm:text-sm"
                                                     aria-label="Cancel"
                                                 >
                                                     Cancel
                                                 </button>
                                                 <button
                                                     type="submit"
-                                                    className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2"
+                                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium shadow-sm flex items-center gap-2 text-xs sm:text-sm"
                                                     aria-label="Update teacher"
                                                 >
-                                                    <FiEdit size={20} />
+                                                    <FiEdit size={16} />
                                                     Update
                                                 </button>
                                             </div>
@@ -538,46 +540,22 @@ const TeacherManagementTableNew = () => {
                 </>
             )}
             <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.4s ease-out;
-        }
-        .animate-slide-in {
-          animation: slideIn 0.4s ease-out;
-        }
-        .animate-slide-up {
-          animation: slideUp 0.4s ease-out;
-        }
-      `}</style>
+                @keyframes fadeIn {
+                  from { opacity: 0; transform: translateY(10px);}
+                  to { opacity: 1; transform: translateY(0);}
+                }
+                @keyframes slideIn {
+                  from { transform: translateX(100%); opacity: 0;}
+                  to { transform: translateX(0); opacity: 1;}
+                }
+                @keyframes slideUp {
+                  from { opacity: 0; transform: translateY(20px);}
+                  to { opacity: 1; transform: translateY(0);}
+                }
+                .animate-fade-in { animation: fadeIn 0.4s ease-out;}
+                .animate-slide-in { animation: slideIn 0.4s ease-out;}
+                .animate-slide-up { animation: slideUp 0.4s ease-out;}
+            `}</style>
         </div>
     );
 };
