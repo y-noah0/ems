@@ -209,20 +209,20 @@ const TeacherManagement = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
-          <h1 className="text-2xl sm:text-4xl font-semibold text-gray-900 mb-4 sm:mb-0 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-4 sm:mb-0 tracking-tight">
             Teacher Management
           </h1>
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             {viewMode !== 'chart' && (
-              <div className="relative w-full sm:w-72 group">
+              <div className="relative w-full sm:w-64 group">
                 <Search
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-hover:text-blue-500 transition-colors duration-200"
-                  size={20}
+                  size={18}
                 />
                 <input
                   type="text"
                   placeholder="Search teachers..."
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:shadow-md"
+                  className="w-full pl-10 pr-3 py-2 rounded-md border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-300 hover:shadow-md"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   aria-label="Search teachers"
@@ -231,30 +231,30 @@ const TeacherManagement = () => {
             )}
             <button
               onClick={() => setViewMode('chart')}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-md hover:shadow-lg transition-all text-sm"
             >
-              <AreaChart size={20} /> X
+              <AreaChart size={18} /> Chart
             </button>
             {viewMode === 'chart' ? (
               <button
                 onClick={() => setViewMode('cards')}
-                className="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                className="inline-flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md shadow-md hover:shadow-lg transition-all text-sm"
               >
-                <ArrowLeft size={20} /> Back to Teachers
+                <ArrowLeft size={18} /> Back
               </button>
             ) : (
               <>
                 <button
                   onClick={() => setViewMode('table')}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-md hover:shadow-lg transition-all text-sm"
                 >
-                  <User size={20} /> Management
+                  <User size={18} /> Management
                 </button>
                 <button
                   onClick={() => openModal()}
-                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200"
+                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-md hover:shadow-lg transition-all text-sm"
                 >
-                  <Plus size={20} /> Add Teacher
+                  <Plus size={18} /> Add
                 </button>
               </>
             )}
@@ -262,11 +262,11 @@ const TeacherManagement = () => {
         </div>
 
         {viewMode !== 'chart' && (
-          <div className="flex flex-col sm:flex-row gap-4 mb-8 bg-white p-5 rounded-xl shadow-lg">
-            <div className="flex items-center group">
-              <label className="text-sm font-semibold text-gray-700 mr-2">Sort by:</label>
+          <div className="flex flex-col sm:flex-row gap-3 mb-8 bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center">
+              <label className="text-xs font-semibold text-gray-700 mr-2">Sort by:</label>
               <select
-                className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
+                className="px-3 py-2 rounded border border-gray-300 bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={sortField}
                 onChange={(e) => setSortField(e.target.value)}
                 aria-label="Sort by"
@@ -277,10 +277,10 @@ const TeacherManagement = () => {
                 <option value="status">Status</option>
               </select>
             </div>
-            <div className="flex items-center group">
-              <label className="text-sm font-semibold text-gray-700 mr-2">Order:</label>
+            <div className="flex items-center">
+              <label className="text-xs font-semibold text-gray-700 mr-2">Order:</label>
               <select
-                className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
+                className="px-3 py-2 rounded border border-gray-300 bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value)}
                 aria-label="Sort order"
@@ -289,10 +289,10 @@ const TeacherManagement = () => {
                 <option value="desc">Descending</option>
               </select>
             </div>
-            <div className="flex items-center group">
-              <label className="text-sm font-semibold text-gray-700 mr-2">Status:</label>
+            <div className="flex items-center">
+              <label className="text-xs font-semibold text-gray-700 mr-2">Status:</label>
               <select
-                className="px-4 py-2 rounded-lg border border-gray-300 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:shadow-md"
+                className="px-3 py-2 rounded border border-gray-300 bg-white text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 aria-label="Filter by status"
@@ -307,17 +307,17 @@ const TeacherManagement = () => {
 
         {notification && (
           <div
-            className={`fixed top-4 right-4 px-5 py-3 rounded-lg shadow-xl text-white animate-slide-in flex items-center gap-2 ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-              }`}
+            className={`fixed top-4 right-4 px-4 py-2 rounded shadow-lg text-white flex items-center gap-2 text-sm z-50
+            ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}
           >
-            <CheckCircle2 size={20} />
+            <CheckCircle2 size={18} />
             {notification.message}
           </div>
         )}
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-blue-600"></div>
           </div>
         ) : viewMode === 'chart' ? (
           <TeacherPerformanceBarChart />
@@ -328,64 +328,55 @@ const TeacherManagement = () => {
             onDelete={handleDelete}
           />
         ) : filteredTeachers.length === 0 ? (
-          <p className="text-gray-500 italic text-center py-8 text-lg">
+          <p className="text-gray-500 italic text-center py-8 text-base">
             No teachers match the current filters.
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredTeachers.map((teacher) => (
               <div
                 key={teacher._id}
-                className="bg-white border border-gray-200 rounded-xl p-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:-translate-y-1 animate-fade-in"
+                className="bg-white border border-gray-200 rounded-lg p-5 shadow hover:shadow-lg transition-all duration-200 hover:-translate-y-1 animate-fade-in"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-gray-800 tracking-tight">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-bold text-gray-800 tracking-tight">
                     {teacher.fullName}
                   </h2>
                   <CheckCircle2
                     className={`${!teacher.isDeleted ? 'text-green-500' : 'text-red-400'} animate-pulse`}
-                    size={32}
+                    size={24}
                   />
                 </div>
-                <div className="space-y-3">
-                  <p className="flex items-start gap-2">
-                    <User className="text-blue-500 mt-1" size={20} />
-                    <span>
-                      <span className="font-medium text-gray-600">Name:</span>{' '}
-                      <span className="text-gray-700">{teacher.fullName}</span>
-                    </span>
+                <div className="space-y-2">
+                  <p className="flex items-center gap-2 text-sm">
+                    <User className="text-blue-500" size={16} />
+                    <span className="text-gray-700">{teacher.fullName}</span>
                   </p>
-                  <p className="flex items-start gap-2">
-                    <Mail className="text-blue-500 mt-1" size={20} />
-                    <span>
-                      <span className="font-medium text-gray-600">Email:</span>{' '}
-                      <span className="text-gray-700">{teacher.email}</span>
-                    </span>
+                  <p className="flex items-center gap-2 text-sm">
+                    <Mail className="text-blue-500" size={16} />
+                    <span className="text-gray-700">{teacher.email}</span>
                   </p>
-                  <p className="flex items-start gap-2">
-                    <Phone className="text-blue-500 mt-1" size={20} />
-                    <span>
-                      <span className="font-medium text-gray-600">Phone:</span>{' '}
-                      <span className="text-gray-700">{teacher.phoneNumber || 'Not provided'}</span>
-                    </span>
+                  <p className="flex items-center gap-2 text-sm">
+                    <Phone className="text-blue-500" size={16} />
+                    <span className="text-gray-700">{teacher.phoneNumber || 'Not provided'}</span>
                   </p>
                 </div>
-                <div className="flex justify-end gap-3 mt-5">
+                <div className="flex justify-end gap-2 mt-4">
                   <button
                     onClick={() => openModal(teacher)}
-                    className="text-blue-500 hover:text-blue-600 p-2 rounded-full hover:bg-blue-100 transform hover:scale-110 transition-all duration-200"
+                    className="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-100 transition"
                     aria-label={`Edit ${teacher.fullName}`}
                     title="Edit"
                   >
-                    <User size={24} />
+                    <User size={18} />
                   </button>
                   <button
                     onClick={() => handleDelete(teacher._id)}
-                    className="text-red-500 hover:text-red-600 p-2 rounded-full hover:bg-red-100 transform hover:scale-110 transition-all duration-200"
+                    className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 transition"
                     aria-label={`Delete ${teacher.fullName}`}
                     title="Delete"
                   >
-                    <Trash2 size={24} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </div>
@@ -560,44 +551,20 @@ const TeacherManagement = () => {
       </div>
       <style jsx>{`
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(10px);}
+          to { opacity: 1; transform: translateY(0);}
         }
         @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
+          from { transform: translateX(100%); opacity: 0;}
+          to { transform: translateX(0); opacity: 1;}
         }
         @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(20px);}
+          to { opacity: 1; transform: translateY(0);}
         }
-        .animate-fade-in {
-          animation: fadeIn 0.4s ease-out;
-        }
-        .animate-slide-in {
-          animation: slideIn 0.4s ease-out;
-        }
-        .animate-slide-up {
-          animation: slideUp 0.4s ease-out;
-        }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out;}
+        .animate-slide-in { animation: slideIn 0.4s ease-out;}
+        .animate-slide-up { animation: slideUp 0.4s ease-out;}
       `}</style>
     </div>
   );
