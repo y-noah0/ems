@@ -390,9 +390,12 @@ const register = async (req, res) => {
     }
 
     if (role !== 'student' && email) {
-      // Send verification email (guaranteed) plus optional notification
-      await sendVerificationEmail(user, req, 'register');
-      const message = `Your account has been registered. Use code ${user.emailVerificationToken} to verify your email.`;
+      // Send a SINGLE email that includes the registration number (initial password)
+      // and the verification code. Avoid sending a second duplicate email.
+      const message = `Welcome to EMS!<br/><br/>
+        Your registration number (also your initial password) is: <strong>${registrationNumber}</strong>.<br/>
+        Please verify your email using this code: <strong>${user.emailVerificationToken}</strong>.<br/><br/>
+        For security, we recommend changing your password after your first login.`;
       await sendNotification(user, message, 'EMS Account Registration', req);
     } else if (role === 'student') {
       const message = `Welcome, ${user.fullName}! Your registration number and password is ${registrationNumber}.`;
@@ -446,12 +449,14 @@ const login = async (req, res) => {
     }
 
     if (!user.emailVerified && user.role !== 'student') {
-      // Rotate code to alphanumeric 6 chars for each login attempt
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let newCode = '';
-      for (let i = 0; i < 6; i++) newCode += chars.charAt(Math.floor(Math.random() * chars.length));
-      user.emailVerificationToken = newCode;
-      await user.save();
+      // Do NOT rotate code on each attempt; if missing, generate once, otherwise reuse.
+      if (!user.emailVerificationToken) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let newCode = '';
+        for (let i = 0; i < 6; i++) newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        user.emailVerificationToken = newCode;
+        await user.save();
+      }
       await sendVerificationEmail(user, req, 'login');
       return res.status(400).json({ success: false, message: 'Email not verified. Verification email sent.' });
     }
@@ -629,14 +634,17 @@ const resendVerificationCode = async (req, res) => {
       return res.status(429).json({ success: false, message: 'Too many resend attempts. Please wait before trying again.' });
     }
 
-  // Always rotate a fresh 6-char mixed code (alphanumeric for better entropy)
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let verificationCode = '';
-  for (let i = 0; i < 6; i++) verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
-  user.emailVerificationToken = verificationCode;
+  // Reuse existing code if present; otherwise generate once and persist
+  let verificationCode = user.emailVerificationToken;
+  if (!verificationCode) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    verificationCode = '';
+    for (let i = 0; i < 6; i++) verificationCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    user.emailVerificationToken = verificationCode;
     await user.save();
+  }
 
-  const message = `A new verification code has been generated for your EMS account. Your verification code is: <strong>${verificationCode}</strong>. Please use this code to verify your email in the EMS application.`;
+  const message = `Your EMS email verification code is: <strong>${verificationCode}</strong>.`;
     const sent = await sendNotification(user, message, 'EMS Verification Code Resend', req);
     if (!sent) {
       logger.error('Failed to send verification code resend notification', { userId: user._id, ip: req.ip });

@@ -81,7 +81,8 @@ export default function UserManagement() {
                 await teacherService.register(payload);
             }
              // Refresh
-             window.location.reload();
+             const data = await teacherService.fetchTeachers(currentSchool);
+             setStaff(data);
              setShowForm(false);
              setFormData({
                  fullName: "",
@@ -100,7 +101,7 @@ export default function UserManagement() {
         try {
             await systemAdminService.deleteUser(user._id);
             // Refresh
-            const staffData = await systemAdminService.getAllStaff();
+            const staffData = await teacherService.fetchTeachers(currentSchool);
             setStaff(staffData.staff);
         } catch (err) {
             setError(err.message || "Failed to delete user");

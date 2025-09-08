@@ -19,6 +19,8 @@ export default function SchoolProfile() {
         exams: 0,
     });
 
+    console.log("School data:", school);
+
     useEffect(() => {
         const fetchSchoolData = async () => {
             try {
@@ -170,7 +172,7 @@ export default function SchoolProfile() {
                                 {school.logo ? (
                                     <>
                                         <img
-                                            src={`http://localhost:5000${school.logo}`}
+                                            src={`https://image.slidesharecdn.com/yuklchapter16-160724220421/95/yukl-chapter-16-3-638.jpg?cb=1469397874`}
                                             alt={`${school.name} logo`}
                                             className="w-24 h-24 object-cover rounded-lg border border-gray-200"
                                             crossOrigin="anonymous"

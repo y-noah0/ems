@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "react-toastify";
@@ -24,6 +24,7 @@ import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import ExamCard from "../components/ui/ExamCard";
 import examService from "../services/examService";
+import deanService from "../services/deanService";
 
 const ExamManagement = () => {
     const location = useLocation();
@@ -90,7 +91,7 @@ const ExamManagement = () => {
     }, [location.search]);
 
     // Fetch exams, subjects, and classes
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         if (!currentUser?.school) {
             toast.error(
                 "No school associated with your account. Please log in again."
@@ -101,31 +102,64 @@ const ExamManagement = () => {
 
         setLoading(true);
         try {
-            const [examsData, subjectsData, classesData] = await Promise.all([
-                examService.getTeacherExams(currentUser.school),
-                examService.getTeacherSubjects(currentUser.school),
-                examService.getClassesForTeacher(currentUser.school),
-            ]);
-            setExams(Array.isArray(examsData) ? examsData : []);
-            setSubjectOptionsList(
-                Array.isArray(subjectsData)
-                    ? subjectsData.map((s) => ({
-                          value: s._id,
-                          label: s.name || "Unnamed Subject",
-                      }))
-                    : []
-            );
-            setClassOptionsList(
-                Array.isArray(classesData)
-                    ? classesData.map((c) => ({
-                          value: c._id,
-                          label:
-                              c.className ||
-                              `${c.level}${c.trade?.code || ""} ` ||
-                              "Unnamed Class",
-                      }))
-                    : []
-            );
+            if (["dean", "headmaster"].includes(currentUser.role)) {
+                // Dean or Headmaster: fetch all school exams
+                const examsData = await deanService.getExams(currentUser.school);
+                setExams(Array.isArray(examsData) ? examsData : []);
+                // Derive subjects/classes from exams until dedicated dean endpoints exist
+                const subjectMap = new Map();
+                const classMap = new Map();
+                examsData?.forEach((ex) => {
+                    if (ex.subject && !subjectMap.has(ex.subject._id)) {
+                        subjectMap.set(ex.subject._id, {
+                            value: ex.subject._id,
+                            label: ex.subject.name || "Unnamed Subject",
+                        });
+                    }
+                    if (Array.isArray(ex.classes)) {
+                        ex.classes.forEach((c) => {
+                            if (c && !classMap.has(c._id)) {
+                                classMap.set(c._id, {
+                                    value: c._id,
+                                    label:
+                                        c.className ||
+                                        `${c.level}${c.trade?.code || ""}` ||
+                                        "Unnamed Class",
+                                });
+                            }
+                        });
+                    }
+                });
+                setSubjectOptionsList(Array.from(subjectMap.values()));
+                setClassOptionsList(Array.from(classMap.values()));
+            } else {
+                // Teacher (default existing behavior; other roles can be added later)
+                const [examsData, subjectsData, classesData] = await Promise.all([
+                    examService.getTeacherExams(currentUser.school),
+                    examService.getTeacherSubjects(currentUser.school),
+                    examService.getClassesForTeacher(currentUser.school),
+                ]);
+                setExams(Array.isArray(examsData) ? examsData : []);
+                setSubjectOptionsList(
+                    Array.isArray(subjectsData)
+                        ? subjectsData.map((s) => ({
+                              value: s._id,
+                              label: s.name || "Unnamed Subject",
+                          }))
+                        : []
+                );
+                setClassOptionsList(
+                    Array.isArray(classesData)
+                        ? classesData.map((c) => ({
+                              value: c._id,
+                              label:
+                                  c.className ||
+                                  `${c.level}${c.trade?.code || ""} ` ||
+                                  "Unnamed Class",
+                          }))
+                        : []
+                );
+            }
         } catch (error) {
             console.error("Error fetching data:", error);
             toast.error(
@@ -137,121 +171,14 @@ const ExamManagement = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentUser]);
 
     useEffect(() => {
         fetchData();
-    }, [currentUser]);
+    }, [fetchData]);
 
     // Action handlers
-    const handleActivateExam = async (examId) => {
-        if (!currentUser?.school) {
-            toast.error("No school associated with your account.");
-            return;
-        }
-        setLoading(true);
-        try {
-            const updatedExam = await examService.activateExam(
-                examId,
-                currentUser.school
-            );
-            setExams(
-                exams.map((exam) => (exam._id === examId ? updatedExam : exam))
-            );
-            toast.success("Exam activated successfully!");
-        } catch (error) {
-            console.error("Error activating exam:", error);
-            toast.error(error.message || "Failed to activate exam");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCompleteExam = async (examId) => {
-        if (!currentUser?.school) {
-            toast.error("No school associated with your account.");
-            return;
-        }
-        setLoading(true);
-        try {
-            const updatedExam = await examService.completeExam(
-                examId,
-                currentUser.school
-            );
-            setExams(
-                exams.map((exam) => (exam._id === examId ? updatedExam : exam))
-            );
-            toast.success("Exam completed successfully!");
-        } catch (error) {
-            console.error("Error completing exam:", error);
-            toast.error(error.message || "Failed to complete exam");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleScheduleExam = async (examId) => {
-        if (!currentUser?.school) {
-            toast.error("No school associated with your account.");
-            return;
-        }
-        const startTime = prompt("Enter start time (YYYY-MM-DDTHH:MM):");
-        const duration = prompt("Enter duration (minutes):");
-        if (startTime && duration) {
-            const scheduleData = {
-                start: new Date(startTime).toISOString(),
-                duration: parseInt(duration),
-            };
-            if (new Date(scheduleData.start) <= new Date()) {
-                toast.error("Start time must be in the future");
-                return;
-            }
-            if (scheduleData.duration < 5) {
-                toast.error("Duration must be at least 5 minutes");
-                return;
-            }
-            setLoading(true);
-            try {
-                const updatedExam = await examService.scheduleExam(
-                    examId,
-                    scheduleData,
-                    currentUser.school
-                );
-                setExams(
-                    exams.map((exam) =>
-                        exam._id === examId ? updatedExam : exam
-                    )
-                );
-                toast.success("Exam scheduled successfully!");
-            } catch (error) {
-                console.error("Error scheduling exam:", error);
-                toast.error(error.message || "Failed to schedule exam");
-            } finally {
-                setLoading(false);
-            }
-        }
-    };
-
-    const handleDeleteExam = async (examId) => {
-        if (!currentUser?.school) {
-            toast.error("No school associated with your account.");
-            return;
-        }
-        if (!window.confirm("Are you sure you want to delete this exam?")) {
-            return;
-        }
-        setLoading(true);
-        try {
-            await examService.deleteExam(examId, currentUser.school);
-            setExams(exams.filter((exam) => exam._id !== examId));
-            toast.success("Exam deleted successfully!");
-        } catch (error) {
-            console.error("Error deleting exam:", error);
-            toast.error(error.message || "Failed to delete exam");
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Action handlers moved to ExamCard or other components. Removed unused local handlers.
 
     // Calculate total points
     const calculateTotalPoints = (questions) => {

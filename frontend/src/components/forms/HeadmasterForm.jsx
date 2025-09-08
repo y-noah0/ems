@@ -28,12 +28,11 @@ export default function HeadmasterForm({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch schools for the dropdown
-        const schoolsRes = await schoolService.getAllSchools();
-        setSchools(schoolsRes);
-
-        // If editing, fetch the headmaster data
+        // Only fetch schools if editing (not when creating new headmaster)
         if (isEditing) {
+          const schoolsRes = await schoolService.getAllSchools();
+          setSchools(schoolsRes);
+          
           setIsLoading(true);
           const headmasterData = await userService.getUserById(headmasterId);
           setFormData({
@@ -96,9 +95,16 @@ export default function HeadmasterForm({
         fullName: formData.fullName.trim(),
         email: formData.email.trim(),
         phoneNumber: formData.phoneNumber.trim() || undefined,
-        schoolId: formData.schoolId || null
+        role: 'headmaster'
       };
-
+      
+      // Only include schoolId when editing
+      if (isEditing) {
+        payload.schoolId = formData.schoolId || null;
+      }
+      
+      console.log(payload);
+      
       // Add password only if provided (for new headmasters or password updates)
       if (formData.password) {
         payload.password = formData.password;
@@ -110,6 +116,7 @@ export default function HeadmasterForm({
         showToast('Headmaster updated successfully!', 'success');
         if (onUpdate) onUpdate(result);
       } else {
+        
         result = await userService.createHeadmaster(payload);
         showToast('Headmaster created successfully!', 'success');
         if (onCreate) onCreate(result);
@@ -117,7 +124,11 @@ export default function HeadmasterForm({
       
       if (onClose) onClose();
     } catch (error) {
-      showToast(`Error ${isEditing ? 'updating' : 'creating'} headmaster: ${error.message}`, 'error');
+      const backendMsg = error?.message
+        || (Array.isArray(error?.errors) && error.errors[0]?.msg)
+        || error?.data?.message
+        || 'Request failed';
+      showToast(`Error ${isEditing ? 'updating' : 'creating'} headmaster: ${backendMsg}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -226,29 +237,31 @@ export default function HeadmasterForm({
             {errors.phoneNumber && <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>}
           </div>
 
-          {/* School Assignment */}
-          <div>
-            <label htmlFor="schoolId" className="block text-sm font-medium text-gray-700 mb-1">
-              Assign School (Optional)
-            </label>
-            <select
-              id="schoolId"
-              name="schoolId"
-              value={formData.schoolId}
-              onChange={handleInputChange}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">No school assigned</option>
-              {schools.map((school) => (
-                <option key={school._id} value={school._id}>
-                  {school.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-gray-500 text-xs mt-1">
-              Schools can be assigned later if needed
-            </p>
-          </div>
+          {/* School Assignment - Only show when editing */}
+          {isEditing && (
+            <div>
+              <label htmlFor="schoolId" className="block text-sm font-medium text-gray-700 mb-1">
+                Assign School (Optional)
+              </label>
+              <select
+                id="schoolId"
+                name="schoolId"
+                value={formData.schoolId}
+                onChange={handleInputChange}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">No school assigned</option>
+                {schools.map((school) => (
+                  <option key={school._id} value={school._id}>
+                    {school.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-gray-500 text-xs mt-1">
+                Schools can be assigned later if needed
+              </p>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">

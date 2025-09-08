@@ -160,9 +160,12 @@ const deanService = {
     return response.data;
   },
 
-  getExams: async () => {
-    const response = await api.get(`/exams/school`)
-    return response.data
+  // Get all exams for a school (Dean / Headmaster)
+  getExams: async (schoolId, termId = null) => {
+    const params = termId ? { schoolId, termId } : { schoolId };
+    const response = await api.get('/exams/school', { params });
+    // API returns { success, exams, message }
+    return response.data?.exams || [];
   },
   
   // Reports

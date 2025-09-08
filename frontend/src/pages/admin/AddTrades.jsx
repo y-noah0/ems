@@ -1,14 +1,17 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import tradeService from '../../services/tradeService'
 import Layout from '../../components/layout/Layout'
 import Button from '../../components/ui/Button'
 
 export default function AddTrades({ onClose, onCreate }) {
   const navigate = useNavigate()
+  const { id } = useParams()
+  const isEditing = Boolean(id)
   const [formData, setFormData] = useState({ category: '', level: '', name: '', code: '', description: '' })
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const levelOptions = {
     REB: ['S1','S2','S3','S4','S5','S6'],
@@ -41,8 +44,12 @@ export default function AddTrades({ onClose, onCreate }) {
     setIsSubmitting(true)
     try {
       const payload = { category: formData.category, level: formData.level, name: formData.name, code: formData.code, description: formData.description }
-      await tradeService.createTrade(payload)
-      onCreate && onCreate(payload)
+      if (isEditing) {
+        await tradeService.updateTrade(id, payload)
+      } else {
+        await tradeService.createTrade(payload)
+        onCreate && onCreate(payload)
+      }
       onClose && onClose()
       // navigate back after adding
       navigate('/admin/trades')
@@ -53,11 +60,38 @@ export default function AddTrades({ onClose, onCreate }) {
     }
   }
 
+  useEffect(() => {
+    const load = async () => {
+      if (!isEditing) return
+      try {
+        setLoading(true)
+        const existing = await tradeService.getTradeById(id)
+        setFormData({
+          category: existing.category || '',
+          level: formData.level || '',
+          name: existing.name || '',
+          code: existing.code || '',
+          description: existing.description || ''
+        })
+  } catch {
+        // If failed to load, go back
+        navigate('/admin/trades')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
+
   return (
     <Layout>
       <div className="inset-0 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Add New Trade</h2>
+          <h2 className="text-xl font-semibold mb-4">{isEditing ? 'Edit Trade' : 'Add New Trade'}</h2>
+          {loading ? (
+            <div className="py-8 text-center text-gray-500">Loading...</div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Category *</label>
@@ -94,10 +128,11 @@ export default function AddTrades({ onClose, onCreate }) {
             <div className="flex justify-end space-x-2">
               <Button variant='danger' size='sm' type="button" onClick={() => navigate('/admin/trades')}>Cancel</Button>
               <Button size='sm' type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Adding...' : 'Add Trade'}
+                {isSubmitting ? (isEditing ? 'Saving...' : 'Adding...') : (isEditing ? 'Save Changes' : 'Add Trade')}
               </Button>
             </div>
           </form>
+          )}
         </div>
       </div>
     </Layout>

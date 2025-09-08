@@ -58,6 +58,15 @@ const tradeService = {
       throw error.response ? error.response.data : { message: 'Network error' };
     }
   },
+  // Update a trade by ID
+  updateTrade: async (id, payload) => {
+    try {
+      const response = await api.put(`/trade/${id}`, payload);
+      return response.data.trade;
+    } catch (error) {
+      throw error.response ? error.response.data : { message: 'Network error' };
+    }
+  },
   // Get trades offered by a specific school
   getTradesBySchool: async (schoolId) => {
     try {

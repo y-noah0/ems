@@ -13,6 +13,12 @@ api.interceptors.request.use(
 );
 
 const headmasterService = {
+  // Exams (reuse /exams/school endpoint)
+  getExams: async (schoolId, termId = null) => {
+    const params = termId ? { schoolId, termId } : { schoolId };
+    const response = await api.get('/exams/school', { params });
+    return response.data?.exams || [];
+  },
   getTradesOffered: async () => {
     const response = await api.get('/headmaster/trades');
     return response.data.trades;

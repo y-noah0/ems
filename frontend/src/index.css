@@ -1,8 +1,6 @@
 @import 'tailwindcss';
 
-.examTake {
-    /* user-select: none; */
-}
+
 
 @theme {
     --color-text: #2F303A;
@@ -24,6 +22,9 @@
     .container {
         @apply bg-white rounded-[10px] p-5  shadow-[2px_2px_5px_rgba(0,0,0,0.1)] border border-black/10;
     }
+    .examTake {
+    @apply select-none;
+}
 
 }
 

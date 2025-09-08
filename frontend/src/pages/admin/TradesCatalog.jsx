@@ -4,7 +4,7 @@ import Button from "../../components/ui/Button";
 import Layout from "../../components/layout/Layout";
 import { ToastContext } from "../../context/ToastContext";
 import tradeService from "../../services/tradeService";
-import subjectService from "../../services/subjectService";
+// Removed subjects usage
 
 export default function TradesCatalog() {
     const [searchTerm, setSearchTerm] = useState("");
@@ -17,7 +17,7 @@ export default function TradesCatalog() {
         const uniqueCats = Array.from(new Set(trades.map(t => t.category).filter(Boolean)));
         return ['All', ...uniqueCats];
     }, [trades]);
-    const [subjects, setSubjects] = useState([]);
+    // No subjects here
     const [lastDeleted, setLastDeleted] = useState(null); // for undo
     const navigate = useNavigate();
     const { showToast } = useContext(ToastContext);
@@ -28,8 +28,7 @@ export default function TradesCatalog() {
             try {
                 const tradesRes = await tradeService.getAllTrades();
                 setTrades(tradesRes);
-                const subjectsRes = await subjectService.getSubjects();
-                setSubjects(subjectsRes);
+                // Subjects removed from this view
             } catch (error) {
                 showToast("Failed to load data: " + error.message, "error");
             }
@@ -51,12 +50,7 @@ export default function TradesCatalog() {
         );
     };
 
-    // Get subject count for a trade
-    const getSubjectCount = (tradeId) => {
-        return subjects.filter(subject => 
-            subject.trades && subject.trades.map(t => t.toString()).includes(tradeId)
-        ).length;
-    };
+    // Subject-related display removed
 
     // Get all trades for table display
     const getAllTrades = () => filterTrades(trades);
@@ -76,7 +70,7 @@ export default function TradesCatalog() {
     const handleDelete = (trade, e) => {
         e.stopPropagation();
         setDeleteConfirmation({
-            id: trade.id,
+            id: trade._id,
             name: trade.name,
             action: () => confirmDelete(trade)
         });
@@ -173,9 +167,7 @@ export default function TradesCatalog() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Description
                             </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Subjects
-                                    </th>
+                                    {/* Subjects column removed */}
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Actions
                                     </th>
@@ -201,11 +193,7 @@ export default function TradesCatalog() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             {trade.description || '—'}
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                                                {getSubjectCount(trade._id)} subjects
-                                            </span>
-                                        </td>
+                                        {/* Subject count removed */}
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <button
                                                 onClick={(e) => handleEdit(trade, e)}

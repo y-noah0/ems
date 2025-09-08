@@ -644,7 +644,15 @@ function App() {
                                 }
                             />
                             <Route
-                                path="/admin/subjects"
+                                path="/admin/trades/edit/:id"
+                                element={
+                                    <ProtectedRoute allowedRoles={["admin"]}>
+                                        <AddTrades />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            <Route
+                        tected  path="/admin/subjects"
                                 element={
                                     <ProtectedRoute allowedRoles={["admin", "headmaster"]}>
                                         <SubjectCatalog />

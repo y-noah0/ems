@@ -24,7 +24,7 @@ const userService = {
   // Get all headmasters
   getHeadmasters: async () => {
     try {
-      const response = await api.get('/headmasters');
+      const response = await api.get('/headmaster');
       return response.data.headmasters || [];
     } catch (error) {
       console.error('Error fetching headmasters:', error);
@@ -55,12 +55,14 @@ const userService = {
   // Create headmaster
   createHeadmaster: async (headmasterData) => {
     try {
-      const response = await api.post('/auth/register', {
-        ...headmasterData,
-        role: 'headmaster',
-        schoolId: null // headmaster school is null at creation
-      });
-      return response.data.user;
+      // Do not send schoolId when it's not being assigned to avoid validator errors
+      const payload = { ...headmasterData, role: 'headmaster' };
+      if (!payload.schoolId) {
+        delete payload.schoolId;
+      }
+  const response = await api.post('/auth/register', payload);
+  // Backend returns { success, message, userId, registrationNumber }
+  return response.data;
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
     }

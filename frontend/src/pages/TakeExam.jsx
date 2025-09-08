@@ -14,11 +14,13 @@ import Button from "../components/ui/Button";
 import examService from "../services/examService";
 import submissionService from "../services/submissionService";
 import { useAuth } from "../context/AuthContext";
+import useFullscreen from "../hooks/useFullscreen";
 
 const TakeExam = () => {
     const { currentUser } = useAuth();
     const { examId } = useParams();
     const navigate = useNavigate();
+    const isFullscreen = useFullscreen();
     const [exam, setExam] = useState(null);
     const [submission, setSubmission] = useState(null);
     const [answers, setAnswers] = useState([]);
@@ -27,7 +29,7 @@ const TakeExam = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     // Removed mark-for-review feature; now rendering all questions at once
-    const [lastSaved, setLastSaved] = useState(null);
+    const [_lastSaved, setLastSaved] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [violationCount, setViolationCount] = useState(0);
     // listingMode no longer needed when rendering all questions
@@ -845,9 +847,25 @@ const TakeExam = () => {
         );
     }
 
+    // Require full screen before showing exam
+    if (!isFullscreen) {
+        return (
+            <Layout>
+                <div className="flex items-center justify-center h-screen">
+                    <div className="bg-white p-8 rounded shadow-md text-center">
+                        <p className="mb-4 text-lg font-medium">Please enter full screen mode to continue the exam.</p>
+                        <Button onClick={() => document.documentElement.requestFullscreen()}>
+                            Enter Full Screen
+                        </Button>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
+
     return (
         <Layout>
-            <div className="max-w-7xl container h-full">
+            <div className="max-w-7xl container h-full examTake p-20">
                 {violationToast && (
                     <div className="fixed top-4 right-4 z-50 bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-3 rounded shadow animate-pulse text-sm font-medium">
                         {violationToast}
@@ -877,7 +895,6 @@ const TakeExam = () => {
                                 size="sm"
                                 onClick={handleSubmitExam}
                                 disabled={submitting || !submission}
-                                
                             >
                                 {submitting ? "Submitting..." : "Submit Exam"}
                             </Button>

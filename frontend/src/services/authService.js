@@ -112,7 +112,7 @@ const authService = {
     },
       getHeadmaster: async (email) => {
     try {
-      const response = await api.post('auth/fetch-headmaster', {email})
+      const response = await api.post('/auth/fetch-headmaster', {email})
       return response.data.user
     } catch (error) {
       throw error.response ? error.response.data : { message: 'Network error' };
